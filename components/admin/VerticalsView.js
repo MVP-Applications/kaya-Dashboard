@@ -6,7 +6,7 @@ function slugify(str) {
   return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
-const empty = { id: '', label: '', hint: '', color: '#6E5A96' }
+const empty = { id: '', label: '' }
 
 export default function VerticalsView() {
   const { verticals, services, upsertVertical, deleteVertical, allowed } = useAdmin()
@@ -90,8 +90,14 @@ export default function VerticalsView() {
   )
 }
 
+/**
+ * `hint`/`color` have no backend column (see KA-30) so this form no longer
+ * lets anyone edit them — but a record that already has them (from preview
+ * seed data) keeps them untouched on save, rather than wiping them, since
+ * nothing forces the display grid below to stop reading them.
+ */
 function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
-  const [form, setForm] = useState({ ...initial })
+  const [form, setForm] = useState({ label: '', id: '', ...initial })
   const [error, setError] = useState('')
   const originalId = isNew ? null : initial.id
 
@@ -103,9 +109,9 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
     if (!label) return setError('Label is required.')
     const id = (form.id.trim() || slugify(label))
     if (existing.some(v => v.id === id && v.id !== originalId)) {
-      return setError(`The id "${id}" is already in use.`)
+      return setError(`The slug "${id}" is already in use.`)
     }
-    onSave({ ...form, id, label }, originalId)
+    onSave({ ...initial, id, slug: id, label }, originalId)
   }
 
   return (
@@ -137,29 +143,12 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
               <input className="ad-input" value={form.label} onChange={e => set('label', e.target.value)} />
             </label>
             <label className="ad-field">
-              <span className="ad-field-label">ID</span>
+              <span className="ad-field-label">Slug</span>
               <input className="ad-input" value={form.id}
                 placeholder={slugify(form.label) || 'auto'}
                 onChange={e => set('id', e.target.value)} />
             </label>
           </div>
-          <label className="ad-field">
-            <span className="ad-field-label">Hint</span>
-            <input className="ad-input" value={form.hint} onChange={e => set('hint', e.target.value)}
-              placeholder="e.g. Botox · Laser · Peels" />
-          </label>
-        </fieldset>
-
-        <fieldset className="ad-fieldset">
-          <legend>Appearance</legend>
-          <label className="ad-field">
-            <span className="ad-field-label">Accent colour</span>
-            <div className="ad-color-row">
-              <input type="color" className="ad-color" value={form.color}
-                onChange={e => set('color', e.target.value)} />
-              <input className="ad-input" value={form.color} onChange={e => set('color', e.target.value)} />
-            </div>
-          </label>
         </fieldset>
       </div>
     </form>
