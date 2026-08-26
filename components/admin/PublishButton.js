@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { getSupabase } from '@/lib/supabase/client'
+import { triggerPublish } from '@/lib/admin/store'
 
 /**
  * Publishes edits to the live site.
@@ -8,10 +8,8 @@ import { getSupabase } from '@/lib/supabase/client'
  * The public site is a static export, so saved changes sit in the database
  * until the site is rebuilt. This triggers that rebuild.
  *
- * It calls a Supabase Edge Function rather than GitHub directly: dispatching a
- * workflow needs a repo-scoped token, and anything this component could read
- * would be in the shipped bundle for anyone to take. The function holds the
- * token server-side and checks the caller is signed-in staff before firing.
+ * There's no backend endpoint for this yet, so triggerPublish() currently
+ * always reports "not configured" — see lib/admin/store-api.js.
  */
 export default function PublishButton() {
   const [state, setState] = useState('idle') // idle | working | done | error
@@ -23,11 +21,7 @@ export default function PublishButton() {
     setMessage('')
 
     try {
-      const supabase = getSupabase()
-      if (!supabase) throw new Error('Supabase is not configured.')
-
-      const { data, error } = await supabase.functions.invoke('publish')
-      if (error) throw error
+      const data = await triggerPublish()
       if (data?.ok === false) throw new Error(data.error || 'Publish was refused.')
 
       setState('done')
