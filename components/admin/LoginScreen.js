@@ -100,7 +100,7 @@ export default function LoginScreen() {
           </div>
         ) : (
           <p className="ad-login-hint">
-            Accounts are managed in Supabase. Ask an administrator to invite you.
+            Accounts are managed by an administrator. Ask one to invite you.
           </p>
         )}
       </div>

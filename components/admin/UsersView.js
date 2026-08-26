@@ -59,20 +59,20 @@ export default function UsersView() {
         </div>
       </div>
 
-      {/* Accounts are created in Supabase Auth, which the browser can't do with
-          the anon key — so point there rather than showing a dead button. */}
+      {/* Accounts are managed by the backend, which the browser can't do
+          directly — so point there rather than showing a dead button. */}
       <div className="ad-note">
         {demoMode ? (
           <>
-            <strong>Preview mode.</strong> These are sample accounts. Once Supabase is
-            connected, real staff are invited from Authentication → Users and their
-            roles are managed here.
+            <strong>Preview mode.</strong> These are sample accounts. Once connected
+            to the backend, real staff are added there and their roles are
+            managed here.
           </>
         ) : (
           <>
-            <strong>Adding people.</strong> Invite staff from your Supabase project under
-            Authentication → Users. They appear here once they sign in for the first
-            time, and you can set their role below.
+            <strong>Adding people.</strong> Staff accounts are managed on the backend.
+            They appear here once this screen is connected to it, and you&apos;ll be
+            able to set their role below.
           </>
         )}
       </div>
@@ -105,7 +105,7 @@ export default function UsersView() {
                 <td colSpan={3} className="ad-empty">
                   {query
                     ? 'No one matches that search.'
-                    : 'No accounts yet. Invite your team from Supabase → Authentication.'}
+                    : "No accounts yet — this screen isn't connected to the backend yet."}
                 </td>
               </tr>
             )}

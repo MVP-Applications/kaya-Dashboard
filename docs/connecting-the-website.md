@@ -1,5 +1,14 @@
 # Connecting the public website to this dashboard
 
+> **Stale.** This dashboard no longer uses Supabase — see the top-level
+> README/SETUP for the current (kaya-nest-api-backed) setup. Everything
+> below describes the **separate public-website project**'s own Supabase
+> integration, which is outside this repo and hasn't been migrated as part
+> of that change. Treat the mechanism (Supabase client, `supabase/functions/publish`,
+> `NEXT_PUBLIC_SUPABASE_*`) as historical until that project's own migration
+> happens; the shape of the problem it solves — enquiries in, content out,
+> a publish trigger — still applies.
+
 This project is the **dashboard only**. The public Kaya site lives separately in
 `../Kaya Website`. Two pieces of wiring connect them, and both belong in the
 *website* project, not this one.
