@@ -400,6 +400,15 @@
 .ad-btn--soft:hover { background: var(--lilac-lt); }
 .ad-btn--danger { background: #FBECEC; color: #C0392B; border-color: #F1CFCB; }
 .ad-btn--danger:hover { background: #F6DCDA; }
+.ad-btn[disabled] { opacity: .65; cursor: default; }
+
+/* Spinner shown in place of a button's label while its action is in flight. */
+.ad-btn-spinner {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid currentColor; border-top-color: transparent;
+  opacity: .85; animation: ad-spin .7s linear infinite;
+}
+@keyframes ad-spin { to { transform: rotate(360deg); } }
 
 /* ── Full-page editor (create / edit service) ──────────── */
 .ad-editor { display: flex; flex-direction: column; gap: 16px; }
@@ -500,6 +509,7 @@
 }
 .ad-confirm-title { font-size: 1.1rem; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
 .ad-confirm-text { font-size: 13px; color: var(--slate); line-height: 1.6; }
+.ad-confirm-error { font-size: 12.5px; color: #C0392B; margin-top: 10px; }
 .ad-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 
 /* ── Requests (consumer submissions) ───────────────────── */
@@ -518,6 +528,23 @@
   background: #FCE9E5; color: #C0392B; font-size: 10.5px; font-weight: 700;
   padding: 3px 8px; border-radius: var(--r-full);
 }
+
+/* Pagination footer under the Requests table */
+.ad-req-pager {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 14px; flex-wrap: wrap;
+}
+.ad-req-pager .ad-btn + .ad-btn { margin-left: 8px; }
+
+.ad-req-export-error { color: #C0392B; font-size: 12.5px; margin-top: 6px; text-align: right; }
+
+/* Loading shimmer for the Requests table — shown in place of rows while a page is being fetched. */
+.ad-skeleton-block {
+  height: 13px; border-radius: 5px; background: var(--mist);
+  animation: ad-pulse 1.1s ease-in-out infinite;
+}
+.ad-skeleton-block + .ad-skeleton-block { margin-top: 7px; }
+.ad-skeleton-block--sm { height: 10px; }
 
 /* Status summary chips (double as quick filters) */
 .ad-req-summary { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }

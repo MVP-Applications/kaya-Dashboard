@@ -54,13 +54,13 @@ const NAV_GROUPS = [
 
 export default function AdminShell() {
   const {
-    user, logout, requests, refresh, resetDemo,
+    user, logout, requestStatusCounts, refresh, resetDemo,
     loading, saving, error, dismissError, demoMode,
   } = useAdmin()
   const [view, setView] = useState('overview')
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const newRequests = requests.filter(r => r.status === 'new').length
+  const newRequests = requestStatusCounts.new
 
   function go(v) {
     setView(v)

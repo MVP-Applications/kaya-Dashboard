@@ -1,15 +1,45 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
 import { siteUrl } from '@/lib/site'
-import { toCsv, downloadCsv, stampedName } from '@/lib/admin/csv'
+import { downloadCsv, stampedName } from '@/lib/admin/csv'
+import { exportRequestsCsv } from '@/lib/admin/store'
 import {
   REQUEST_STATUS_OPTIONS,
   REQUEST_SOURCE_OPTIONS,
   REQUEST_STATUS_LABELS,
   REQUEST_SOURCE_LABELS,
 } from '@/lib/admin/seed'
+
+const PAGE_SIZE = 20
+
+// Fixed count rather than PAGE_SIZE — a full page of shimmer rows reads as
+// "here's your data" rather than "still loading," and is needless work for
+// something about to be thrown away.
+const SKELETON_ROWS = 6
+
+function RequestRowSkeleton() {
+  return (
+    <tr aria-hidden="true">
+      <td>
+        <div className="ad-skeleton-block" style={{ width: '72%' }} />
+        <div className="ad-skeleton-block ad-skeleton-block--sm" style={{ width: '45%' }} />
+      </td>
+      <td>
+        <div className="ad-skeleton-block" style={{ width: '50%' }} />
+        <div className="ad-skeleton-block ad-skeleton-block--sm" style={{ width: '65%' }} />
+      </td>
+      <td>
+        <div className="ad-skeleton-block" style={{ width: '55%' }} />
+        <div className="ad-skeleton-block ad-skeleton-block--sm" style={{ width: '35%' }} />
+      </td>
+      <td><div className="ad-skeleton-block ad-skeleton-block--sm" style={{ width: '60%' }} /></td>
+      <td><div className="ad-skeleton-block ad-skeleton-block--sm" style={{ width: '50%' }} /></td>
+      <td className="ad-td-actions"><div className="ad-skeleton-block ad-skeleton-block--sm" style={{ width: '80%', marginLeft: 'auto' }} /></td>
+    </tr>
+  )
+}
 
 // Date ranges offered in the toolbar. `days` counts back from now; null is
 // "no limit" so the option list stays a single flat shape.
@@ -22,25 +52,18 @@ const DATE_RANGES = [
   { id: 'custom', label: 'Between two dates…', days: null },
 ]
 
-/**
- * Start of the given day, local time. Comparing raw date strings would filter
- * by UTC and drop a morning enquiry for anyone east of Greenwich.
- */
-function dayStart(value) {
-  if (!value) return null
+/** Start of the given day, local time, as an ISO string for the API. */
+function dayStartIso(value) {
+  if (!value) return undefined
   const d = new Date(`${value}T00:00:00`)
-  return Number.isNaN(d.getTime()) ? null : d.getTime()
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString()
 }
 
-/**
- * End of the given day — 23:59:59.999 local.
- *
- * The "to" date has to be inclusive: choosing 21 August and losing everything
- * that arrived that day is the off-by-one every date filter gets wrong.
- */
-function dayEnd(value) {
-  const start = dayStart(value)
-  return start === null ? null : start + 86400_000 - 1
+/** End of the given day — 23:59:59.999 local — inclusive, as an ISO string. */
+function dayEndIso(value) {
+  if (!value) return undefined
+  const d = new Date(`${value}T23:59:59.999`)
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString()
 }
 
 function StatusPill({ status }) {
@@ -78,8 +101,13 @@ function timeAgo(iso) {
 }
 
 export default function RequestsView() {
-  const { requests, setRequestStatus, updateRequest, deleteRequest, allowed } = useAdmin()
+  const {
+    requestStatusCounts, loadRequestsPage, loadRequestCountries,
+    updateRequestStatus, updateRequestNotes, deleteRequestRecord, allowed,
+  } = useAdmin()
+
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [status, setStatus] = useState('')
   const [source, setSource] = useState('')
   const [country, setCountry] = useState('')
@@ -87,92 +115,172 @@ export default function RequestsView() {
   const [range, setRange] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const [page, setPage] = useState(1)
+
+  const [items, setItems] = useState([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+
+  const [countries, setCountries] = useState([])
   const [openId, setOpenId] = useState(null)
+  const [noteDraft, setNoteDraft] = useState('')
   const [confirm, setConfirm] = useState(null)
+  const [statusConfirm, setStatusConfirm] = useState(null) // { id, name, to } | null
+  const [statusChanging, setStatusChanging] = useState(false)
+  const [statusChangeError, setStatusChangeError] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
 
   const canDelete = allowed('delete')
 
-  // Location options come from the enquiries themselves, so a new city the
-  // site starts sending appears here without a code change. Cities narrow to
-  // the selected country — offering Riyadh while filtering UAE is a dead end.
-  const countries = useMemo(
-    () => [...new Set(requests.map(r => r.country).filter(Boolean))].sort(),
-    [requests],
-  )
+  // Debounce free-text search — every keystroke is now a real network
+  // request, unlike the old client-side filter.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300)
+    return () => clearTimeout(t)
+  }, [query])
 
+  // Any filter change starts back at page 1 — staying on page 6 of a filter
+  // that now has 2 pages would just show an empty screen.
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedQuery, status, source, country, city, range, from, to])
+
+  const dateBounds = useMemo(() => {
+    const preset = DATE_RANGES.find(d => d.id === range)
+    if (range === 'custom') return { from: dayStartIso(from), to: dayEndIso(to) }
+    if (preset?.days) return { from: new Date(Date.now() - preset.days * 86400_000).toISOString(), to: undefined }
+    return { from: undefined, to: undefined }
+  }, [range, from, to])
+
+  // The list of countries (and their cities) to populate the filters — loaded
+  // once; it doesn't change while the screen is open.
+  useEffect(() => {
+    let alive = true
+    loadRequestCountries().then(list => { if (alive) setCountries(list) }).catch(() => {})
+    return () => { alive = false }
+  }, [loadRequestCountries])
+
+  // Cities narrow to the selected country, same as before KA-23 — offering
+  // Riyadh while filtering UAE is a dead end.
   const cities = useMemo(() => {
-    const pool = country ? requests.filter(r => r.country === country) : requests
-    return [...new Set(pool.map(r => r.city).filter(Boolean))].sort()
-  }, [requests, country])
+    if (!country) return countries.flatMap(c => c.cities || [])
+    return countries.find(c => c.id === country)?.cities || []
+  }, [countries, country])
 
-  const counts = useMemo(() => {
-    const c = { new: 0, contacted: 0, booked: 0, closed: 0 }
-    requests.forEach(r => { if (c[r.status] != null) c[r.status] += 1 })
-    return c
-  }, [requests])
+  const filters = useMemo(() => ({
+    search: debouncedQuery, status, source, country, city,
+    from: dateBounds.from, to: dateBounds.to,
+  }), [debouncedQuery, status, source, country, city, dateBounds])
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    const days = DATE_RANGES.find(d => d.id === range)?.days
-    const cutoff = days ? Date.now() - days * 86400_000 : null
-    const fromAt = range === 'custom' ? dayStart(from) : null
-    const toAt = range === 'custom' ? dayEnd(to) : null
-
-    return requests
-      .filter(r => {
-        if (status && r.status !== status) return false
-        if (source && r.source !== source) return false
-        if (country && r.country !== country) return false
-        if (city && r.city !== city) return false
-        if (cutoff || fromAt !== null || toAt !== null) {
-          const at = new Date(r.createdAt).getTime()
-          // An unparseable date is kept rather than silently dropped — losing
-          // an enquiry from a filter is worse than showing an extra row.
-          if (Number.isFinite(at)) {
-            if (cutoff && at < cutoff) return false
-            if (fromAt !== null && at < fromAt) return false
-            if (toAt !== null && at > toAt) return false
-          }
-        }
-        if (q) {
-          const hay = `${r.name} ${r.mobile} ${r.email} ${r.city} ${r.treatmentArea} ${r.treatment} ${r.doctor} ${(r.concerns || []).join(' ')}`.toLowerCase()
-          if (!hay.includes(q)) return false
-        }
-        return true
+  useEffect(() => {
+    let alive = true
+    setLoading(true)
+    loadRequestsPage({ ...filters, page, pageSize: PAGE_SIZE })
+      .then(res => {
+        if (!alive) return
+        setItems(res.items)
+        setTotal(res.total)
+        setLoadError('')
       })
-      // Newest first.
-      .slice()
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  }, [requests, query, status, source, country, city, range, from, to])
+      .catch(e => { if (alive) setLoadError(e.message) })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [loadRequestsPage, filters, page])
 
-  const open = openId ? requests.find(r => r.id === openId) : null
+  const open = openId ? items.find(r => r.id === openId) : null
+
+  // Seed the note draft from whichever record is opened, but only when the
+  // open record itself changes — not on every re-render, which would wipe
+  // out an in-progress edit each time `items` gets replaced by a poll/save.
+  useEffect(() => {
+    setNoteDraft(open?.notes || '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId])
 
   const isFiltered = Boolean(query.trim() || status || source || country || city || range || from || to)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  function clearFilters() {
+    setQuery(''); setStatus(''); setSource('')
+    setCountry(''); setCity(''); setRange(''); setFrom(''); setTo('')
+  }
+
+  /** Opens the confirmation prompt; the actual API call waits for confirmStatusChange. */
+  function requestStatusChange(record, next) {
+    if (record.status === next) return
+    setStatusChangeError('')
+    setStatusConfirm({ id: record.id, name: record.name, to: next })
+  }
 
   /**
-   * Export what is on screen, not the whole table — the filters are how you
-   * choose what to send someone, so exporting past them would be surprising.
-   * Notes are included: they are the team's own record of each enquiry.
+   * Unlike the optimistic update/rollback pattern everywhere else in this
+   * screen, this applies the new status only once the API call actually
+   * succeeds — the confirm dialog is showing a busy state in the meantime,
+   * so there's no UI benefit to updating early, and it keeps "dismissed the
+   * dialog" and "the change is live" the same moment.
    */
-  function exportCsv() {
-    const csv = toCsv(filtered, [
-      { header: 'Received', value: r => formatDate(r.createdAt) },
-      { header: 'Status', value: r => REQUEST_STATUS_LABELS[r.status] || r.status },
-      { header: 'Source', value: r => REQUEST_SOURCE_LABELS[r.source] || r.source },
-      { header: 'Name', value: r => r.name },
-      { header: 'Mobile', value: r => r.mobile },
-      { header: 'Email', value: r => r.email },
-      { header: 'Gender', value: r => r.gender },
-      { header: 'Country', value: r => r.country },
-      { header: 'City', value: r => r.city },
-      { header: 'Treatment area', value: r => r.treatmentArea },
-      { header: 'Treatment', value: r => r.treatment },
-      { header: 'Doctor', value: r => r.doctor },
-      { header: 'Concerns', value: r => r.concerns },
-      { header: 'Message', value: r => r.message },
-      { header: 'Internal note', value: r => r.notes },
-    ])
-    downloadCsv(stampedName('kaya-enquiries'), csv)
+  async function confirmStatusChange() {
+    if (!statusConfirm) return
+    setStatusChanging(true)
+    setStatusChangeError('')
+    try {
+      await updateRequestStatus(statusConfirm.id, statusConfirm.to)
+      setItems(list => list.map(r => (r.id === statusConfirm.id ? { ...r, status: statusConfirm.to } : r)))
+      setStatusConfirm(null)
+    } catch (e) {
+      setStatusChangeError(e.message)
+    } finally {
+      setStatusChanging(false)
+    }
+  }
+
+  function cancelStatusChange() {
+    if (statusChanging) return
+    setStatusConfirm(null)
+    setStatusChangeError('')
+  }
+
+  /** Saved on blur, not per keystroke — every keystroke is a real network call now, unlike the old client-side store. */
+  async function handleNotesBlur() {
+    if (!open || open.notes === noteDraft) return
+    const prev = items
+    setItems(items.map(r => (r.id === open.id ? { ...r, notes: noteDraft } : r)))
+    try {
+      await updateRequestNotes(open.id, noteDraft)
+    } catch {
+      setItems(prev)
+      setNoteDraft(open.notes || '')
+    }
+  }
+
+  async function handleDelete(record) {
+    const prev = items
+    setItems(items.filter(r => r.id !== record.id))
+    setTotal(t => Math.max(0, t - 1))
+    try {
+      await deleteRequestRecord(record.id)
+      if (openId === record.id) setOpenId(null)
+    } catch {
+      setItems(prev)
+      setTotal(t => t + 1)
+    }
+    setConfirm(null)
+  }
+
+  /** Export every enquiry matching the current filters, not just this page. */
+  async function exportCsv() {
+    setExporting(true)
+    setExportError('')
+    try {
+      const csv = await exportRequestsCsv(filters)
+      downloadCsv(stampedName('kaya-enquiries'), csv)
+    } catch (e) {
+      setExportError(e.message)
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -181,19 +289,20 @@ export default function RequestsView() {
         <div>
           <h1 className="ad-view-title">Requests</h1>
           <p className="ad-view-sub">
-            {requests.length} enquiries from the site · {counts.new} new
+            {requestStatusCounts.total} enquiries from the site · {requestStatusCounts.new} new
           </p>
         </div>
-        <button
-          className="ad-btn ad-btn--primary"
-          onClick={exportCsv}
-          disabled={filtered.length === 0}
-          title={filtered.length === 0
-            ? 'Nothing to export'
-            : `Download ${filtered.length} ${filtered.length === 1 ? 'enquiry' : 'enquiries'} as CSV`}
-        >
-          ↓ Export {isFiltered ? `${filtered.length} shown` : 'all'}
-        </button>
+        <div>
+          <button
+            className="ad-btn ad-btn--primary"
+            onClick={exportCsv}
+            disabled={exporting || total === 0}
+            title={total === 0 ? 'Nothing to export' : `Download ${total} ${total === 1 ? 'enquiry' : 'enquiries'} as CSV`}
+          >
+            {exporting ? 'Exporting…' : `↓ Export ${isFiltered ? `${total} matching` : 'all'}`}
+          </button>
+          {exportError && <p className="ad-req-export-error">{exportError}</p>}
+        </div>
       </div>
 
       {/* Status summary chips (also act as quick filters) */}
@@ -204,7 +313,7 @@ export default function RequestsView() {
             className={`ad-req-stat ad-req-stat--${s}${status === s ? ' active' : ''}`}
             onClick={() => setStatus(status === s ? '' : s)}
           >
-            <span className="ad-req-stat-num">{counts[s]}</span>
+            <span className="ad-req-stat-num">{requestStatusCounts[s]}</span>
             <span className="ad-req-stat-lbl">{REQUEST_STATUS_LABELS[s]}</span>
           </button>
         ))}
@@ -235,7 +344,7 @@ export default function RequestsView() {
           onChange={e => { setCountry(e.target.value); setCity('') }}
         >
           <option value="">All countries</option>
-          {countries.map(c => <option key={c} value={c}>{c}</option>)}
+          {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <select
           className="ad-input ad-filter"
@@ -244,7 +353,7 @@ export default function RequestsView() {
           disabled={cities.length === 0}
         >
           <option value="">All cities</option>
-          {cities.map(c => <option key={c} value={c}>{c}</option>)}
+          {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <select
           className="ad-input ad-filter"
@@ -283,13 +392,7 @@ export default function RequestsView() {
           </span>
         )}
         {isFiltered && (
-          <button
-            className="ad-btn ad-btn--ghost ad-btn--sm"
-            onClick={() => {
-              setQuery(''); setStatus(''); setSource('')
-              setCountry(''); setCity(''); setRange(''); setFrom(''); setTo('')
-            }}
-          >
+          <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={clearFilters}>
             Clear filters
           </button>
         )}
@@ -308,7 +411,8 @@ export default function RequestsView() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(r => (
+            {loading && Array.from({ length: SKELETON_ROWS }).map((_, i) => <RequestRowSkeleton key={i} />)}
+            {!loading && items.map(r => (
               <tr key={r.id} className={r.status === 'new' ? 'ad-row-unread' : ''}>
                 <td>
                   <div className="ad-cell-name">{r.name}</div>
@@ -343,16 +447,42 @@ export default function RequestsView() {
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {!loading && items.length === 0 && (
               <tr><td colSpan={6} className="ad-empty">
-                {requests.length === 0
-                  ? 'No enquiries yet. They arrive here from the booking form and the concern finder.'
-                  : 'No enquiries match your filters.'}
+                {loadError
+                  ? `Could not load enquiries — ${loadError}`
+                  : total === 0 && !isFiltered
+                    ? 'No enquiries yet. They arrive here from the booking form and the concern finder.'
+                    : 'No enquiries match your filters.'}
               </td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {total > 0 && (
+        <div className="ad-req-pager">
+          <span className="ad-cell-slug">
+            Page {page} of {totalPages} · {total} {total === 1 ? 'enquiry' : 'enquiries'}
+          </span>
+          <span>
+            <button
+              className="ad-btn ad-btn--ghost ad-btn--sm"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1 || loading}
+            >
+              ← Previous
+            </button>
+            <button
+              className="ad-btn ad-btn--ghost ad-btn--sm"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || loading}
+            >
+              Next →
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* Detail drawer */}
       {open && (
@@ -377,7 +507,8 @@ export default function RequestsView() {
                     <button
                       key={s}
                       className={`ad-status-btn ad-status-btn--${s}${open.status === s ? ' active' : ''}`}
-                      onClick={() => setRequestStatus(open.id, s)}
+                      onClick={() => requestStatusChange(open, s)}
+                      disabled={open.status === s}
                     >
                       {REQUEST_STATUS_LABELS[s]}
                     </button>
@@ -399,7 +530,7 @@ export default function RequestsView() {
                 </div>
                 <div className="ad-req-row">
                   <span className="ad-req-key">Gender</span>
-                  <span className="ad-req-val">{open.gender || '—'}</span>
+                  <span className="ad-req-val">{open.gender || <span className="ad-muted">Not specified</span>}</span>
                 </div>
                 <div className="ad-req-row">
                   <span className="ad-req-key">Location</span>
@@ -440,7 +571,7 @@ export default function RequestsView() {
                 </div>
               )}
 
-              {/* Internal note */}
+              {/* Internal note — saved on blur (KA-31) */}
               <div className="ad-field">
                 <label className="ad-field-label" htmlFor="ad-req-note">Internal note</label>
                 <textarea
@@ -448,8 +579,9 @@ export default function RequestsView() {
                   className="ad-input ad-textarea"
                   rows={3}
                   placeholder="Add a note for the team…"
-                  value={open.notes || ''}
-                  onChange={e => updateRequest(open.id, { notes: e.target.value })}
+                  value={noteDraft}
+                  onChange={e => setNoteDraft(e.target.value)}
+                  onBlur={handleNotesBlur}
                 />
               </div>
             </div>
@@ -475,16 +607,29 @@ export default function RequestsView() {
         </div>
       )}
 
+      {/* Status change confirm */}
+      {statusConfirm && (
+        <ConfirmDialog
+          title="Change status?"
+          confirmLabel="Confirm"
+          tone="primary"
+          busy={statusChanging}
+          error={statusChangeError}
+          consequenceNote={null}
+          onCancel={cancelStatusChange}
+          onConfirm={confirmStatusChange}
+        >
+          Mark <strong>{statusConfirm.name}</strong>&rsquo;s request as{' '}
+          <strong>{REQUEST_STATUS_LABELS[statusConfirm.to]}</strong>?
+        </ConfirmDialog>
+      )}
+
       {/* Delete confirm */}
       {confirm && (
         <ConfirmDialog
           title="Delete enquiry?"
           onCancel={() => setConfirm(null)}
-          onConfirm={() => {
-            deleteRequest(confirm.id)
-            if (openId === confirm.id) setOpenId(null)
-            setConfirm(null)
-          }}
+          onConfirm={() => handleDelete(confirm)}
         >
           This will remove the enquiry from <strong>{confirm.name}</strong>, including
           any notes your team has added.
