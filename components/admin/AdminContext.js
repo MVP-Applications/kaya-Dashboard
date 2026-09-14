@@ -9,8 +9,8 @@ import {
   persistVouchers, removeVoucher,
   persistLocations, removeLocation,
   persistPageSection, persistSiteSection,
-  persistRequestPatch, removeRequest,
-  refetchRequests, subscribeToRequests,
+  fetchRequestsPage, fetchRequestStatusCounts, fetchRequestCountries,
+  persistRequestStatus, persistRequestNotes, removeRequestRecord,
   fetchUsers, updateUserRole,
   fetchOverrides, persistOverrideSection,
   isDemoMode, resetDemo as resetDemoData,
@@ -29,8 +29,10 @@ export function useAdmin() {
 
 const EMPTY = {
   services: [], verticals: [], doctors: [], reviews: [],
-  vouchers: [], requests: [], locations: [], pages: {}, site: {},
+  vouchers: [], locations: [], pages: {}, site: {},
 }
+
+const EMPTY_REQUEST_STATUS_COUNTS = { new: 0, contacted: 0, booked: 0, closed: 0, total: 0 }
 
 export function AdminProvider({ children }) {
   const [ready, setReady] = useState(false)
@@ -44,7 +46,7 @@ export function AdminProvider({ children }) {
   const [doctors, setDoctors] = useState([])
   const [reviews, setReviews] = useState([])
   const [vouchers, setVouchers] = useState([])
-  const [requests, setRequests] = useState([])
+  const [requestStatusCounts, setRequestStatusCounts] = useState(EMPTY_REQUEST_STATUS_COUNTS)
   const [pages, setPages] = useState({})
   const [site, setSite] = useState({})
   const [locations, setLocations] = useState([])
@@ -63,7 +65,6 @@ export function AdminProvider({ children }) {
     setDoctors(data.doctors)
     setReviews(data.reviews)
     setVouchers(data.vouchers)
-    setRequests(data.requests)
     setLocations(data.locations)
     setPages(data.pages)
     setSite(data.site)
@@ -90,6 +91,16 @@ export function AdminProvider({ children }) {
     } catch (e) {
       if (token === loadToken.current) setOverrides({})
       console.error('Country overrides could not be loaded; using shared copy.', e)
+    }
+
+    // Same treatment: the sidebar badge going stale is not worth taking the
+    // whole catalogue load down over.
+    try {
+      const counts = await fetchRequestStatusCounts()
+      if (token === loadToken.current) setRequestStatusCounts(counts)
+    } catch (e) {
+      if (token === loadToken.current) setRequestStatusCounts(EMPTY_REQUEST_STATUS_COUNTS)
+      console.error('Enquiry status counts could not be loaded.', e)
     }
 
     try {
@@ -145,19 +156,6 @@ export function AdminProvider({ children }) {
     refresh()
     refreshUsers()
   }, [user, refresh, refreshUsers])
-
-  // Keep the enquiry inbox live — a booking submitted on the public site shows
-  // up without a refresh.
-  useEffect(() => {
-    if (!user) return
-    return subscribeToRequests(async () => {
-      try {
-        setRequests(await refetchRequests())
-      } catch {
-        /* a dropped realtime update is not worth surfacing */
-      }
-    })
-  }, [user])
 
   // ── Auth ──────────────────────────────────────────────
   const login = useCallback(async (email, password) => {
@@ -325,42 +323,66 @@ export function AdminProvider({ children }) {
   const deleteLocation = useCallback(k => deleteFrom(cols.locations, k), [cols, deleteFrom])
 
   // ── Requests (consumer submissions) ───────────────────
-  // Staff don't create these — they arrive from the public site. Staff update
-  // the status and jot internal notes as they work each enquiry.
-  const updateRequest = useCallback(async (id, patch) => {
-    const prev = requests
-    const next = requests.map(r => (r.id === id ? { ...r, ...patch } : r))
-    setRequests(next)
+  // Staff don't create these — they arrive from the public site. Unlike every
+  // other collection above, this one is server-paginated/filtered (KA-23):
+  // RequestsView asks for exactly the page it needs instead of the whole
+  // inbox living in context, so all that's shared here is the status counts
+  // (for the sidebar badge and the screen's summary chips) and the two
+  // mutations, which both need to keep those counts in sync afterwards.
+  const refreshRequestStatusCounts = useCallback(async () => {
+    try {
+      setRequestStatusCounts(await fetchRequestStatusCounts())
+    } catch {
+      // the badge/chips simply don't update this time
+    }
+  }, [])
+
+  const loadRequestsPage = useCallback(filters => fetchRequestsPage(filters), [])
+  const loadRequestCountries = useCallback(() => fetchRequestCountries(), [])
+
+  const updateRequestStatus = useCallback(async (id, status) => {
     setSaving(true)
     try {
-      await persistRequestPatch(id, patch)
+      const updated = await persistRequestStatus(id, status)
       setError('')
+      refreshRequestStatusCounts()
+      return updated
     } catch (e) {
-      setRequests(prev)
       setError(e.message)
+      throw e
     } finally {
       setSaving(false)
     }
-  }, [requests])
+  }, [refreshRequestStatusCounts])
 
-  const setRequestStatus = useCallback((id, status) => {
-    updateRequest(id, { status })
-  }, [updateRequest])
-
-  const deleteRequest = useCallback(async id => {
-    const prev = requests
-    setRequests(requests.filter(r => r.id !== id))
+  /** Its own endpoint (KA-31) — unlike updateRequestStatus, this never touches status/respondedBy/respondedAt, so it doesn't need to refresh the status counts. */
+  const updateRequestNotes = useCallback(async (id, notes) => {
     setSaving(true)
     try {
-      await removeRequest(id)
+      const updated = await persistRequestNotes(id, notes)
       setError('')
+      return updated
     } catch (e) {
-      setRequests(prev)
       setError(e.message)
+      throw e
     } finally {
       setSaving(false)
     }
-  }, [requests])
+  }, [])
+
+  const deleteRequestRecord = useCallback(async id => {
+    setSaving(true)
+    try {
+      await removeRequestRecord(id)
+      setError('')
+      refreshRequestStatusCounts()
+    } catch (e) {
+      setError(e.message)
+      throw e
+    } finally {
+      setSaving(false)
+    }
+  }, [refreshRequestStatusCounts])
 
   // ── Website content ───────────────────────────────────
   // Page copy is a fixed tree (page → section → field) rather than a list, so
@@ -524,7 +546,9 @@ export function AdminProvider({ children }) {
     doctors, upsertDoctor, deleteDoctor,
     reviews, upsertReview, deleteReview,
     vouchers, upsertVoucher, deleteVoucher,
-    requests, updateRequest, setRequestStatus, deleteRequest,
+    requestStatusCounts,
+    loadRequestsPage, loadRequestCountries,
+    updateRequestStatus, updateRequestNotes, deleteRequestRecord,
     pages: resolvedPages, updatePageSection,
     site: resolvedSite, updateSiteSection,
     basePages: pages, baseSite: site,

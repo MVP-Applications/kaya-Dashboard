@@ -24,11 +24,11 @@ function conic(segments, total) {
 }
 
 export default function Overview({ onNavigate }) {
-  const { user, services, verticals, doctors, reviews, vouchers, requests, locations } = useAdmin()
+  const { user, services, verticals, doctors, reviews, vouchers, requestStatusCounts, locations } = useAdmin()
 
   const withBadge = services.filter(s => s.badge).length
   const withMedia = reviews.filter(r => r.before || r.after).length
-  const newRequests = requests.filter(r => r.status === 'new').length
+  const newRequests = requestStatusCounts.new
   const firstName = (user?.name || '').split(' ')[0]
 
   // Services counted under every vertical they belong to (many-to-many).
@@ -54,7 +54,7 @@ export default function Overview({ onNavigate }) {
   const lMax = Math.max(1, ...clinicsByCountry.map(r => r.n))
 
   const stats = [
-    { label: 'Requests', value: requests.length, icon: '✉', color: '#2F7DBE', view: 'requests', badge: newRequests || null },
+    { label: 'Requests', value: requestStatusCounts.total, icon: '✉', color: '#2F7DBE', view: 'requests', badge: newRequests || null },
     { label: 'Services', value: services.length, icon: '✦', color: '#6E5A96', view: 'services' },
     { label: 'Doctors', value: doctors.length, icon: '⚕', color: '#8570A8', view: 'doctors' },
     { label: 'Verticals', value: verticals.length, icon: '◈', color: '#B98A2E', view: 'verticals' },
