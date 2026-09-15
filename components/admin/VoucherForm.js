@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { VOUCHER_TYPE_OPTIONS, BADGE_STYLE_OPTIONS } from '@/lib/admin/seed'
 import CountryFields from './CountryFields'
-import { normalisePricing } from '@/lib/countries'
 import ImagePicker from './ImagePicker'
 
 function slugify(str) {
@@ -21,14 +20,10 @@ function cloneSafe(obj) {
 
 export default function VoucherForm({ initial, isNew, onClose }) {
   const { vouchers, upsertVoucher } = useAdmin()
-  // Back-fill the per-country fields for vouchers saved before they existed.
+  // Back-fill `regions` for vouchers saved before it existed.
   const [form, setForm] = useState(() => {
     const base = cloneSafe(initial)
-    return {
-      ...base,
-      countries: Array.isArray(base.countries) ? base.countries : [],
-      pricing: normalisePricing(base.pricing),
-    }
+    return { ...base, regions: Array.isArray(base.regions) ? base.regions : [] }
   })
   const [error, setError] = useState('')
   const originalId = isNew ? null : initial.id
@@ -39,6 +34,7 @@ export default function VoucherForm({ initial, isNew, onClose }) {
     e.preventDefault()
     const title = form.title.trim()
     if (!title) return setError('Title is required.')
+    if (!form.description.trim()) return setError('Description is required.')
 
     const id = form.id.trim() || slugify(title)
     const clash = vouchers.some(v => v.id === id && v.id !== originalId)
@@ -91,6 +87,18 @@ export default function VoucherForm({ initial, isNew, onClose }) {
               onChange={e => set('subtitle', e.target.value)}
               placeholder="e.g. AED 500 treatment credit" />
           </label>
+          <label className="ad-field">
+            <span className="ad-field-label">Description *</span>
+            <textarea className="ad-input ad-textarea" rows={3} value={form.description}
+              onChange={e => set('description', e.target.value)}
+              placeholder="What the voucher includes." />
+          </label>
+          <label className="ad-field">
+            <span className="ad-field-label">Redemption terms</span>
+            <textarea className="ad-input ad-textarea" rows={2} value={form.redemptionTerms}
+              onChange={e => set('redemptionTerms', e.target.value)}
+              placeholder="e.g. Valid for 6 months from purchase date." />
+          </label>
         </fieldset>
 
         <fieldset className="ad-fieldset">
@@ -110,11 +118,11 @@ export default function VoucherForm({ initial, isNew, onClose }) {
         </fieldset>
 
         <fieldset className="ad-fieldset">
-          <legend>Countries &amp; pricing</legend>
+          <legend>Availability</legend>
           <CountryFields
-            countries={form.countries}
-            pricing={form.pricing}
-            onChange={patch => setForm(f => ({ ...f, ...patch }))}
+            countries={form.regions}
+            showPricing={false}
+            onChange={({ countries }) => set('regions', countries)}
           />
         </fieldset>
 
