@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { COUNTRY_OPTIONS } from '@/lib/admin/seed'
 import { fetchClinicOptions } from '@/lib/admin/store'
+import LocaleToggle from './LocaleToggle'
 
 function slugify(str) {
   return String(str)
@@ -22,6 +23,7 @@ export default function DoctorForm({ initial, isNew, onClose }) {
   const [form, setForm] = useState(() => ({ image: '', ...cloneSafe(initial) }))
   const [error, setError] = useState('')
   const [clinicOptions, setClinicOptions] = useState([])
+  const [locale, setLocale] = useState('EN')
   const originalSlug = isNew ? null : initial.slug
 
   useEffect(() => {
@@ -103,23 +105,10 @@ export default function DoctorForm({ initial, isNew, onClose }) {
           <legend>Profile</legend>
           <div className="ad-grid2">
             <label className="ad-field">
-              <span className="ad-field-label">Name *</span>
-              <input className="ad-input" value={form.name}
-                onChange={e => set('name', e.target.value)} placeholder="Dr. …" />
-            </label>
-            <label className="ad-field">
               <span className="ad-field-label">Slug</span>
               <input className="ad-input" value={form.slug}
                 placeholder={slugify(form.name) || 'auto-generated'}
                 onChange={e => set('slug', e.target.value)} />
-            </label>
-          </div>
-          <div className="ad-grid2">
-            <label className="ad-field">
-              <span className="ad-field-label">Specialist / title</span>
-              <input className="ad-input" value={form.specialist}
-                onChange={e => set('specialist', e.target.value)}
-                placeholder="e.g. Dermatologist & Aesthetic Physician" />
             </label>
             <label className="ad-field">
               <span className="ad-field-label">Years of experience</span>
@@ -127,11 +116,58 @@ export default function DoctorForm({ initial, isNew, onClose }) {
                 onChange={e => set('yearsExp', e.target.value)} />
             </label>
           </div>
-          <label className="ad-field">
-            <span className="ad-field-label">Bio</span>
-            <textarea className="ad-input ad-textarea" rows={5} value={form.bio}
-              onChange={e => set('bio', e.target.value)} />
-          </label>
+        </fieldset>
+
+        <fieldset className="ad-fieldset">
+          <legend>Name, title &amp; bio</legend>
+          <p className="ad-fieldset-hint">
+            English is required. Fill in all three Arabic fields to add an
+            Arabic translation — leave any one blank and the doctor stays
+            English-only.
+          </p>
+          <LocaleToggle locale={locale} onChange={setLocale} />
+          {locale === 'EN' ? (
+            <>
+              <div className="ad-grid2">
+                <label className="ad-field">
+                  <span className="ad-field-label">Name *</span>
+                  <input className="ad-input" value={form.name}
+                    onChange={e => set('name', e.target.value)} placeholder="Dr. …" />
+                </label>
+                <label className="ad-field">
+                  <span className="ad-field-label">Specialist / title</span>
+                  <input className="ad-input" value={form.specialist}
+                    onChange={e => set('specialist', e.target.value)}
+                    placeholder="e.g. Dermatologist & Aesthetic Physician" />
+                </label>
+              </div>
+              <label className="ad-field">
+                <span className="ad-field-label">Bio</span>
+                <textarea className="ad-input ad-textarea" rows={5} value={form.bio}
+                  onChange={e => set('bio', e.target.value)} />
+              </label>
+            </>
+          ) : (
+            <>
+              <div className="ad-grid2">
+                <label className="ad-field">
+                  <span className="ad-field-label">الاسم (Name)</span>
+                  <input className="ad-input" dir="rtl" value={form.nameAr}
+                    onChange={e => set('nameAr', e.target.value)} placeholder="د. …" />
+                </label>
+                <label className="ad-field">
+                  <span className="ad-field-label">التخصص (Specialist / title)</span>
+                  <input className="ad-input" dir="rtl" value={form.specialistAr}
+                    onChange={e => set('specialistAr', e.target.value)} />
+                </label>
+              </div>
+              <label className="ad-field">
+                <span className="ad-field-label">نبذة (Bio)</span>
+                <textarea className="ad-input ad-textarea" dir="rtl" rows={5} value={form.bioAr}
+                  onChange={e => set('bioAr', e.target.value)} />
+              </label>
+            </>
+          )}
         </fieldset>
 
         <fieldset className="ad-fieldset">
