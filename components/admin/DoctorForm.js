@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { COUNTRY_OPTIONS } from '@/lib/admin/seed'
+import { fetchClinicOptions } from '@/lib/admin/store'
 
 function slugify(str) {
   return String(str)
@@ -20,7 +21,16 @@ export default function DoctorForm({ initial, isNew, onClose }) {
   const { verticals, services, doctors, upsertDoctor } = useAdmin()
   const [form, setForm] = useState(() => ({ image: '', ...cloneSafe(initial) }))
   const [error, setError] = useState('')
+  const [clinicOptions, setClinicOptions] = useState([])
   const originalSlug = isNew ? null : initial.slug
+
+  useEffect(() => {
+    let cancelled = false
+    fetchClinicOptions()
+      .then(options => { if (!cancelled) setClinicOptions(options) })
+      .catch(() => {}) // Clinics is a supporting field, not worth an error banner over.
+    return () => { cancelled = true }
+  }, [])
 
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
 
@@ -41,7 +51,7 @@ export default function DoctorForm({ initial, isNew, onClose }) {
     reader.readAsDataURL(file)
   }
 
-  // list-of-strings helpers (languages, clinics)
+  // list-of-strings helpers (languages)
   function updateItem(field, idx, value) {
     setForm(f => ({ ...f, [field]: f[field].map((s, i) => (i === idx ? value : s)) }))
   }
@@ -65,7 +75,6 @@ export default function DoctorForm({ initial, isNew, onClose }) {
       slug,
       yearsExp: form.yearsExp === '' ? '' : Number(form.yearsExp),
       languages: form.languages.map(s => s.trim()).filter(Boolean),
-      clinics: form.clinics.map(s => s.trim()).filter(Boolean),
     }
     upsertDoctor(record, originalSlug)
     onClose()
@@ -118,11 +127,6 @@ export default function DoctorForm({ initial, isNew, onClose }) {
                 onChange={e => set('yearsExp', e.target.value)} />
             </label>
           </div>
-          <label className="ad-field">
-            <span className="ad-field-label">Tagline</span>
-            <input className="ad-input" value={form.tagline}
-              onChange={e => set('tagline', e.target.value)} />
-          </label>
           <label className="ad-field">
             <span className="ad-field-label">Bio</span>
             <textarea className="ad-input ad-textarea" rows={5} value={form.bio}
@@ -207,15 +211,19 @@ export default function DoctorForm({ initial, isNew, onClose }) {
 
         <fieldset className="ad-fieldset">
           <legend>Clinics</legend>
-          {form.clinics.map((s, i) => (
-            <div key={i} className="ad-repeat-row">
-              <input className="ad-input" value={s}
-                onChange={e => updateItem('clinics', i, e.target.value)} placeholder="e.g. Dubai Marina" />
-              <button type="button" className="ad-icon-btn" onClick={() => removeItem('clinics', i)}
-                aria-label="Remove clinic">✕</button>
+          {clinicOptions.length === 0 ? (
+            <p className="ad-muted">No clinics available yet.</p>
+          ) : (
+            <div className="ad-check-grid">
+              {clinicOptions.map(c => (
+                <label key={c.id} className={`ad-check${form.clinics.includes(c.id) ? ' active' : ''}`}>
+                  <input type="checkbox" checked={form.clinics.includes(c.id)}
+                    onChange={() => toggleIn('clinics', c.id)} />
+                  {c.name}
+                </label>
+              ))}
             </div>
-          ))}
-          <button type="button" className="ad-btn ad-btn--soft" onClick={() => addItem('clinics')}>+ Add clinic</button>
+          )}
         </fieldset>
 
         <fieldset className="ad-fieldset">
