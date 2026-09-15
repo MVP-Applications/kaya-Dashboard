@@ -6,16 +6,26 @@ import { emptyReview } from '@/lib/admin/seed'
 import ReviewForm from './ReviewForm'
 
 export default function ReviewsView() {
-  const { reviews, deleteReview, allowed } = useAdmin()
+  const { reviews, services, deleteReview, allowed } = useAdmin()
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState(null)
   const [confirm, setConfirm] = useState(null)
 
+  // `r.treatment` holds the linked Treatment's slug (KA-44) — resolve it to
+  // a display name for the table and search instead of showing the slug.
+  const treatmentName = useMemo(() => {
+    const map = {}
+    services.forEach(s => { map[s.slug] = s.name })
+    return map
+  }, [services])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return reviews
-    return reviews.filter(r => `${r.name} ${r.treatment} ${r.location}`.toLowerCase().includes(q))
-  }, [reviews, query])
+    return reviews.filter(r => (
+      `${r.name} ${treatmentName[r.treatment] || r.treatment} ${r.location}`.toLowerCase().includes(q)
+    ))
+  }, [reviews, query, treatmentName])
 
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
@@ -65,7 +75,7 @@ export default function ReviewsView() {
                   <div className="ad-cell-name">{r.name}</div>
                   <div className="ad-cell-slug">{r.location || '—'}</div>
                 </td>
-                <td>{r.treatment || <span className="ad-muted">—</span>}</td>
+                <td>{treatmentName[r.treatment] || <span className="ad-muted">—</span>}</td>
                 <td>{'★'.repeat(r.rating || 0)}{'☆'.repeat(5 - (r.rating || 0))}</td>
                 <td>
                   {r.consentGiven
