@@ -237,7 +237,7 @@ export function AdminProvider({ children }) {
 
   /** Shared delete for every keyed collection. */
   const deleteFrom = useCallback(async (
-    { list, setList, persist, remove, keyOf }, key,
+    { list, setList, persist, remove, keyOf, reorders }, key,
   ) => {
     const prev = list
     const next = list.filter(r => keyOf(r) !== key)
@@ -245,8 +245,14 @@ export function AdminProvider({ children }) {
     setSaving(true)
     try {
       await remove(key)
-      // Rewrite the remaining rows so `sort` stays gap-free after a removal.
-      await persist(next)
+      // Rewrite the remaining rows so `sort` stays gap-free after a removal —
+      // only meaningful for collections with a backend displayOrder/reorder
+      // endpoint. For the rest (Verticals, Reviews, Locations — none of which
+      // have such an endpoint, see KA-38 for Reviews) this was a pointless
+      // extra write: it re-PUT every untouched record for no reason, and if
+      // any one of those calls failed, the already-successful delete got
+      // reported as failed and the row reappeared in the UI.
+      if (reorders) await persist(next)
       setError('')
       return true
     } catch (e) {
@@ -265,11 +271,11 @@ export function AdminProvider({ children }) {
     const bySlug = r => r.slug
     const byId = r => r.id
     return {
-      services: { list: services, setList: setServices, persist: persistServices, remove: removeService, keyOf: bySlug },
+      services: { list: services, setList: setServices, persist: persistServices, remove: removeService, keyOf: bySlug, reorders: true },
       verticals: { list: verticals, setList: setVerticals, persist: persistVerticals, remove: removeVertical, keyOf: byId },
-      doctors: { list: doctors, setList: setDoctors, persist: persistDoctors, remove: removeDoctor, keyOf: bySlug },
+      doctors: { list: doctors, setList: setDoctors, persist: persistDoctors, remove: removeDoctor, keyOf: bySlug, reorders: true },
       reviews: { list: reviews, setList: setReviews, persist: persistReviews, remove: removeReview, keyOf: byId },
-      vouchers: { list: vouchers, setList: setVouchers, persist: persistVouchers, remove: removeVoucher, keyOf: byId },
+      vouchers: { list: vouchers, setList: setVouchers, persist: persistVouchers, remove: removeVoucher, keyOf: byId, reorders: true },
       locations: { list: locations, setList: setLocations, persist: persistLocations, remove: removeLocation, keyOf: byId },
     }
   }, [services, verticals, doctors, reviews, vouchers, locations])
