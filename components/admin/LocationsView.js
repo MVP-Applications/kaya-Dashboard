@@ -1,28 +1,17 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { CLINIC_COUNTRIES, emptyLocation } from '@/lib/admin/content'
+import { fetchCountryOptions, createCity } from '@/lib/admin/store'
 
 function slugify(str) {
   return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
-/**
- * Start of a day, local time. Comparing the raw yyyy-mm-dd strings would work
- * only while every value is that exact format; going through Date keeps it
- * correct if a value ever arrives with a time attached.
- */
-function dayStart(value) {
-  if (!value) return null
-  const d = new Date(`${String(value).slice(0, 10)}T00:00:00`)
-  return Number.isNaN(d.getTime()) ? null : d.getTime()
-}
-
-/** End of a day — the To date has to include the day itself. */
-function dayEnd(value) {
-  const start = dayStart(value)
-  return start === null ? null : start + 86400_000 - 1
-}
+const DAYS = [
+  ['sun', 'Sun'], ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'],
+  ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'],
+]
 
 export default function LocationsView() {
   const { locations, upsertLocation, deleteLocation, allowed } = useAdmin()
@@ -30,8 +19,6 @@ export default function LocationsView() {
   const [confirm, setConfirm] = useState(null)
   const [country, setCountry] = useState('all')
   const [query, setQuery] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
 
   const canCreate = allowed('create')
   const canDelete = allowed('delete')
@@ -49,28 +36,12 @@ export default function LocationsView() {
   }
 
   const q = query.trim().toLowerCase()
-  const fromAt = dayStart(from)
-  const toAt = dayEnd(to)
 
   const filtered = locations.filter(l => {
     if (country !== 'all' && l.country !== country) return false
-
-    if (fromAt !== null || toAt !== null) {
-      const at = dayStart(l.opened)
-      // A clinic with no opening date recorded is excluded once you filter by
-      // date — it cannot be shown to satisfy a range it has no value for, and
-      // the count below says how many are being left out.
-      if (at === null) return false
-      if (fromAt !== null && at < fromAt) return false
-      if (toAt !== null && at > toAt) return false
-    }
-
     if (!q) return true
-    return `${l.name} ${l.city} ${l.addr}`.toLowerCase().includes(q)
+    return `${l.name} ${l.city} ${l.address}`.toLowerCase().includes(q)
   })
-
-  const dateFiltering = fromAt !== null || toAt !== null
-  const undated = locations.filter(l => !dayStart(l.opened)).length
 
   const target = confirm ? locations.find(l => l.id === confirm) : null
 
@@ -81,9 +52,6 @@ export default function LocationsView() {
           <h1 className="ad-view-title">Locations</h1>
           <p className="ad-view-sub">
             Clinic records behind the Find a Clinic page — addresses, phone numbers, and opening hours.
-            {dateFiltering && undated > 0 && (
-              <> · <strong>{undated}</strong> without an opening date {undated === 1 ? 'is' : 'are'} hidden.</>
-            )}
           </p>
         </div>
         {canCreate && (
@@ -101,34 +69,6 @@ export default function LocationsView() {
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
-        <label className="ad-daterange-part">
-          <span>Opened from</span>
-          <input
-            type="date"
-            className="ad-input ad-date-input"
-            value={from}
-            max={to || undefined}
-            onChange={e => setFrom(e.target.value)}
-          />
-        </label>
-        <label className="ad-daterange-part">
-          <span>To</span>
-          <input
-            type="date"
-            className="ad-input ad-date-input"
-            value={to}
-            min={from || undefined}
-            onChange={e => setTo(e.target.value)}
-          />
-        </label>
-        {(from || to) && (
-          <button
-            className="ad-btn ad-btn--ghost ad-btn--sm"
-            onClick={() => { setFrom(''); setTo('') }}
-          >
-            Clear dates
-          </button>
-        )}
         <select className="ad-input ad-filter" value={country} onChange={e => setCountry(e.target.value)}>
           <option value="all">All countries ({locations.length})</option>
           {CLINIC_COUNTRIES.map(c => (
@@ -146,9 +86,7 @@ export default function LocationsView() {
               <th>Clinic</th>
               <th>Country</th>
               <th>City</th>
-              <th>Opened</th>
               <th>Telephone</th>
-              <th>Timings</th>
               <th className="ad-th-actions">Actions</th>
             </tr>
           </thead>
@@ -157,18 +95,11 @@ export default function LocationsView() {
               <tr key={l.id}>
                 <td>
                   <div className="ad-cell-name">{l.name}</div>
-                  <div className="ad-cell-slug">{l.addr}</div>
+                  <div className="ad-cell-slug">{l.address}</div>
                 </td>
                 <td><span className="ad-badge">{l.country}</span></td>
                 <td>{l.city}</td>
-                <td className="ad-loc-opened">
-                  {l.opened
-                    ? new Date(`${l.opened}T00:00:00`).toLocaleDateString('en-GB',
-                        { day: 'numeric', month: 'short', year: 'numeric' })
-                    : <span className="ad-muted">not recorded</span>}
-                </td>
                 <td>{l.tel || '—'}</td>
-                <td className="ad-loc-hours">{l.hours || '—'}</td>
                 <td className="ad-td-actions">
                   <button className="ad-btn ad-btn--soft ad-btn--sm"
                     onClick={() => setEditing({ initial: l, isNew: false })}>Edit</button>
@@ -180,11 +111,7 @@ export default function LocationsView() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="ad-empty">
-                {dateFiltering && undated
-                  ? `No clinics match. ${undated} ${undated === 1 ? 'clinic has' : 'clinics have'} no opening date recorded, so they are excluded while filtering by date.`
-                  : 'No clinics match this filter.'}
-              </td></tr>
+              <tr><td colSpan={5} className="ad-empty">No clinics match this filter.</td></tr>
             )}
           </tbody>
         </table>
@@ -212,14 +139,60 @@ export default function LocationsView() {
 function LocationForm({ initial, isNew, existing, onSave, onClose }) {
   const [form, setForm] = useState({ ...initial })
   const [error, setError] = useState('')
+  const [countryOptions, setCountryOptions] = useState([]) // [{id, code, name, cities:[{id,name}]}]
+  const [newCityName, setNewCityName] = useState('')
+  const [addingCity, setAddingCity] = useState(false)
   const originalId = isNew ? null : initial.id
 
+  useEffect(() => {
+    let cancelled = false
+    fetchCountryOptions()
+      .then(options => { if (!cancelled) setCountryOptions(options) })
+      .catch(() => {}) // Country/City is a supporting field, not worth an error banner over.
+    return () => { cancelled = true }
+  }, [])
+
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
+  function setHour(day, value) { setForm(f => ({ ...f, hours: { ...f.hours, [day]: value } })) }
+
+  const selectedCountry = countryOptions.find(c => c.code === form.country)
+  const cities = selectedCountry?.cities || []
+
+  function chooseCountry(code) {
+    set('country', code)
+    set('cityId', '')
+    set('city', '')
+  }
+
+  function chooseCity(cityId) {
+    const city = cities.find(c => c.id === cityId)
+    setForm(f => ({ ...f, cityId, city: city?.name || '' }))
+  }
+
+  async function addCity() {
+    const name = newCityName.trim()
+    if (!name || !selectedCountry) return
+    setAddingCity(true)
+    try {
+      const city = await createCity(selectedCountry.id, name)
+      setCountryOptions(options => options.map(c => (
+        c.id === selectedCountry.id ? { ...c, cities: [...c.cities, city] } : c
+      )))
+      setForm(f => ({ ...f, cityId: city.id, city: city.name }))
+      setNewCityName('')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setAddingCity(false)
+    }
+  }
 
   function submit(e) {
     e.preventDefault()
     const name = form.name.trim()
     if (!name) return setError('Clinic name is required.')
+    if (!form.cityId) return setError('Choose a city.')
+    if (form.lat === '' || form.lng === '') return setError('Latitude and longitude are both required.')
     const id = form.id.trim() || slugify(name)
     if (existing.some(l => l.id === id && l.id !== originalId)) {
       return setError(`The id "${id}" is already in use.`)
@@ -227,9 +200,7 @@ function LocationForm({ initial, isNew, existing, onSave, onClose }) {
     onSave({ ...form, id, name }, originalId)
   }
 
-  // Google Maps embeds are driven by a search query rather than coordinates,
-  // matching how the public Find Us section builds its iframe URL.
-  const mapQ = (form.mapQ || '').trim()
+  const mapHref = form.lat !== '' && form.lng !== '' ? `https://maps.google.com/?q=${form.lat},${form.lng}` : null
 
   return (
     <form className="ad-editor" onSubmit={submit}>
@@ -267,61 +238,96 @@ function LocationForm({ initial, isNew, existing, onSave, onClose }) {
           <div className="ad-grid2">
             <label className="ad-field">
               <span className="ad-field-label">Country</span>
-              <select className="ad-input" value={form.country} onChange={e => set('country', e.target.value)}>
+              <select className="ad-input" value={form.country} onChange={e => chooseCountry(e.target.value)}>
                 {CLINIC_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </label>
             <label className="ad-field">
-              <span className="ad-field-label">City</span>
-              <input className="ad-input" value={form.city} onChange={e => set('city', e.target.value)}
-                placeholder="e.g. Dubai" />
+              <span className="ad-field-label">City *</span>
+              <select className="ad-input" value={form.cityId} onChange={e => chooseCity(e.target.value)}>
+                <option value="">Choose a city…</option>
+                {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
             </label>
+          </div>
+          <div className="ad-field">
+            <span className="ad-field-label">City not listed?</span>
+            <div className="ad-repeat-row">
+              <input className="ad-input" value={newCityName} placeholder="e.g. Al Ain"
+                onChange={e => setNewCityName(e.target.value)} />
+              <button type="button" className="ad-btn ad-btn--soft" disabled={!newCityName.trim() || addingCity}
+                onClick={addCity}>
+                {addingCity ? 'Adding…' : '+ Add city'}
+              </button>
+            </div>
           </div>
           <label className="ad-field">
             <span className="ad-field-label">Address</span>
-            <textarea className="ad-textarea" rows={2} value={form.addr}
-              onChange={e => set('addr', e.target.value)} />
+            <textarea className="ad-textarea" rows={2} value={form.address}
+              onChange={e => set('address', e.target.value)} />
           </label>
         </fieldset>
 
         <fieldset className="ad-fieldset">
-          <legend>Contact &amp; hours</legend>
+          <legend>Contact</legend>
+          <label className="ad-field">
+            <span className="ad-field-label">Telephone</span>
+            <input className="ad-input" value={form.tel} onChange={e => set('tel', e.target.value)}
+              placeholder="04 450 1001" />
+          </label>
+        </fieldset>
+
+        <fieldset className="ad-fieldset">
+          <legend>Opening hours</legend>
+          {DAYS.map(([key, label]) => {
+            const closed = form.hours[key] === 'closed'
+            const [openAt, closeAt] = closed ? ['', ''] : form.hours[key].split('-')
+            return (
+              <div key={key} className="ad-grid2" style={{ alignItems: 'end' }}>
+                <label className="ad-field">
+                  <span className="ad-field-label">{label}</span>
+                  <label className="ad-check">
+                    <input type="checkbox" checked={closed}
+                      onChange={e => setHour(key, e.target.checked ? 'closed' : '09:00-18:00')} />
+                    Closed
+                  </label>
+                </label>
+                {!closed && (
+                  <div className="ad-grid2">
+                    <label className="ad-field">
+                      <span className="ad-field-label">Open</span>
+                      <input className="ad-input" type="time" value={openAt || ''}
+                        onChange={e => setHour(key, `${e.target.value}-${closeAt || '18:00'}`)} />
+                    </label>
+                    <label className="ad-field">
+                      <span className="ad-field-label">Close</span>
+                      <input className="ad-input" type="time" value={closeAt || ''}
+                        onChange={e => setHour(key, `${openAt || '09:00'}-${e.target.value}`)} />
+                    </label>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </fieldset>
+
+        <fieldset className="ad-fieldset">
+          <legend>Coordinates</legend>
+          <p className="ad-fieldset-hint">Used for the Find a Clinic map and directions link.</p>
           <div className="ad-grid2">
             <label className="ad-field">
-              <span className="ad-field-label">Opened</span>
-              <input className="ad-input" type="date" value={form.opened || ''}
-                onChange={e => set('opened', e.target.value)} />
-              <span className="ad-field-hint">
-                Leave blank if unknown. Clinics without a date are hidden when
-                the list is filtered by opening date.
-              </span>
+              <span className="ad-field-label">Latitude</span>
+              <input className="ad-input" type="number" step="any" value={form.lat}
+                onChange={e => set('lat', e.target.value)} placeholder="25.2048" />
             </label>
             <label className="ad-field">
-              <span className="ad-field-label">Telephone</span>
-              <input className="ad-input" value={form.tel} onChange={e => set('tel', e.target.value)}
-                placeholder="04 450 1001" />
-            </label>
-            <label className="ad-field">
-              <span className="ad-field-label">Timings</span>
-              <input className="ad-input" value={form.hours} onChange={e => set('hours', e.target.value)}
-                placeholder="All 7 days: 10:00 AM – 9:00 PM" />
+              <span className="ad-field-label">Longitude</span>
+              <input className="ad-input" type="number" step="any" value={form.lng}
+                onChange={e => set('lng', e.target.value)} placeholder="55.2708" />
             </label>
           </div>
-        </fieldset>
-
-        <fieldset className="ad-fieldset">
-          <legend>Map</legend>
-          <p className="ad-fieldset-hint">
-            The search phrase used for the embedded map and the “Get direction” link.
-          </p>
-          <label className="ad-field">
-            <span className="ad-field-label">Map query</span>
-            <input className="ad-input" value={form.mapQ} onChange={e => set('mapQ', e.target.value)}
-              placeholder="Kaya+Clinic+Dubai+Marina" />
-          </label>
-          {mapQ && (
-            <a className="ad-btn ad-btn--soft ad-btn--sm"
-              href={`https://maps.google.com/?q=${mapQ}`} target="_blank" rel="noreferrer">
+          {mapHref && (
+            <a className="ad-btn ad-btn--soft ad-btn--sm" href={mapHref} target="_blank" rel="noreferrer">
               Preview on Google Maps ↗
             </a>
           )}
