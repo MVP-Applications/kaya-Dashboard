@@ -76,7 +76,7 @@ export default function VoucherForm({ initial, isNew, onClose }) {
             </label>
             <label className="ad-field">
               <span className="ad-field-label">ID</span>
-              <input className="ad-input" value={form.id}
+              <input className="ad-input" value={form.id} disabled={!isNew}
                 placeholder={slugify(form.title) || 'auto-generated'}
                 onChange={e => set('id', e.target.value)} />
             </label>

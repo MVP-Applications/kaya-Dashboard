@@ -230,7 +230,7 @@ function LocationForm({ initial, isNew, existing, onSave, onClose }) {
             </label>
             <label className="ad-field">
               <span className="ad-field-label">ID</span>
-              <input className="ad-input" value={form.id}
+              <input className="ad-input" value={form.id} disabled={!isNew}
                 placeholder={slugify(form.name) || 'auto'}
                 onChange={e => set('id', e.target.value)} />
             </label>
