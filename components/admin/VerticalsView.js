@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useAdmin } from './AdminContext'
+import LocaleToggle from './LocaleToggle'
 
 function slugify(str) {
   return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -97,8 +98,9 @@ export default function VerticalsView() {
  * nothing forces the display grid below to stop reading them.
  */
 function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
-  const [form, setForm] = useState({ label: '', id: '', ...initial })
+  const [form, setForm] = useState({ label: '', id: '', labelAr: '', ...initial })
   const [error, setError] = useState('')
+  const [locale, setLocale] = useState('EN')
   const originalId = isNew ? null : initial.id
 
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
@@ -111,7 +113,7 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
     if (existing.some(v => v.id === id && v.id !== originalId)) {
       return setError(`The slug "${id}" is already in use.`)
     }
-    onSave({ ...initial, id, slug: id, label }, originalId)
+    onSave({ ...initial, id, slug: id, label, labelAr: form.labelAr.trim() }, originalId)
   }
 
   return (
@@ -137,18 +139,32 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
       <div className="ad-editor-body">
         <fieldset className="ad-fieldset">
           <legend>Basics</legend>
-          <div className="ad-grid2">
+          <label className="ad-field">
+            <span className="ad-field-label">Slug</span>
+            <input className="ad-input" value={form.id}
+              placeholder={slugify(form.label) || 'auto'}
+              onChange={e => set('id', e.target.value)} />
+          </label>
+        </fieldset>
+
+        <fieldset className="ad-fieldset">
+          <legend>Label</legend>
+          <p className="ad-fieldset-hint">
+            English is required. Fill in the Arabic label to add a translation.
+          </p>
+          <LocaleToggle locale={locale} onChange={setLocale} />
+          {locale === 'EN' ? (
             <label className="ad-field">
               <span className="ad-field-label">Label *</span>
               <input className="ad-input" value={form.label} onChange={e => set('label', e.target.value)} />
             </label>
+          ) : (
             <label className="ad-field">
-              <span className="ad-field-label">Slug</span>
-              <input className="ad-input" value={form.id}
-                placeholder={slugify(form.label) || 'auto'}
-                onChange={e => set('id', e.target.value)} />
+              <span className="ad-field-label">التسمية (Label)</span>
+              <input className="ad-input" dir="rtl" value={form.labelAr}
+                onChange={e => set('labelAr', e.target.value)} />
             </label>
-          </div>
+          )}
         </fieldset>
       </div>
     </form>

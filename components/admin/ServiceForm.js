@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { BADGE_OPTIONS } from '@/lib/admin/seed'
+import LocaleToggle from './LocaleToggle'
 
 function slugify(str) {
   return String(str)
@@ -17,10 +18,18 @@ export default function ServiceForm({ initial, isNew, onClose }) {
     slug: '', name: '', verticals: [], badge: '',
     what: '', mechanism: '', durationMins: '', sessions: '', downtimeNotes: '',
     benefits: [],
+    nameAr: '', whatAr: '', mechanismAr: '', benefitsAr: [],
     ...initial,
   }))
   const [error, setError] = useState('')
+  const [locale, setLocale] = useState('EN')
   const originalSlug = isNew ? null : initial.slug
+
+  const isAr = locale === 'AR'
+  const nameKey = isAr ? 'nameAr' : 'name'
+  const whatKey = isAr ? 'whatAr' : 'what'
+  const mechanismKey = isAr ? 'mechanismAr' : 'mechanism'
+  const benefitsKey = isAr ? 'benefitsAr' : 'benefits'
 
   function set(field, value) {
     setForm(f => ({ ...f, [field]: value }))
@@ -34,15 +43,15 @@ export default function ServiceForm({ initial, isNew, onClose }) {
     }))
   }
 
-  // ── Benefits (repeatable, one line of text each) ──
+  // ── Benefits (repeatable, one line of text each) — EN or AR depending on the active tab ──
   function addBenefit() {
-    setForm(f => ({ ...f, benefits: [...f.benefits, ''] }))
+    setForm(f => ({ ...f, [benefitsKey]: [...f[benefitsKey], ''] }))
   }
   function updateBenefit(idx, value) {
-    setForm(f => ({ ...f, benefits: f.benefits.map((b, i) => (i === idx ? value : b)) }))
+    setForm(f => ({ ...f, [benefitsKey]: f[benefitsKey].map((b, i) => (i === idx ? value : b)) }))
   }
   function removeBenefit(idx) {
-    setForm(f => ({ ...f, benefits: f.benefits.filter((_, i) => i !== idx) }))
+    setForm(f => ({ ...f, [benefitsKey]: f[benefitsKey].filter((_, i) => i !== idx) }))
   }
 
   function submit(e) {
@@ -69,6 +78,10 @@ export default function ServiceForm({ initial, isNew, onClose }) {
       sessions: form.sessions,
       downtimeNotes: form.downtimeNotes.trim(),
       benefits: form.benefits.map(b => b.trim()).filter(Boolean),
+      nameAr: form.nameAr.trim(),
+      whatAr: form.whatAr.trim(),
+      mechanismAr: form.mechanismAr.trim(),
+      benefitsAr: form.benefitsAr.map(b => b.trim()).filter(Boolean),
     }
     upsertService(record, originalSlug)
     onClose()
@@ -97,19 +110,12 @@ export default function ServiceForm({ initial, isNew, onClose }) {
       <div className="ad-editor-body">
         <fieldset className="ad-fieldset">
           <legend>Basics</legend>
-          <div className="ad-grid2">
-            <label className="ad-field">
-              <span className="ad-field-label">Name *</span>
-              <input className="ad-input" value={form.name}
-                onChange={e => set('name', e.target.value)} />
-            </label>
-            <label className="ad-field">
-              <span className="ad-field-label">Slug</span>
-              <input className="ad-input" value={form.slug}
-                placeholder={slugify(form.name) || 'auto-generated'}
-                onChange={e => set('slug', e.target.value)} />
-            </label>
-          </div>
+          <label className="ad-field">
+            <span className="ad-field-label">Slug</span>
+            <input className="ad-input" value={form.slug}
+              placeholder={slugify(form.name) || 'auto-generated'}
+              onChange={e => set('slug', e.target.value)} />
+          </label>
         </fieldset>
 
         <fieldset className="ad-fieldset">
@@ -140,16 +146,26 @@ export default function ServiceForm({ initial, isNew, onClose }) {
         </fieldset>
 
         <fieldset className="ad-fieldset">
-          <legend>Content</legend>
+          <legend>Name &amp; content</legend>
+          <p className="ad-fieldset-hint">
+            English is required. Fill in the Arabic Name, &quot;What it is&quot;
+            and &quot;How it works&quot; to add an Arabic translation.
+          </p>
+          <LocaleToggle locale={locale} onChange={setLocale} />
           <label className="ad-field">
-            <span className="ad-field-label">What it is *</span>
-            <textarea className="ad-input ad-textarea" rows={4} value={form.what}
-              onChange={e => set('what', e.target.value)} />
+            <span className="ad-field-label">{isAr ? 'الاسم (Name)' : 'Name *'}</span>
+            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
+              onChange={e => set(nameKey, e.target.value)} />
           </label>
           <label className="ad-field">
-            <span className="ad-field-label">How it works (mechanism) *</span>
-            <textarea className="ad-input ad-textarea" rows={3} value={form.mechanism}
-              onChange={e => set('mechanism', e.target.value)} />
+            <span className="ad-field-label">{isAr ? 'ما هو (What it is)' : 'What it is *'}</span>
+            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
+              value={form[whatKey]} onChange={e => set(whatKey, e.target.value)} />
+          </label>
+          <label className="ad-field">
+            <span className="ad-field-label">{isAr ? 'كيف يعمل (How it works)' : 'How it works (mechanism) *'}</span>
+            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={3}
+              value={form[mechanismKey]} onChange={e => set(mechanismKey, e.target.value)} />
           </label>
         </fieldset>
 
@@ -175,11 +191,11 @@ export default function ServiceForm({ initial, isNew, onClose }) {
         </fieldset>
 
         <fieldset className="ad-fieldset">
-          <legend>Benefits</legend>
-          {form.benefits.map((b, i) => (
+          <legend>Benefits {isAr ? '(العربية)' : ''}</legend>
+          {form[benefitsKey].map((b, i) => (
             <div key={i} className="ad-repeat-row">
               <div className="ad-repeat-main">
-                <input className="ad-input" value={b} placeholder="Benefit"
+                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={b} placeholder="Benefit"
                   onChange={e => updateBenefit(i, e.target.value)} />
               </div>
               <button type="button" className="ad-icon-btn" onClick={() => removeBenefit(i)}
