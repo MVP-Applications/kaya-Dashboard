@@ -559,7 +559,7 @@ export function AdminProvider({ children }) {
     allOverrides: overrides,
     saveSection, resetSectionToShared,
     locations, upsertLocation, deleteLocation,
-    users, setUserRole,
+    users, setUserRole, refreshUsers,
     moveUp, moveDown,
   }
 

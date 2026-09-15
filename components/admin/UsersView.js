@@ -2,8 +2,61 @@
 import { useMemo, useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { ROLE_LABELS, PERMISSIONS } from '@/lib/admin/auth'
+import { inviteStaffUser } from '@/lib/admin/store'
 
 const ROLES = ['admin', 'editor']
+
+function InviteForm({ onClose, onInvited }) {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState('editor')
+  const [error, setError] = useState('')
+  const [sending, setSending] = useState(false)
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!name.trim()) return setError('Name is required.')
+    if (!email.trim()) return setError('Email is required.')
+    setSending(true)
+    try {
+      await inviteStaffUser({ name: name.trim(), email: email.trim(), role })
+      onInvited(email.trim())
+    } catch (e2) {
+      setError(e2.message)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="ad-drawer-scrim" onClick={onClose}>
+      <form className="ad-confirm" onClick={e => e.stopPropagation()} onSubmit={submit}>
+        <h3 className="ad-confirm-title">Invite a staff member</h3>
+        {error && <div className="ad-form-error">{error}</div>}
+        <label className="ad-field">
+          <span className="ad-field-label">Name</span>
+          <input className="ad-input" value={name} onChange={e => setName(e.target.value)} />
+        </label>
+        <label className="ad-field">
+          <span className="ad-field-label">Email</span>
+          <input className="ad-input" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+        </label>
+        <label className="ad-field">
+          <span className="ad-field-label">Role</span>
+          <select className="ad-input" value={role} onChange={e => setRole(e.target.value)}>
+            {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+          </select>
+        </label>
+        <div className="ad-confirm-actions">
+          <button type="button" className="ad-btn ad-btn--ghost" onClick={onClose}>Cancel</button>
+          <button type="submit" className="ad-btn ad-btn--primary" disabled={sending}>
+            {sending ? 'Sending…' : 'Send invite'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
 
 function initials(name) {
   return (name || '?')
@@ -36,8 +89,10 @@ function RoleCard({ role }) {
 }
 
 export default function UsersView() {
-  const { users, setUserRole, user, allowed, loading, demoMode } = useAdmin()
+  const { users, setUserRole, user, allowed, loading, demoMode, refreshUsers } = useAdmin()
   const [query, setQuery] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const [invited, setInvited] = useState('')
 
   const canManage = allowed('manageUsers')
 
@@ -57,22 +112,32 @@ export default function UsersView() {
             {query && ` · showing ${filtered.length}`}
           </p>
         </div>
+        {canManage && (
+          <button className="ad-btn ad-btn--primary" onClick={() => setInviting(true)}>
+            + Invite staff member
+          </button>
+        )}
       </div>
 
-      {/* Accounts are managed by the backend, which the browser can't do
-          directly — so point there rather than showing a dead button. */}
+      {invited && (
+        <div className="ad-note">
+          <strong>Invite sent.</strong> {invited} can accept it using the link they were sent.
+          {' '}They won&apos;t appear in the list below until they do.
+        </div>
+      )}
+
+      {/* Roles can only be set in preview mode — the real API has no
+          endpoint yet to change one after a staff account exists (KA-39),
+          so against it, roles display read-only. */}
       <div className="ad-note">
         {demoMode ? (
           <>
-            <strong>Preview mode.</strong> These are sample accounts. Once connected
-            to the backend, real staff are added there and their roles are
-            managed here.
+            <strong>Preview mode.</strong> These are sample accounts.
           </>
         ) : (
           <>
-            <strong>Adding people.</strong> Staff accounts are managed on the backend.
-            They appear here once this screen is connected to it, and you&apos;ll be
-            able to set their role below.
+            <strong>Roles are read-only here for now.</strong> The API can create and
+            invite staff, but not yet change an existing account&apos;s role — see KA-39.
           </>
         )}
       </div>
@@ -133,8 +198,9 @@ export default function UsersView() {
                   </td>
                   <td className="ad-td-actions">
                     {/* Changing your own role is blocked so the last admin
-                        can't lock themselves out of the dashboard. */}
-                    {canManage && !isSelf ? (
+                        can't lock themselves out of the dashboard. Only
+                        possible in preview mode — see the note above. */}
+                    {demoMode && canManage && !isSelf ? (
                       <select
                         className="ad-input ad-input--sm"
                         value={u.role}
@@ -146,7 +212,7 @@ export default function UsersView() {
                       </select>
                     ) : (
                       <span className="ad-muted">
-                        {isSelf ? 'Your own role' : 'Admins only'}
+                        {isSelf ? 'Your own role' : demoMode ? 'Admins only' : '—'}
                       </span>
                     )}
                   </td>
@@ -169,6 +235,17 @@ export default function UsersView() {
           interface — an editor&apos;s delete is refused even outside the dashboard.
         </p>
       </div>
+
+      {inviting && (
+        <InviteForm
+          onClose={() => setInviting(false)}
+          onInvited={async email => {
+            setInviting(false)
+            setInvited(email)
+            await refreshUsers()
+          }}
+        />
+      )}
     </div>
   )
 }
