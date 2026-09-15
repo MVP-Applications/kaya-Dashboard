@@ -68,6 +68,7 @@ export default function ServiceForm({ initial, isNew, onClose }) {
     if (clash) return setError(`The slug "${slug}" is already in use.`)
 
     const record = {
+      id: form.id,
       slug,
       name,
       verticals: form.verticals,
