@@ -17,7 +17,7 @@ function cloneSafe(obj) {
 }
 
 export default function ReviewForm({ initial, isNew, onClose }) {
-  const { verticals, services, reviews, upsertReview } = useAdmin()
+  const { services, reviews, upsertReview } = useAdmin()
   const [form, setForm] = useState(() => cloneSafe(initial))
   const [error, setError] = useState('')
   const originalId = isNew ? null : initial.id
@@ -75,31 +75,39 @@ export default function ReviewForm({ initial, isNew, onClose }) {
 
         <fieldset className="ad-fieldset">
           <legend>Treatment</legend>
-          <div className="ad-grid2">
-            <label className="ad-field">
-              <span className="ad-field-label">Treatment</span>
-              <input className="ad-input" value={form.treatment} list="ad-service-names"
-                onChange={e => set('treatment', e.target.value)}
-                placeholder="e.g. Botox & Fillers" />
-              <datalist id="ad-service-names">
-                {services.map(s => <option key={s.slug} value={s.name} />)}
-              </datalist>
-            </label>
-            <label className="ad-field">
-              <span className="ad-field-label">Vertical</span>
-              <select className="ad-input" value={form.vertical}
-                onChange={e => set('vertical', e.target.value)}>
-                <option value="">— none —</option>
-                {verticals.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
-              </select>
-            </label>
-          </div>
+          <label className="ad-field">
+            <span className="ad-field-label">Treatment</span>
+            <input className="ad-input" value={form.treatment} list="ad-service-names"
+              onChange={e => set('treatment', e.target.value)}
+              placeholder="e.g. Botox & Fillers" />
+            <datalist id="ad-service-names">
+              {services.map(s => <option key={s.slug} value={s.name} />)}
+            </datalist>
+            <span className="ad-field-hint">Must match a treatment name exactly to link the review to it.</span>
+          </label>
         </fieldset>
 
         <fieldset className="ad-fieldset">
           <legend>Quote *</legend>
           <textarea className="ad-input ad-textarea" rows={4} value={form.quote}
             onChange={e => set('quote', e.target.value)} placeholder="What the patient said…" />
+          <div className="ad-grid2">
+            <label className="ad-field">
+              <span className="ad-field-label">Rating *</span>
+              <select className="ad-input" value={form.rating}
+                onChange={e => set('rating', Number(e.target.value))}>
+                {[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{n} star{n === 1 ? '' : 's'}</option>)}
+              </select>
+            </label>
+            <label className="ad-field ad-field--toggle">
+              <span className="ad-field-label">Consent</span>
+              <label className="ad-check">
+                <input type="checkbox" checked={!!form.consentGiven}
+                  onChange={e => set('consentGiven', e.target.checked)} />
+                Patient consented to this being published
+              </label>
+            </label>
+          </div>
         </fieldset>
 
         <fieldset className="ad-fieldset">

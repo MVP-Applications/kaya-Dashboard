@@ -2,33 +2,21 @@
 import { useMemo, useState } from 'react'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
-import ReorderCell from './ReorderCell'
 import { emptyReview } from '@/lib/admin/seed'
 import ReviewForm from './ReviewForm'
 
 export default function ReviewsView() {
-  const { reviews, verticals, deleteReview, allowed } = useAdmin()
+  const { reviews, deleteReview, allowed } = useAdmin()
   const [query, setQuery] = useState('')
-  const [vertical, setVertical] = useState('')
   const [editing, setEditing] = useState(null)
   const [confirm, setConfirm] = useState(null)
 
-  const verticalMeta = useMemo(() => {
-    const map = {}
-    verticals.forEach(v => { map[v.id] = v })
-    return map
-  }, [verticals])
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return reviews.filter(r => {
-      if (vertical && r.vertical !== vertical) return false
-      if (q && !(`${r.name} ${r.treatment} ${r.location}`.toLowerCase().includes(q))) return false
-      return true
-    })
-  }, [reviews, query, vertical])
+    if (!q) return reviews
+    return reviews.filter(r => `${r.name} ${r.treatment} ${r.location}`.toLowerCase().includes(q))
+  }, [reviews, query])
 
-  const isFiltered = Boolean(query.trim() || vertical)
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
 
@@ -56,20 +44,16 @@ export default function ReviewsView() {
       <div className="ad-toolbar">
         <input className="ad-input ad-search" placeholder="Search by name, treatment, or location…"
           value={query} onChange={e => setQuery(e.target.value)} />
-        <select className="ad-input ad-filter" value={vertical} onChange={e => setVertical(e.target.value)}>
-          <option value="">All verticals</option>
-          {verticals.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
-        </select>
       </div>
 
       <div className="ad-table-wrap">
         <table className="ad-table">
           <thead>
             <tr>
-              <th className="ad-th-order">Order</th>
               <th>Patient</th>
               <th>Treatment</th>
-              <th>Vertical</th>
+              <th>Rating</th>
+              <th>Consent</th>
               <th>Media</th>
               <th className="ad-th-actions">Actions</th>
             </tr>
@@ -77,29 +61,16 @@ export default function ReviewsView() {
           <tbody>
             {filtered.map(r => (
               <tr key={r.id}>
-                <td className="ad-td-order">
-                  <ReorderCell
-                    collection="reviews"
-                    itemKey={r.id}
-                    index={reviews.indexOf(r)}
-                    total={reviews.length}
-                    disabled={isFiltered}
-                  />
-                </td>
                 <td>
                   <div className="ad-cell-name">{r.name}</div>
                   <div className="ad-cell-slug">{r.location || '—'}</div>
                 </td>
                 <td>{r.treatment || <span className="ad-muted">—</span>}</td>
+                <td>{'★'.repeat(r.rating || 0)}{'☆'.repeat(5 - (r.rating || 0))}</td>
                 <td>
-                  {r.vertical
-                    ? (
-                      <span className="ad-vpill">
-                        <span className="ad-vpill-dot" style={{ background: verticalMeta[r.vertical]?.color || '#999' }} />
-                        {verticalMeta[r.vertical]?.label || r.vertical}
-                      </span>
-                    )
-                    : <span className="ad-muted">—</span>}
+                  {r.consentGiven
+                    ? <span className="ad-badge">given</span>
+                    : <span className="ad-muted">not given</span>}
                 </td>
                 <td>
                   {r.before || r.after
