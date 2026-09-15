@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { SectionFields } from './ContentFields'
+import LocaleToggle from './LocaleToggle'
 
 /**
  * Draft-based editor for one content group (a page, or a site-wide group like
@@ -23,6 +24,7 @@ export default function ContentEditor({
 }) {
   const [draft, setDraft] = useState(values || {})
   const [saved, setSaved] = useState(false)
+  const [locale, setLocale] = useState('EN')
 
   // Re-seed the draft when the editor is pointed at a different group, or at
   // the same group in a different market.
@@ -40,8 +42,16 @@ export default function ContentEditor({
     return () => clearTimeout(id)
   }, [saved])
 
+  // Section values are locale-nested — { EN: {fieldKey: value}, AR: {...} }
+  // — so a field edit only ever touches the locale currently on screen.
   function setField(sectionId, key, value) {
-    setDraft(d => ({ ...d, [sectionId]: { ...d[sectionId], [key]: value } }))
+    setDraft(d => ({
+      ...d,
+      [sectionId]: {
+        ...d[sectionId],
+        [locale]: { ...d[sectionId]?.[locale], [key]: value },
+      },
+    }))
   }
 
   function revert(sectionId) {
@@ -61,6 +71,7 @@ export default function ContentEditor({
         <div className="ad-cf-bar-info">
           {children}
         </div>
+        <LocaleToggle locale={locale} onChange={setLocale} />
         <div className="ad-cf-bar-actions">
           {saved && !dirty && <span className="ad-cf-saved">✓ Saved</span>}
           {dirty && (
@@ -103,7 +114,7 @@ export default function ContentEditor({
             </div>
             <SectionFields
               fields={section.fields}
-              values={draft[section.id]}
+              values={draft[section.id]?.[locale]}
               onChange={(key, value) => setField(section.id, key, value)}
               disabled={!canEdit}
             />
