@@ -316,12 +316,12 @@ function LocationForm({ initial, isNew, existing, onSave, onClose }) {
           <p className="ad-fieldset-hint">Used for the Find a Clinic map and directions link.</p>
           <div className="ad-grid2">
             <label className="ad-field">
-              <span className="ad-field-label">Latitude</span>
+              <span className="ad-field-label">Latitude *</span>
               <input className="ad-input" type="number" step="any" value={form.lat}
                 onChange={e => set('lat', e.target.value)} placeholder="25.2048" />
             </label>
             <label className="ad-field">
-              <span className="ad-field-label">Longitude</span>
+              <span className="ad-field-label">Longitude *</span>
               <input className="ad-input" type="number" step="any" value={form.lng}
                 onChange={e => set('lng', e.target.value)} placeholder="55.2708" />
             </label>

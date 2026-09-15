@@ -77,13 +77,11 @@ export default function ReviewForm({ initial, isNew, onClose }) {
           <legend>Treatment</legend>
           <label className="ad-field">
             <span className="ad-field-label">Treatment</span>
-            <input className="ad-input" value={form.treatment} list="ad-service-names"
-              onChange={e => set('treatment', e.target.value)}
-              placeholder="e.g. Botox & Fillers" />
-            <datalist id="ad-service-names">
-              {services.map(s => <option key={s.slug} value={s.name} />)}
-            </datalist>
-            <span className="ad-field-hint">Must match a treatment name exactly to link the review to it.</span>
+            <select className="ad-input" value={form.treatment}
+              onChange={e => set('treatment', e.target.value)}>
+              <option value="">— none —</option>
+              {services.map(s => <option key={s.slug} value={s.slug}>{s.name}</option>)}
+            </select>
           </label>
         </fieldset>
 
