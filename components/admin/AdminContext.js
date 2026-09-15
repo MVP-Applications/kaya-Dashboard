@@ -196,10 +196,18 @@ export function AdminProvider({ children }) {
   /**
    * Shared upsert for every keyed collection.
    *
-   * Editing a record's own key (a slug or id rename) can't be expressed as an
-   * upsert: the new key inserts a second row and the old one lingers. So the
-   * stale row is deleted FIRST — if that's refused (editors have no delete
-   * permission) the save aborts before a duplicate can be created.
+   * Editing a record's own key (a slug rename, for Services/Doctors — the
+   * only two collections keyed by something the form lets you edit) used to
+   * be handled as delete-then-recreate, because the old Supabase-backed
+   * `persist` had no identity beyond that key. It doesn't need to be: every
+   * record fetched from the real API now carries its actual backend `id`
+   * (see doctorToRecord/treatmentToService), and `persistServices`/
+   * `persistDoctors` already prefer that id over a slug lookup when
+   * deciding PUT vs POST — so a renamed record with a real `id` is just a
+   * normal in-place update, same as any other field edit. Delete-first is
+   * now only the fallback for a record with no `id` yet (new/unsaved, or a
+   * collection — none currently — still running the old local-only
+   * contract), where the key really is the only identity there is.
    */
   const upsertInto = useCallback(async (
     { list, setList, persist, remove, keyOf }, record, originalKey,
@@ -208,7 +216,7 @@ export function AdminProvider({ children }) {
     const exists = originalKey != null && list.some(r => keyOf(r) === originalKey)
     const renamed = exists && originalKey !== newKey
 
-    if (renamed) {
+    if (renamed && !record.id) {
       setSaving(true)
       try {
         await remove(originalKey)
