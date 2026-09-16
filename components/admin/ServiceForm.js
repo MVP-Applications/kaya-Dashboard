@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { BADGE_OPTIONS, THUMB_OPTIONS } from '@/lib/admin/seed'
-import { TREATMENT_CATEGORIES } from '@/lib/taxonomy'
 import LocaleToggle from './LocaleToggle'
 import ImagePicker from './ImagePicker'
 
@@ -15,13 +14,13 @@ function slugify(str) {
 }
 
 export default function ServiceForm({ initial, isNew, onClose }) {
-  const { verticals, upsertService, services } = useAdmin()
+  const { verticals, categories, upsertService, services } = useAdmin()
   const [form, setForm] = useState(() => ({
     slug: '', name: '', image: '', thumb: '', category: '', verticals: [], badge: '',
     sub: '', what: '', mechanism: '', durationMins: '', sessions: '',
     downtimeNotes: '', downtimeLevel: '', suitable: [],
     benefits: [],
-    nameAr: '', whatAr: '', mechanismAr: '', benefitsAr: [],
+    nameAr: '', subAr: '', whatAr: '', mechanismAr: '', suitableAr: [], benefitsAr: [],
     ...initial,
   }))
   const [error, setError] = useState('')
@@ -30,8 +29,10 @@ export default function ServiceForm({ initial, isNew, onClose }) {
 
   const isAr = locale === 'AR'
   const nameKey = isAr ? 'nameAr' : 'name'
+  const subKey = isAr ? 'subAr' : 'sub'
   const whatKey = isAr ? 'whatAr' : 'what'
   const mechanismKey = isAr ? 'mechanismAr' : 'mechanism'
+  const suitableKey = isAr ? 'suitableAr' : 'suitable'
   const benefitsKey = isAr ? 'benefitsAr' : 'benefits'
 
   function set(field, value) {
@@ -60,15 +61,15 @@ export default function ServiceForm({ initial, isNew, onClose }) {
     setForm(f => ({ ...f, [benefitsKey]: f[benefitsKey].filter((_, i) => i !== idx) }))
   }
 
-  // ── Suitable for (repeatable, one line of text each) ──
+  // ── Suitable for (repeatable, one line of text each) — EN or AR depending on the active tab ──
   function addSuitable() {
-    setForm(f => ({ ...f, suitable: [...f.suitable, ''] }))
+    setForm(f => ({ ...f, [suitableKey]: [...f[suitableKey], ''] }))
   }
   function updateSuitable(idx, value) {
-    setForm(f => ({ ...f, suitable: f.suitable.map((s, i) => (i === idx ? value : s)) }))
+    setForm(f => ({ ...f, [suitableKey]: f[suitableKey].map((s, i) => (i === idx ? value : s)) }))
   }
   function removeSuitable(idx) {
-    setForm(f => ({ ...f, suitable: f.suitable.filter((_, i) => i !== idx) }))
+    setForm(f => ({ ...f, [suitableKey]: f[suitableKey].filter((_, i) => i !== idx) }))
   }
 
   function submit(e) {
@@ -84,9 +85,11 @@ export default function ServiceForm({ initial, isNew, onClose }) {
     const clash = services.some(s => s.slug === slug && s.slug !== originalSlug)
     if (clash) return setError(`The slug "${slug}" is already in use.`)
 
+    // The backend requires a title per benefit (not a description) — a row
+    // with only an icon/description typed in is dropped as incomplete.
     const cleanBenefits = list => list
       .map(b => ({ i: b.i.trim(), t: b.t.trim(), d: b.d.trim() }))
-      .filter(b => b.d)
+      .filter(b => b.t)
 
     const record = {
       id: form.id,
@@ -107,8 +110,10 @@ export default function ServiceForm({ initial, isNew, onClose }) {
       suitable: form.suitable.map(s => s.trim()).filter(Boolean),
       benefits: cleanBenefits(form.benefits),
       nameAr: form.nameAr.trim(),
+      subAr: form.subAr.trim(),
       whatAr: form.whatAr.trim(),
       mechanismAr: form.mechanismAr.trim(),
+      suitableAr: form.suitableAr.map(s => s.trim()).filter(Boolean),
       benefitsAr: cleanBenefits(form.benefitsAr),
     }
     upsertService(record, originalSlug)
@@ -185,7 +190,7 @@ export default function ServiceForm({ initial, isNew, onClose }) {
             <select className="ad-input" value={form.category}
               onChange={e => set('category', e.target.value)}>
               <option value="">— none —</option>
-              {TREATMENT_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </label>
           <label className="ad-field">
@@ -203,17 +208,17 @@ export default function ServiceForm({ initial, isNew, onClose }) {
             English is required. Fill in the Arabic Name, &quot;What it is&quot;
             and &quot;How it works&quot; to add an Arabic translation.
           </p>
-          <label className="ad-field">
-            <span className="ad-field-label">Short teaser</span>
-            <input className="ad-input" value={form.sub}
-              placeholder="A one-line summary shown on service cards"
-              onChange={e => set('sub', e.target.value)} />
-          </label>
           <LocaleToggle locale={locale} onChange={setLocale} />
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'الاسم (Name)' : 'Name *'}</span>
             <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
               onChange={e => set(nameKey, e.target.value)} />
+          </label>
+          <label className="ad-field">
+            <span className="ad-field-label">{isAr ? 'مقتطف قصير (Short teaser)' : 'Short teaser'}</span>
+            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[subKey]}
+              placeholder="A one-line summary shown on service cards"
+              onChange={e => set(subKey, e.target.value)} />
           </label>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'ما هو (What it is)' : 'What it is *'}</span>
@@ -257,11 +262,12 @@ export default function ServiceForm({ initial, isNew, onClose }) {
         </fieldset>
 
         <fieldset className="ad-fieldset">
-          <legend>Suitable for</legend>
-          {form.suitable.map((s, i) => (
+          <legend>Suitable for {isAr ? '(العربية)' : ''}</legend>
+          {form[suitableKey].map((s, i) => (
             <div key={i} className="ad-repeat-row">
               <div className="ad-repeat-main">
-                <input className="ad-input" value={s} placeholder="e.g. Oily or acne-prone skin"
+                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={s}
+                  placeholder="e.g. Oily or acne-prone skin"
                   onChange={e => updateSuitable(i, e.target.value)} />
               </div>
               <button type="button" className="ad-icon-btn" onClick={() => removeSuitable(i)}

@@ -4,6 +4,7 @@ import {
   fetchAll,
   persistServices, removeService,
   persistVerticals, removeVertical,
+  persistCategories, removeCategory,
   persistDoctors, removeDoctor,
   persistReviews, removeReview,
   persistVouchers, removeVoucher,
@@ -28,7 +29,7 @@ export function useAdmin() {
 }
 
 const EMPTY = {
-  services: [], verticals: [], doctors: [], reviews: [],
+  services: [], verticals: [], categories: [], doctors: [], reviews: [],
   vouchers: [], locations: [], pages: {}, site: {},
 }
 
@@ -43,6 +44,7 @@ export function AdminProvider({ children }) {
 
   const [services, setServices] = useState([])
   const [verticals, setVerticals] = useState([])
+  const [categories, setCategories] = useState([])
   const [doctors, setDoctors] = useState([])
   const [reviews, setReviews] = useState([])
   const [vouchers, setVouchers] = useState([])
@@ -62,6 +64,7 @@ export function AdminProvider({ children }) {
   function applyAll(data) {
     setServices(data.services)
     setVerticals(data.verticals)
+    setCategories(data.categories)
     setDoctors(data.doctors)
     setReviews(data.reviews)
     setVouchers(data.vouchers)
@@ -273,12 +276,13 @@ export function AdminProvider({ children }) {
     return {
       services: { list: services, setList: setServices, persist: persistServices, remove: removeService, keyOf: bySlug, reorders: true },
       verticals: { list: verticals, setList: setVerticals, persist: persistVerticals, remove: removeVertical, keyOf: byId },
+      categories: { list: categories, setList: setCategories, persist: persistCategories, remove: removeCategory, keyOf: bySlug, reorders: true },
       doctors: { list: doctors, setList: setDoctors, persist: persistDoctors, remove: removeDoctor, keyOf: bySlug, reorders: true },
       reviews: { list: reviews, setList: setReviews, persist: persistReviews, remove: removeReview, keyOf: byId },
       vouchers: { list: vouchers, setList: setVouchers, persist: persistVouchers, remove: removeVoucher, keyOf: byId, reorders: true },
       locations: { list: locations, setList: setLocations, persist: persistLocations, remove: removeLocation, keyOf: byId },
     }
-  }, [services, verticals, doctors, reviews, vouchers, locations])
+  }, [services, verticals, categories, doctors, reviews, vouchers, locations])
 
   // ── Collection CRUD ───────────────────────────────────
   // Verticals and locations append (they render as ordered settings lists);
@@ -318,6 +322,9 @@ export function AdminProvider({ children }) {
       : appendTo(cols.verticals, record)
   }, [cols, upsertInto, appendTo])
   const deleteVertical = useCallback(k => deleteFrom(cols.verticals, k), [cols, deleteFrom])
+
+  const upsertCategory = useCallback((r, k) => upsertInto(cols.categories, r, k), [cols, upsertInto])
+  const deleteCategory = useCallback(k => deleteFrom(cols.categories, k), [cols, deleteFrom])
 
   const upsertDoctor = useCallback((r, k) => upsertInto(cols.doctors, r, k), [cols, upsertInto])
   const deleteDoctor = useCallback(k => deleteFrom(cols.doctors, k), [cols, deleteFrom])
@@ -557,6 +564,7 @@ export function AdminProvider({ children }) {
     user, login, logout, allowed,
     services, upsertService, deleteService,
     verticals, upsertVertical, deleteVertical,
+    categories, upsertCategory, deleteCategory,
     doctors, upsertDoctor, deleteDoctor,
     reviews, upsertReview, deleteReview,
     vouchers, upsertVoucher, deleteVoucher,

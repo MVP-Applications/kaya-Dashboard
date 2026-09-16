@@ -5,6 +5,7 @@ import { ROLE_LABELS } from '@/lib/admin/auth'
 import Overview from './Overview'
 import ServicesView from './ServicesView'
 import VerticalsView from './VerticalsView'
+import CategoriesView from './CategoriesView'
 import DoctorsView from './DoctorsView'
 import IndulgenceView from './IndulgenceView'
 import VoucherRequestsView from './VoucherRequestsView'
@@ -37,6 +38,7 @@ const NAV_GROUPS = [
     items: [
       { id: 'services', label: 'Treatments & Services', icon: '✦' },
       { id: 'verticals', label: 'Verticals', icon: '◈' },
+      { id: 'categories', label: 'Categories', icon: '▣' },
       { id: 'doctors', label: 'Doctors', icon: '⚕' },
       { id: 'indulgence', label: 'Indulgence', icon: '🎁' },
       { id: 'reviews', label: 'Reviews', icon: '★' },
@@ -162,6 +164,7 @@ export default function AdminShell() {
           {view === 'requests' && <RequestsView />}
           {view === 'services' && <ServicesView />}
           {view === 'verticals' && <VerticalsView />}
+          {view === 'categories' && <CategoriesView />}
           {view === 'doctors' && <DoctorsView />}
           {view === 'indulgence' && <IndulgenceView />}
           {view === 'voucher-requests' && <VoucherRequestsView />}

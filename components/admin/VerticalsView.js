@@ -98,7 +98,13 @@ export default function VerticalsView() {
  * a save; a reload of this vertical from the API comes back blank again.
  */
 function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
-  const [form, setForm] = useState({ label: '', id: '', labelAr: '', hint: '', color: '#6E5A96', ...initial })
+  const [form, setForm] = useState({
+    label: '', id: '', labelAr: '', hint: '', ...initial,
+    // A native color input needs a valid hex value — an existing vertical
+    // fetched with no color set yet (backend returns '') would otherwise
+    // land here as '', which the browser just silently swaps for black.
+    color: initial.color || '#6E5A96',
+  })
   const [error, setError] = useState('')
   const [locale, setLocale] = useState('EN')
   const originalId = isNew ? null : initial.id
