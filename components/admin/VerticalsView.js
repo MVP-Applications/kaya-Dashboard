@@ -7,7 +7,7 @@ function slugify(str) {
   return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
-const empty = { id: '', label: '' }
+const empty = { id: '', label: '', hint: '', color: '#6E5A96' }
 
 export default function VerticalsView() {
   const { verticals, services, upsertVertical, deleteVertical, allowed } = useAdmin()
@@ -92,13 +92,13 @@ export default function VerticalsView() {
 }
 
 /**
- * `hint`/`color` have no backend column (see KA-30) so this form no longer
- * lets anyone edit them — but a record that already has them (from preview
- * seed data) keeps them untouched on save, rather than wiping them, since
- * nothing forces the display grid below to stop reading them.
+ * `hint`/`color` have no backend column (KA-30) — edited here anyway
+ * (per KA-30) but `persistVerticals` (lib/admin/store-api.js) only ever
+ * sends `slug`/`translations` to the backend, so these never make it past
+ * a save; a reload of this vertical from the API comes back blank again.
  */
 function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
-  const [form, setForm] = useState({ label: '', id: '', labelAr: '', ...initial })
+  const [form, setForm] = useState({ label: '', id: '', labelAr: '', hint: '', color: '#6E5A96', ...initial })
   const [error, setError] = useState('')
   const [locale, setLocale] = useState('EN')
   const originalId = isNew ? null : initial.id
@@ -113,7 +113,10 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
     if (existing.some(v => v.id === id && v.id !== originalId)) {
       return setError(`The slug "${id}" is already in use.`)
     }
-    onSave({ ...initial, id, slug: id, label, labelAr: form.labelAr.trim() }, originalId)
+    onSave({
+      ...initial, id, slug: id, label, labelAr: form.labelAr.trim(),
+      hint: form.hint.trim(), color: form.color,
+    }, originalId)
   }
 
   return (
@@ -145,6 +148,19 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
               placeholder={slugify(form.label) || 'auto'}
               onChange={e => set('id', e.target.value)} />
           </label>
+          <div className="ad-grid2">
+            <label className="ad-field">
+              <span className="ad-field-label">Color</span>
+              <input className="ad-input" type="color" value={form.color}
+                onChange={e => set('color', e.target.value)} />
+            </label>
+            <label className="ad-field">
+              <span className="ad-field-label">Hint text</span>
+              <input className="ad-input" value={form.hint}
+                placeholder="Short helper text shown with this vertical"
+                onChange={e => set('hint', e.target.value)} />
+            </label>
+          </div>
         </fieldset>
 
         <fieldset className="ad-fieldset">

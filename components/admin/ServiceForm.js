@@ -1,8 +1,10 @@
 'use client'
 import { useState } from 'react'
 import { useAdmin } from './AdminContext'
-import { BADGE_OPTIONS } from '@/lib/admin/seed'
+import { BADGE_OPTIONS, THUMB_OPTIONS } from '@/lib/admin/seed'
+import { TREATMENT_CATEGORIES } from '@/lib/taxonomy'
 import LocaleToggle from './LocaleToggle'
+import ImagePicker from './ImagePicker'
 
 function slugify(str) {
   return String(str)
@@ -15,8 +17,9 @@ function slugify(str) {
 export default function ServiceForm({ initial, isNew, onClose }) {
   const { verticals, upsertService, services } = useAdmin()
   const [form, setForm] = useState(() => ({
-    slug: '', name: '', verticals: [], badge: '',
-    what: '', mechanism: '', durationMins: '', sessions: '', downtimeNotes: '',
+    slug: '', name: '', image: '', thumb: '', category: '', verticals: [], badge: '',
+    sub: '', what: '', mechanism: '', durationMins: '', sessions: '',
+    downtimeNotes: '', downtimeLevel: '', suitable: [],
     benefits: [],
     nameAr: '', whatAr: '', mechanismAr: '', benefitsAr: [],
     ...initial,
@@ -43,15 +46,29 @@ export default function ServiceForm({ initial, isNew, onClose }) {
     }))
   }
 
-  // ── Benefits (repeatable, one line of text each) — EN or AR depending on the active tab ──
+  // ── Benefits (repeatable icon + title + description) — EN or AR depending on the active tab ──
   function addBenefit() {
-    setForm(f => ({ ...f, [benefitsKey]: [...f[benefitsKey], ''] }))
+    setForm(f => ({ ...f, [benefitsKey]: [...f[benefitsKey], { i: '', t: '', d: '' }] }))
   }
-  function updateBenefit(idx, value) {
-    setForm(f => ({ ...f, [benefitsKey]: f[benefitsKey].map((b, i) => (i === idx ? value : b)) }))
+  function updateBenefit(idx, field, value) {
+    setForm(f => ({
+      ...f,
+      [benefitsKey]: f[benefitsKey].map((b, i) => (i === idx ? { ...b, [field]: value } : b)),
+    }))
   }
   function removeBenefit(idx) {
     setForm(f => ({ ...f, [benefitsKey]: f[benefitsKey].filter((_, i) => i !== idx) }))
+  }
+
+  // ── Suitable for (repeatable, one line of text each) ──
+  function addSuitable() {
+    setForm(f => ({ ...f, suitable: [...f.suitable, ''] }))
+  }
+  function updateSuitable(idx, value) {
+    setForm(f => ({ ...f, suitable: f.suitable.map((s, i) => (i === idx ? value : s)) }))
+  }
+  function removeSuitable(idx) {
+    setForm(f => ({ ...f, suitable: f.suitable.filter((_, i) => i !== idx) }))
   }
 
   function submit(e) {
@@ -67,22 +84,32 @@ export default function ServiceForm({ initial, isNew, onClose }) {
     const clash = services.some(s => s.slug === slug && s.slug !== originalSlug)
     if (clash) return setError(`The slug "${slug}" is already in use.`)
 
+    const cleanBenefits = list => list
+      .map(b => ({ i: b.i.trim(), t: b.t.trim(), d: b.d.trim() }))
+      .filter(b => b.d)
+
     const record = {
       id: form.id,
       slug,
       name,
+      image: form.image,
+      thumb: form.thumb,
+      category: form.category,
       verticals: form.verticals,
       badge: form.badge,
+      sub: form.sub.trim(),
       what,
       mechanism,
       durationMins: form.durationMins,
       sessions: form.sessions,
       downtimeNotes: form.downtimeNotes.trim(),
-      benefits: form.benefits.map(b => b.trim()).filter(Boolean),
+      downtimeLevel: form.downtimeLevel.trim(),
+      suitable: form.suitable.map(s => s.trim()).filter(Boolean),
+      benefits: cleanBenefits(form.benefits),
       nameAr: form.nameAr.trim(),
       whatAr: form.whatAr.trim(),
       mechanismAr: form.mechanismAr.trim(),
-      benefitsAr: form.benefitsAr.map(b => b.trim()).filter(Boolean),
+      benefitsAr: cleanBenefits(form.benefitsAr),
     }
     upsertService(record, originalSlug)
     onClose()
@@ -120,6 +147,22 @@ export default function ServiceForm({ initial, isNew, onClose }) {
         </fieldset>
 
         <fieldset className="ad-fieldset">
+          <legend>Media</legend>
+          <div className="ad-field">
+            <span className="ad-field-label">Image</span>
+            <ImagePicker value={form.image} onChange={v => set('image', v)} />
+          </div>
+          <label className="ad-field">
+            <span className="ad-field-label">Icon</span>
+            <select className="ad-input" value={form.thumb}
+              onChange={e => set('thumb', e.target.value)}>
+              <option value="">— none —</option>
+              {THUMB_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </label>
+        </fieldset>
+
+        <fieldset className="ad-fieldset">
           <legend>Classification</legend>
           <div className="ad-field">
             <span className="ad-field-label">Verticals</span>
@@ -138,6 +181,14 @@ export default function ServiceForm({ initial, isNew, onClose }) {
             </div>
           </div>
           <label className="ad-field">
+            <span className="ad-field-label">Category</span>
+            <select className="ad-input" value={form.category}
+              onChange={e => set('category', e.target.value)}>
+              <option value="">— none —</option>
+              {TREATMENT_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+          </label>
+          <label className="ad-field">
             <span className="ad-field-label">Badge</span>
             <select className="ad-input" value={form.badge}
               onChange={e => set('badge', e.target.value)}>
@@ -152,6 +203,12 @@ export default function ServiceForm({ initial, isNew, onClose }) {
             English is required. Fill in the Arabic Name, &quot;What it is&quot;
             and &quot;How it works&quot; to add an Arabic translation.
           </p>
+          <label className="ad-field">
+            <span className="ad-field-label">Short teaser</span>
+            <input className="ad-input" value={form.sub}
+              placeholder="A one-line summary shown on service cards"
+              onChange={e => set('sub', e.target.value)} />
+          </label>
           <LocaleToggle locale={locale} onChange={setLocale} />
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'الاسم (Name)' : 'Name *'}</span>
@@ -184,11 +241,34 @@ export default function ServiceForm({ initial, isNew, onClose }) {
                 onChange={e => set('sessions', e.target.value)} />
             </label>
           </div>
-          <label className="ad-field">
-            <span className="ad-field-label">Downtime</span>
-            <input className="ad-input" value={form.downtimeNotes}
-              onChange={e => set('downtimeNotes', e.target.value)} />
-          </label>
+          <div className="ad-grid2">
+            <label className="ad-field">
+              <span className="ad-field-label">Downtime</span>
+              <input className="ad-input" value={form.downtimeNotes}
+                onChange={e => set('downtimeNotes', e.target.value)} />
+            </label>
+            <label className="ad-field">
+              <span className="ad-field-label">Downtime severity</span>
+              <input className="ad-input" value={form.downtimeLevel}
+                placeholder="e.g. Minimal, Mild, Moderate"
+                onChange={e => set('downtimeLevel', e.target.value)} />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset className="ad-fieldset">
+          <legend>Suitable for</legend>
+          {form.suitable.map((s, i) => (
+            <div key={i} className="ad-repeat-row">
+              <div className="ad-repeat-main">
+                <input className="ad-input" value={s} placeholder="e.g. Oily or acne-prone skin"
+                  onChange={e => updateSuitable(i, e.target.value)} />
+              </div>
+              <button type="button" className="ad-icon-btn" onClick={() => removeSuitable(i)}
+                aria-label="Remove">✕</button>
+            </div>
+          ))}
+          <button type="button" className="ad-btn ad-btn--soft" onClick={addSuitable}>+ Add</button>
         </fieldset>
 
         <fieldset className="ad-fieldset">
@@ -196,8 +276,14 @@ export default function ServiceForm({ initial, isNew, onClose }) {
           {form[benefitsKey].map((b, i) => (
             <div key={i} className="ad-repeat-row">
               <div className="ad-repeat-main">
-                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={b} placeholder="Benefit"
-                  onChange={e => updateBenefit(i, e.target.value)} />
+                <div className="ad-grid2">
+                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={b.i} placeholder="Icon (e.g. ✦)"
+                    onChange={e => updateBenefit(i, 'i', e.target.value)} />
+                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={b.t} placeholder="Title"
+                    onChange={e => updateBenefit(i, 't', e.target.value)} />
+                </div>
+                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={b.d} placeholder="Description"
+                  onChange={e => updateBenefit(i, 'd', e.target.value)} />
               </div>
               <button type="button" className="ad-icon-btn" onClick={() => removeBenefit(i)}
                 aria-label="Remove benefit">✕</button>
