@@ -17,6 +17,7 @@ export default function ServiceForm({ initial, isNew, onClose }) {
   const { verticals, categories, upsertService, services } = useAdmin()
   const [form, setForm] = useState(() => ({
     slug: '', name: '', image: '', thumb: '', category: '', verticals: [], badge: '',
+    isPopular: false,
     sub: '', what: '', mechanism: '', durationMins: '', sessions: '',
     downtimeNotes: '', downtimeLevel: '', suitable: [],
     benefits: [],
@@ -100,6 +101,7 @@ export default function ServiceForm({ initial, isNew, onClose }) {
       category: form.category,
       verticals: form.verticals,
       badge: form.badge,
+      isPopular: form.isPopular,
       sub: form.sub.trim(),
       what,
       mechanism,
@@ -199,6 +201,14 @@ export default function ServiceForm({ initial, isNew, onClose }) {
               onChange={e => set('badge', e.target.value)}>
               {BADGE_OPTIONS.map(b => <option key={b || 'none'} value={b}>{b || '— none —'}</option>)}
             </select>
+          </label>
+          <label className="ad-field ad-field--toggle">
+            <span className="ad-field-label">Popular</span>
+            <label className="ad-check">
+              <input type="checkbox" checked={form.isPopular}
+                onChange={e => set('isPopular', e.target.checked)} />
+              Show this treatment in the site&apos;s Popular treatments section
+            </label>
           </label>
         </fieldset>
 
