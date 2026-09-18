@@ -252,7 +252,8 @@ export default function ServiceForm({ initial, isNew, onClose }) {
             </label>
             <label className="ad-field">
               <span className="ad-field-label">Sessions</span>
-              <input type="number" min="1" className="ad-input" value={form.sessions}
+              <input className="ad-input" value={form.sessions}
+                placeholder="e.g. 3–6 sessions"
                 onChange={e => set('sessions', e.target.value)} />
             </label>
           </div>

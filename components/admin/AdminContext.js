@@ -2,12 +2,12 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   fetchAll,
-  persistServices, removeService,
+  persistServices, removeService, reorderServices,
   persistVerticals, removeVertical,
-  persistCategories, removeCategory,
-  persistDoctors, removeDoctor,
+  persistCategories, removeCategory, reorderCategories,
+  persistDoctors, removeDoctor, reorderDoctors,
   persistReviews, removeReview,
-  persistVouchers, removeVoucher,
+  persistVouchers, removeVoucher, reorderVouchers,
   persistLocations, removeLocation,
   persistPageSection, persistSiteSection,
   fetchRequestsPage, fetchRequestStatusCounts, fetchRequestCountries,
@@ -160,6 +160,14 @@ export function AdminProvider({ children }) {
     refreshUsers()
   }, [user, refresh, refreshUsers])
 
+  // Errors used to sit until someone clicked the banner's × — auto-clear so
+  // a stale message doesn't linger over whatever the admin does next.
+  useEffect(() => {
+    if (!error) return
+    const timer = setTimeout(() => setError(''), 4000)
+    return () => clearTimeout(timer)
+  }, [error])
+
   // ── Auth ──────────────────────────────────────────────
   const login = useCallback(async (email, password) => {
     const res = await signIn(email, password)
@@ -240,7 +248,7 @@ export function AdminProvider({ children }) {
 
   /** Shared delete for every keyed collection. */
   const deleteFrom = useCallback(async (
-    { list, setList, persist, remove, keyOf, reorders }, key,
+    { list, setList, remove, keyOf, reorder }, key,
   ) => {
     const prev = list
     const next = list.filter(r => keyOf(r) !== key)
@@ -248,14 +256,16 @@ export function AdminProvider({ children }) {
     setSaving(true)
     try {
       await remove(key)
-      // Rewrite the remaining rows so `sort` stays gap-free after a removal —
-      // only meaningful for collections with a backend displayOrder/reorder
-      // endpoint. For the rest (Verticals, Reviews, Locations — none of which
-      // have such an endpoint, see KA-38 for Reviews) this was a pointless
-      // extra write: it re-PUT every untouched record for no reason, and if
-      // any one of those calls failed, the already-successful delete got
-      // reported as failed and the row reappeared in the UI.
-      if (reorders) await persist(next)
+      // Rewrite the remaining rows' `displayOrder` so it stays gap-free after
+      // a removal — only meaningful for collections with a backend
+      // displayOrder/reorder endpoint (Verticals, Reviews, Locations don't
+      // have one, see KA-38 for Reviews, so `reorder` is undefined for them).
+      // This calls the dedicated reorder-only endpoint, not a full resave of
+      // every untouched record — that used to re-PUT (and thus revalidate)
+      // every surviving record for no reason, so one record with an
+      // unrelated bad field could fail the whole delete and make the row
+      // reappear in the UI even though it had already been removed.
+      if (reorder) await reorder(next)
       setError('')
       return true
     } catch (e) {
@@ -274,12 +284,12 @@ export function AdminProvider({ children }) {
     const bySlug = r => r.slug
     const byId = r => r.id
     return {
-      services: { list: services, setList: setServices, persist: persistServices, remove: removeService, keyOf: bySlug, reorders: true },
+      services: { list: services, setList: setServices, persist: persistServices, remove: removeService, keyOf: bySlug, reorder: reorderServices },
       verticals: { list: verticals, setList: setVerticals, persist: persistVerticals, remove: removeVertical, keyOf: byId },
-      categories: { list: categories, setList: setCategories, persist: persistCategories, remove: removeCategory, keyOf: bySlug, reorders: true },
-      doctors: { list: doctors, setList: setDoctors, persist: persistDoctors, remove: removeDoctor, keyOf: bySlug, reorders: true },
+      categories: { list: categories, setList: setCategories, persist: persistCategories, remove: removeCategory, keyOf: bySlug, reorder: reorderCategories },
+      doctors: { list: doctors, setList: setDoctors, persist: persistDoctors, remove: removeDoctor, keyOf: bySlug, reorder: reorderDoctors },
       reviews: { list: reviews, setList: setReviews, persist: persistReviews, remove: removeReview, keyOf: byId },
-      vouchers: { list: vouchers, setList: setVouchers, persist: persistVouchers, remove: removeVoucher, keyOf: byId, reorders: true },
+      vouchers: { list: vouchers, setList: setVouchers, persist: persistVouchers, remove: removeVoucher, keyOf: byId, reorder: reorderVouchers },
       locations: { list: locations, setList: setLocations, persist: persistLocations, remove: removeLocation, keyOf: byId },
     }
   }, [services, verticals, categories, doctors, reviews, vouchers, locations])
