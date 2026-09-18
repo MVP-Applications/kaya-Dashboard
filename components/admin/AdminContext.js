@@ -160,6 +160,14 @@ export function AdminProvider({ children }) {
     refreshUsers()
   }, [user, refresh, refreshUsers])
 
+  // Errors used to sit until someone clicked the banner's × — auto-clear so
+  // a stale message doesn't linger over whatever the admin does next.
+  useEffect(() => {
+    if (!error) return
+    const timer = setTimeout(() => setError(''), 4000)
+    return () => clearTimeout(timer)
+  }, [error])
+
   // ── Auth ──────────────────────────────────────────────
   const login = useCallback(async (email, password) => {
     const res = await signIn(email, password)
