@@ -150,7 +150,7 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
           <legend>Basics</legend>
           <label className="ad-field">
             <span className="ad-field-label">Slug</span>
-            <input className="ad-input" value={form.id} disabled={!isNew}
+            <input className="ad-input" value={form.id}
               placeholder={slugify(form.label) || 'auto'}
               onChange={e => set('id', e.target.value)} />
           </label>
