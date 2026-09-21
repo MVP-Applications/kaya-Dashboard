@@ -43,6 +43,12 @@
   background: #FDECEC; border: 1px solid #F5C6C6; color: #B23B3B;
   font-size: 12.5px; padding: 9px 12px; border-radius: 8px;
 }
+/* A heads-up, not a blocker — the save still goes through. */
+.ad-field-warning {
+  background: #FDF3E0; border: 1px solid #F0DCB4; color: #8A6317;
+  font-size: 12px; line-height: 1.5; padding: 8px 11px; border-radius: 8px;
+  margin-top: 8px;
+}
 .ad-login-hint { font-size: 11.5px; line-height: 1.5; color: var(--slate); margin-top: 14px; }
 .ad-login-submit[disabled] { opacity: .6; cursor: default; }
 
@@ -163,17 +169,55 @@
 }
 @keyframes ad-pulse { 0%, 100% { opacity: .45 } 50% { opacity: 1 } }
 
-/* ── Error banner (a write the database refused) ─────────── */
-.ad-error-banner {
-  display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px;
-  background: #FDECEC; border: 1px solid #F5C6C6; border-radius: 10px;
-  padding: 11px 14px;
+/* ── Center-screen saving indicator ───────────────────────── */
+.ad-loading-overlay {
+  position: fixed; inset: 0; z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
 }
-.ad-error-text { flex: 1; font-size: 12.5px; line-height: 1.5; color: #B23B3B; }
-.ad-error-close {
-  background: none; border: 0; color: #B23B3B; font-size: 18px; line-height: 1;
-  cursor: pointer; padding: 0 2px;
+.ad-loading-pill {
+  display: flex; align-items: center; gap: 10px;
+  background: #1C1C24; color: #fff; font-size: 14px; font-weight: 600;
+  padding: 14px 22px; border-radius: var(--r-full);
+  box-shadow: 0 10px 30px rgba(20, 20, 30, .28);
 }
+.ad-spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .35); border-top-color: #fff;
+  animation: ad-spin .7s linear infinite;
+}
+@keyframes ad-spin { to { transform: rotate(360deg) } }
+
+/* ── Toasts (save/delete feedback) — float above the page instead of
+   shoving content down, and never need the admin to hunt for them. ── */
+.ad-toast-stack {
+  position: fixed; right: 24px; top: 24px; z-index: 1000;
+  display: flex; flex-direction: column; gap: 12px; align-items: flex-end;
+  pointer-events: none;
+}
+.ad-toast {
+  display: flex; align-items: flex-start; gap: 14px;
+  min-width: 320px; max-width: 460px; padding: 16px 18px; border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(20, 20, 30, .16);
+  pointer-events: auto;
+  animation: ad-toast-in .18s ease-out;
+}
+@keyframes ad-toast-in {
+  from { opacity: 0; transform: translateY(-8px) }
+  to { opacity: 1; transform: translateY(0) }
+}
+.ad-toast--success {
+  background: #EAF7EE; border: 1px solid #BFE6C9; color: #1F7A3D;
+}
+.ad-toast--error {
+  background: #FDECEC; border: 1px solid #F5C6C6; color: #B23B3B;
+}
+.ad-toast-text { flex: 1; font-size: 14.5px; line-height: 1.5; font-weight: 500; }
+.ad-toast-close {
+  background: none; border: 0; color: inherit; font-size: 22px; line-height: 1;
+  cursor: pointer; padding: 0 2px; opacity: .75;
+}
+.ad-toast-close:hover { opacity: 1; }
 .ad-topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 .ad-menu-toggle {
   display: none; background: none; border: 1px solid var(--line); border-radius: 8px;

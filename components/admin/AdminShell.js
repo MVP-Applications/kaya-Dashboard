@@ -61,7 +61,7 @@ const NAV_GROUPS = [
 export default function AdminShell() {
   const {
     user, logout, requestStatusCounts, refresh, resetDemo,
-    loading, saving, error, dismissError, demoMode,
+    loading, saving, error, dismissError, success, dismissSuccess, demoMode,
   } = useAdmin()
   const [view, setView] = useState('overview')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -153,13 +153,6 @@ export default function AdminShell() {
         </header>
 
         <main className="ad-content">
-          {/* A failed write has already been rolled back on screen; this says why. */}
-          {error && (
-            <div className="ad-error-banner" role="alert">
-              <span className="ad-error-text">{error}</span>
-              <button className="ad-error-close" onClick={dismissError} aria-label="Dismiss">×</button>
-            </div>
-          )}
           {view === 'overview' && <Overview onNavigate={setView} />}
           {view === 'requests' && <RequestsView />}
           {view === 'services' && <ServicesView />}
@@ -177,6 +170,33 @@ export default function AdminShell() {
       </div>
 
       {menuOpen && <div className="ad-scrim" onClick={() => setMenuOpen(false)} />}
+
+      {/* Center-screen cue for an in-flight save — the topbar's "Saving…"
+          text is easy to miss, especially once a form has already closed. */}
+      {saving && (
+        <div className="ad-loading-overlay" role="status" aria-live="polite">
+          <div className="ad-loading-pill">
+            <span className="ad-spinner" aria-hidden="true" />
+            Saving…
+          </div>
+        </div>
+      )}
+
+      {/* Toasts float above the page instead of shifting content around. */}
+      <div className="ad-toast-stack" role="status" aria-live="polite">
+        {success && (
+          <div className="ad-toast ad-toast--success">
+            <span className="ad-toast-text">{success}</span>
+            <button className="ad-toast-close" onClick={dismissSuccess} aria-label="Dismiss">×</button>
+          </div>
+        )}
+        {error && (
+          <div className="ad-toast ad-toast--error" role="alert">
+            <span className="ad-toast-text">{error}</span>
+            <button className="ad-toast-close" onClick={dismissError} aria-label="Dismiss">×</button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
