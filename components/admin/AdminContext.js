@@ -41,6 +41,7 @@ export function AdminProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   const [services, setServices] = useState([])
   const [verticals, setVerticals] = useState([])
@@ -93,7 +94,11 @@ export function AdminProvider({ children }) {
       if (token === loadToken.current) setOverrides(ov || {})
     } catch (e) {
       if (token === loadToken.current) setOverrides({})
-      console.error('Country overrides could not be loaded; using shared copy.', e)
+      // warn, not error: this is expected today (country overrides aren't
+      // wired to the real backend yet) and is already handled above by
+      // falling back to {} — console.error would otherwise trip Next's dev
+      // overlay for a failure that isn't actually breaking anything.
+      console.warn('Country overrides could not be loaded; using shared copy.', e)
     }
 
     // Same treatment: the sidebar badge going stale is not worth taking the
@@ -103,7 +108,8 @@ export function AdminProvider({ children }) {
       if (token === loadToken.current) setRequestStatusCounts(counts)
     } catch (e) {
       if (token === loadToken.current) setRequestStatusCounts(EMPTY_REQUEST_STATUS_COUNTS)
-      console.error('Enquiry status counts could not be loaded.', e)
+      // warn, not error — same reasoning as the overrides fetch above.
+      console.warn('Enquiry status counts could not be loaded.', e)
     }
 
     try {
@@ -168,6 +174,14 @@ export function AdminProvider({ children }) {
     return () => clearTimeout(timer)
   }, [error])
 
+  // Success toasts are purely informational — always auto-clear, faster
+  // than errors since there's nothing the admin needs to read twice.
+  useEffect(() => {
+    if (!success) return
+    const timer = setTimeout(() => setSuccess(''), 3000)
+    return () => clearTimeout(timer)
+  }, [success])
+
   // ── Auth ──────────────────────────────────────────────
   const login = useCallback(async (email, password) => {
     const res = await signIn(email, password)
@@ -194,6 +208,7 @@ export function AdminProvider({ children }) {
     try {
       await persist(next)
       setError('')
+      setSuccess('Changes saved.')
       return true
     } catch (e) {
       setList(prev)
@@ -267,6 +282,7 @@ export function AdminProvider({ children }) {
       // reappear in the UI even though it had already been removed.
       if (reorder) await reorder(next)
       setError('')
+      setSuccess('Deleted.')
       return true
     } catch (e) {
       setList(prev)
@@ -570,6 +586,7 @@ export function AdminProvider({ children }) {
   const value = {
     ready, demoMode: isDemoMode,
     loading, saving, error, dismissError: () => setError(''),
+    success, dismissSuccess: () => setSuccess(''),
     refresh, resetDemo,
     user, login, logout, allowed,
     services, upsertService, deleteService,

@@ -8,6 +8,13 @@ function slugify(str) {
   return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
+// The vertical page hero renders full-bleed at ~2:1 (see vp-hero in the
+// website's globals.css) — anything far off that gets cropped hard by
+// object-fit: cover. This is a nudge, not a hard rule, so a slightly off
+// image is still allowed through.
+const HERO_MIN_RATIO = 1.8
+const HERO_MAX_RATIO = 2.2
+
 const empty = {
   id: '', label: '', labelAr: '', hint: '', color: '#6E5A96', heroImage: '',
   heroEyebrow: '', heroHeadline: '', heroHeadlineEm: '', heroSub: '',
@@ -17,7 +24,7 @@ const empty = {
 }
 
 export default function VerticalsView() {
-  const { verticals, services, upsertVertical, deleteVertical, allowed } = useAdmin()
+  const { verticals, services, upsertVertical, deleteVertical, allowed, saving } = useAdmin()
   const [editing, setEditing] = useState(null) // { initial, isNew }
   const [confirm, setConfirm] = useState(null)
 
@@ -34,7 +41,15 @@ export default function VerticalsView() {
         initial={editing.initial}
         isNew={editing.isNew}
         existing={verticals}
-        onSave={(rec, orig) => { upsertVertical(rec, orig); setEditing(null) }}
+        saving={saving}
+        onSave={async (rec, orig) => {
+          // Only leave the editor once the write actually lands — closing
+          // early (as this used to) meant a failed save's rollback and error
+          // toast appeared back on the list, with no sign of which edit had
+          // failed or that it was still in flight.
+          const ok = await upsertVertical(rec, orig)
+          if (ok) setEditing(null)
+        }}
         onClose={() => setEditing(null)}
       />
     )
@@ -104,7 +119,7 @@ export default function VerticalsView() {
  * sends `slug`/`translations` to the backend, so these never make it past
  * a save; a reload of this vertical from the API comes back blank again.
  */
-function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
+function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
   const [form, setForm] = useState({
     ...empty, ...initial,
     // A native color input needs a valid hex value — an existing vertical
@@ -113,6 +128,7 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
     color: initial.color || '#6E5A96',
   })
   const [error, setError] = useState('')
+  const [heroImageWarning, setHeroImageWarning] = useState('')
   const [locale, setLocale] = useState('EN')
   const originalId = isNew ? null : initial.id
 
@@ -125,6 +141,31 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
   const statsKey = isAr ? 'heroStatsAr' : 'heroStats'
 
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
+
+  // Only a freshly-uploaded file can be measured here — a pasted URL/path
+  // may not even be reachable from the browser (private bucket, CORS), so
+  // that case is let through unchecked rather than silently failing closed.
+  function setHeroImage(value) {
+    set('heroImage', value)
+    if (typeof value !== 'string' || !value.startsWith('data:image')) {
+      setHeroImageWarning('')
+      return
+    }
+    const img = new window.Image()
+    img.onload = () => {
+      const ratio = img.naturalWidth / img.naturalHeight
+      if (ratio < HERO_MIN_RATIO || ratio > HERO_MAX_RATIO) {
+        setHeroImageWarning(
+          `This image is ${ratio.toFixed(2)}:1 — the hero banner shows best around 2:1 `
+          + `(e.g. 1920×1000px). It'll still save, but may look cropped or squeezed on the site.`
+        )
+      } else {
+        setHeroImageWarning('')
+      }
+    }
+    img.onerror = () => setHeroImageWarning('')
+    img.src = value
+  }
 
   // ── Trust points (repeatable icon + label + hint) — EN or AR depending on the active tab ──
   function addTrustPoint() {
@@ -189,7 +230,7 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
   return (
     <form className="ad-editor" onSubmit={submit}>
       <div className="ad-editor-head">
-        <button type="button" className="ad-back" onClick={onClose}>← Back</button>
+        <button type="button" className="ad-back" onClick={onClose} disabled={saving}>← Back</button>
         <div className="ad-editor-titles">
           <h1 className="ad-view-title">{isNew ? 'New vertical' : 'Edit vertical'}</h1>
           <p className="ad-view-sub">
@@ -197,9 +238,9 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
           </p>
         </div>
         <div className="ad-editor-actions">
-          <button type="button" className="ad-btn ad-btn--ghost" onClick={onClose}>Cancel</button>
-          <button type="submit" className="ad-btn ad-btn--primary">
-            {isNew ? 'Create vertical' : 'Save changes'}
+          <button type="button" className="ad-btn ad-btn--ghost" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="submit" className="ad-btn ad-btn--primary" disabled={saving} aria-busy={saving}>
+            {saving ? 'Saving…' : (isNew ? 'Create vertical' : 'Save changes')}
           </button>
         </div>
       </div>
@@ -257,7 +298,11 @@ function VerticalForm({ initial, isNew, existing, onSave, onClose }) {
           </p>
           <div className="ad-field">
             <span className="ad-field-label">Hero image</span>
-            <ImagePicker value={form.heroImage} onChange={v => set('heroImage', v)} />
+            <p className="ad-fieldset-hint">
+              A wide, landscape photo - about 1920×1000px (roughly 2:1).
+            </p>
+            <ImagePicker value={form.heroImage} onChange={setHeroImage} />
+            {heroImageWarning && <div className="ad-field-warning">{heroImageWarning}</div>}
           </div>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'الشعار (Eyebrow)' : 'Eyebrow'}</span>
