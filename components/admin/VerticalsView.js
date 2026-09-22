@@ -16,7 +16,7 @@ const HERO_MIN_RATIO = 1.8
 const HERO_MAX_RATIO = 2.2
 
 const empty = {
-  id: '', label: '', labelAr: '', hint: '', color: '#6E5A96', heroImage: '',
+  id: '', label: '', labelAr: '', hint: '', hintAr: '', color: '#6E5A96', heroImage: '',
   heroEyebrow: '', heroHeadline: '', heroHeadlineEm: '', heroSub: '',
   heroTrustPoints: [], heroStats: [],
   heroEyebrowAr: '', heroHeadlineAr: '', heroHeadlineEmAr: '', heroSubAr: '',
@@ -113,12 +113,6 @@ export default function VerticalsView() {
   )
 }
 
-/**
- * `hint`/`color` have no backend column (KA-30) — edited here anyway
- * (per KA-30) but `persistVerticals` (lib/admin/store-api.js) only ever
- * sends `slug`/`translations` to the backend, so these never make it past
- * a save; a reload of this vertical from the API comes back blank again.
- */
 function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
   const [form, setForm] = useState({
     ...empty, ...initial,
@@ -133,6 +127,7 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
   const originalId = isNew ? null : initial.id
 
   const isAr = locale === 'AR'
+  const hintKey = isAr ? 'hintAr' : 'hint'
   const eyebrowKey = isAr ? 'heroEyebrowAr' : 'heroEyebrow'
   const headlineKey = isAr ? 'heroHeadlineAr' : 'heroHeadline'
   const headlineEmKey = isAr ? 'heroHeadlineEmAr' : 'heroHeadlineEm'
@@ -215,7 +210,7 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
 
     onSave({
       ...initial, id, slug: id, label, labelAr: form.labelAr.trim(),
-      hint: form.hint.trim(), color: form.color, heroImage: form.heroImage,
+      hint: form.hint.trim(), hintAr: form.hintAr.trim(), color: form.color, heroImage: form.heroImage,
       heroEyebrow: form.heroEyebrow.trim(), heroHeadline: form.heroHeadline.trim(),
       heroHeadlineEm: form.heroHeadlineEm.trim(), heroSub: form.heroSub.trim(),
       heroTrustPoints: cleanTrustPoints(form.heroTrustPoints),
@@ -256,25 +251,17 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
               placeholder={slugify(form.label) || 'auto'}
               onChange={e => set('id', e.target.value)} />
           </label>
-          <div className="ad-grid2">
-            <label className="ad-field">
-              <span className="ad-field-label">Color</span>
-              <input className="ad-input" type="color" value={form.color}
-                onChange={e => set('color', e.target.value)} />
-            </label>
-            <label className="ad-field">
-              <span className="ad-field-label">Hint text</span>
-              <input className="ad-input" value={form.hint}
-                placeholder="Short helper text shown with this vertical"
-                onChange={e => set('hint', e.target.value)} />
-            </label>
-          </div>
+          <label className="ad-field">
+            <span className="ad-field-label">Color</span>
+            <input className="ad-input" type="color" value={form.color}
+              onChange={e => set('color', e.target.value)} />
+          </label>
         </fieldset>
 
         <fieldset className="ad-fieldset">
           <legend>Label</legend>
           <p className="ad-fieldset-hint">
-            English is required. Fill in the Arabic label to add a translation.
+            English is required. Fill in the Arabic label and hint text to add a translation.
           </p>
           <LocaleToggle locale={locale} onChange={setLocale} />
           {locale === 'EN' ? (
@@ -289,6 +276,12 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
                 onChange={e => set('labelAr', e.target.value)} />
             </label>
           )}
+          <label className="ad-field">
+            <span className="ad-field-label">{isAr ? 'نص التلميح (Hint text)' : 'Hint text'}</span>
+            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[hintKey]}
+              placeholder="Short helper text shown with this vertical"
+              onChange={e => set(hintKey, e.target.value)} />
+          </label>
         </fieldset>
 
         <fieldset className="ad-fieldset">
