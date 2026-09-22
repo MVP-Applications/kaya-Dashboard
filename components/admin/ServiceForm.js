@@ -199,7 +199,7 @@ export default function ServiceForm({ initial, isNew, onClose }) {
             <span className="ad-field-label">Badge</span>
             <select className="ad-input" value={form.badge}
               onChange={e => set('badge', e.target.value)}>
-              {BADGE_OPTIONS.map(b => <option key={b || 'none'} value={b}>{b || '— none —'}</option>)}
+              {BADGE_OPTIONS.map(b => <option key={b.value || 'none'} value={b.value}>{b.label}</option>)}
             </select>
           </label>
           <label className="ad-field ad-field--toggle">
