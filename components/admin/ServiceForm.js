@@ -22,6 +22,7 @@ export default function ServiceForm({ initial, isNew, onClose }) {
     downtimeNotes: '', downtimeLevel: '', suitable: [],
     benefits: [],
     nameAr: '', subAr: '', whatAr: '', mechanismAr: '', suitableAr: [], benefitsAr: [],
+    durationMinsAr: '', sessionsAr: '', downtimeNotesAr: '', downtimeLevelAr: '',
     ...initial,
   }))
   const [error, setError] = useState('')
@@ -35,6 +36,10 @@ export default function ServiceForm({ initial, isNew, onClose }) {
   const mechanismKey = isAr ? 'mechanismAr' : 'mechanism'
   const suitableKey = isAr ? 'suitableAr' : 'suitable'
   const benefitsKey = isAr ? 'benefitsAr' : 'benefits'
+  const durationKey = isAr ? 'durationMinsAr' : 'durationMins'
+  const sessionsKey = isAr ? 'sessionsAr' : 'sessions'
+  const downtimeNotesKey = isAr ? 'downtimeNotesAr' : 'downtimeNotes'
+  const downtimeLevelKey = isAr ? 'downtimeLevelAr' : 'downtimeLevel'
 
   function set(field, value) {
     setForm(f => ({ ...f, [field]: value }))
@@ -117,6 +122,10 @@ export default function ServiceForm({ initial, isNew, onClose }) {
       mechanismAr: form.mechanismAr.trim(),
       suitableAr: form.suitableAr.map(s => s.trim()).filter(Boolean),
       benefitsAr: cleanBenefits(form.benefitsAr),
+      durationMinsAr: form.durationMinsAr.trim(),
+      sessionsAr: form.sessionsAr.trim(),
+      downtimeNotesAr: form.downtimeNotesAr.trim(),
+      downtimeLevelAr: form.downtimeLevelAr.trim(),
     }
     upsertService(record, originalSlug)
     onClose()
@@ -243,31 +252,38 @@ export default function ServiceForm({ initial, isNew, onClose }) {
         </fieldset>
 
         <fieldset className="ad-fieldset">
-          <legend>What to expect</legend>
+          <legend>What to expect {isAr ? '(العربية)' : ''}</legend>
+          <p className="ad-fieldset-hint">
+            English is required. Fill in the Arabic versions so visitors browsing
+            in Arabic see these details in Arabic too.
+          </p>
           <div className="ad-grid2">
             <label className="ad-field">
-              <span className="ad-field-label">Duration (minutes)</span>
-              <input type="number" min="1" className="ad-input" value={form.durationMins}
-                onChange={e => set('durationMins', e.target.value)} />
+              <span className="ad-field-label">{isAr ? 'المدة (Duration)' : 'Duration'}</span>
+              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[durationKey]}
+                placeholder="e.g. 45 mins"
+                onChange={e => set(durationKey, e.target.value)} />
             </label>
             <label className="ad-field">
-              <span className="ad-field-label">Sessions</span>
-              <input className="ad-input" value={form.sessions}
+              <span className="ad-field-label">{isAr ? 'الجلسات (Sessions)' : 'Sessions'}</span>
+              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[sessionsKey]}
                 placeholder="e.g. 3–6 sessions"
-                onChange={e => set('sessions', e.target.value)} />
+                onChange={e => set(sessionsKey, e.target.value)} />
             </label>
           </div>
           <div className="ad-grid2">
             <label className="ad-field">
-              <span className="ad-field-label">Downtime</span>
-              <input className="ad-input" value={form.downtimeNotes}
-                onChange={e => set('downtimeNotes', e.target.value)} />
+              <span className="ad-field-label">{isAr ? 'فترة التعافي (Downtime)' : 'Downtime'}</span>
+              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeNotesKey]}
+                onChange={e => set(downtimeNotesKey, e.target.value)} />
             </label>
             <label className="ad-field">
-              <span className="ad-field-label">Downtime severity</span>
-              <input className="ad-input" value={form.downtimeLevel}
+              <span className="ad-field-label">
+                {isAr ? 'شدة فترة التعافي (Downtime severity)' : 'Downtime severity'}
+              </span>
+              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeLevelKey]}
                 placeholder="e.g. Minimal, Mild, Moderate"
-                onChange={e => set('downtimeLevel', e.target.value)} />
+                onChange={e => set(downtimeLevelKey, e.target.value)} />
             </label>
           </div>
         </fieldset>
