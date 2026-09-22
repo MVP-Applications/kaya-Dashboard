@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useAdmin } from './AdminContext'
 import ImagePicker from './ImagePicker'
+import LocaleToggle from './LocaleToggle'
 
 function slugify(str) {
   return String(str)
@@ -20,7 +21,13 @@ export default function ReviewForm({ initial, isNew, onClose }) {
   const { services, reviews, upsertReview } = useAdmin()
   const [form, setForm] = useState(() => cloneSafe(initial))
   const [error, setError] = useState('')
+  const [locale, setLocale] = useState('EN')
   const originalId = isNew ? null : initial.id
+
+  const isAr = locale === 'AR'
+  const nameKey = isAr ? 'nameAr' : 'name'
+  const locationKey = isAr ? 'locationAr' : 'location'
+  const quoteKey = isAr ? 'quoteAr' : 'quote'
 
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
 
@@ -59,16 +66,20 @@ export default function ReviewForm({ initial, isNew, onClose }) {
       <div className="ad-editor-body">
         <fieldset className="ad-fieldset">
           <legend>Patient</legend>
+          <p className="ad-fieldset-hint">
+            English is required. Fill in the Arabic name and quote to add an Arabic translation.
+          </p>
+          <LocaleToggle locale={locale} onChange={setLocale} />
           <div className="ad-grid2">
             <label className="ad-field">
-              <span className="ad-field-label">Name *</span>
-              <input className="ad-input" value={form.name}
-                onChange={e => set('name', e.target.value)} placeholder="e.g. Sarah A." />
+              <span className="ad-field-label">{isAr ? 'الاسم (Name)' : 'Name *'}</span>
+              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
+                onChange={e => set(nameKey, e.target.value)} placeholder="e.g. Sarah A." />
             </label>
             <label className="ad-field">
-              <span className="ad-field-label">Location</span>
-              <input className="ad-input" value={form.location}
-                onChange={e => set('location', e.target.value)} placeholder="e.g. Dubai" />
+              <span className="ad-field-label">{isAr ? 'الموقع (Location)' : 'Location'}</span>
+              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[locationKey]}
+                onChange={e => set(locationKey, e.target.value)} placeholder="e.g. Dubai" />
             </label>
           </div>
         </fieldset>
@@ -86,9 +97,9 @@ export default function ReviewForm({ initial, isNew, onClose }) {
         </fieldset>
 
         <fieldset className="ad-fieldset">
-          <legend>Quote *</legend>
-          <textarea className="ad-input ad-textarea" rows={4} value={form.quote}
-            onChange={e => set('quote', e.target.value)} placeholder="What the patient said…" />
+          <legend>{isAr ? 'الاقتباس (Quote) *' : 'Quote *'}</legend>
+          <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4} value={form[quoteKey]}
+            onChange={e => set(quoteKey, e.target.value)} placeholder="What the patient said…" />
           <div className="ad-grid2">
             <label className="ad-field">
               <span className="ad-field-label">Rating *</span>

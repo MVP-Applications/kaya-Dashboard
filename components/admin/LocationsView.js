@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { CLINIC_COUNTRIES, emptyLocation } from '@/lib/admin/content'
 import { fetchCountryOptions, createCity } from '@/lib/admin/store'
+import LocaleToggle from './LocaleToggle'
 
 function slugify(str) {
   return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -142,7 +143,12 @@ function LocationForm({ initial, isNew, existing, onSave, onClose }) {
   const [countryOptions, setCountryOptions] = useState([]) // [{id, code, name, cities:[{id,name}]}]
   const [newCityName, setNewCityName] = useState('')
   const [addingCity, setAddingCity] = useState(false)
+  const [locale, setLocale] = useState('EN')
   const originalId = isNew ? null : initial.id
+
+  const isAr = locale === 'AR'
+  const nameKey = isAr ? 'nameAr' : 'name'
+  const addressKey = isAr ? 'addressAr' : 'address'
 
   useEffect(() => {
     let cancelled = false
@@ -225,10 +231,6 @@ function LocationForm({ initial, isNew, existing, onSave, onClose }) {
           <legend>Basics</legend>
           <div className="ad-grid2">
             <label className="ad-field">
-              <span className="ad-field-label">Clinic name *</span>
-              <input className="ad-input" value={form.name} onChange={e => set('name', e.target.value)} />
-            </label>
-            <label className="ad-field">
               <span className="ad-field-label">ID</span>
               <input className="ad-input" value={form.id} disabled={!isNew}
                 placeholder={slugify(form.name) || 'auto'}
@@ -261,10 +263,23 @@ function LocationForm({ initial, isNew, existing, onSave, onClose }) {
               </button>
             </div>
           </div>
+        </fieldset>
+
+        <fieldset className="ad-fieldset">
+          <legend>Name &amp; address</legend>
+          <p className="ad-fieldset-hint">
+            English is required. Fill in the Arabic name and address to add an Arabic translation.
+          </p>
+          <LocaleToggle locale={locale} onChange={setLocale} />
           <label className="ad-field">
-            <span className="ad-field-label">Address</span>
-            <textarea className="ad-textarea" rows={2} value={form.address}
-              onChange={e => set('address', e.target.value)} />
+            <span className="ad-field-label">{isAr ? 'اسم العيادة (Clinic name)' : 'Clinic name *'}</span>
+            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
+              onChange={e => set(nameKey, e.target.value)} />
+          </label>
+          <label className="ad-field">
+            <span className="ad-field-label">{isAr ? 'العنوان (Address)' : 'Address'}</span>
+            <textarea className="ad-textarea" dir={isAr ? 'rtl' : undefined} rows={2} value={form[addressKey]}
+              onChange={e => set(addressKey, e.target.value)} />
           </label>
         </fieldset>
 
