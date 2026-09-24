@@ -10,6 +10,7 @@ import {
   persistVouchers, removeVoucher, reorderVouchers,
   persistLocations, removeLocation,
   fetchBlogs, persistBlogs, removeBlog,
+  fetchTellUs, persistTellUs,
   persistPageSection, persistSiteSection,
   fetchRequestsPage, fetchRequestStatusCounts, fetchRequestCountries,
   persistRequestStatus, persistRequestNotes, removeRequestRecord,
@@ -20,6 +21,7 @@ import {
 import { resolveContent, setOverride, clearSectionOverride } from '@/lib/admin/country-content'
 import { COUNTRY_IDS } from '@/lib/countries'
 import { signIn, signOut, getCurrentUser, onAuthChange, can } from '@/lib/admin/auth'
+import { normaliseTellUs } from '@/lib/admin/tell-us'
 
 const AdminContext = createContext(null)
 
@@ -57,6 +59,9 @@ export function AdminProvider({ children }) {
   const [blogs, setBlogs] = useState([])
   // Blog posts load separately (see refresh) — '' while fine, else why not.
   const [blogsError, setBlogsError] = useState('')
+  // Tell Us Everything questionnaire — a single document, loaded the same way.
+  const [tellUsRaw, setTellUsRaw] = useState(null)
+  const [tellUsError, setTellUsError] = useState('')
   const [users, setUsers] = useState([])
   // '' means "all countries" — editing the shared copy every market inherits.
   const [activeCountry, setActiveCountry] = useState('')
@@ -115,6 +120,13 @@ export function AdminProvider({ children }) {
       if (token === loadToken.current) { setBlogs([]); setBlogsError(e.message) }
     }
 
+    try {
+      const doc = await fetchTellUs()
+      if (token === loadToken.current) { setTellUsRaw(doc); setTellUsError('') }
+    } catch (e) {
+      if (token === loadToken.current) { setTellUsRaw(null); setTellUsError(e.message) }
+    }
+
     // Same treatment: the sidebar badge going stale is not worth taking the
     // whole catalogue load down over.
     try {
@@ -168,6 +180,7 @@ export function AdminProvider({ children }) {
         loadToken.current++
         applyAll(EMPTY)
         setBlogs([])
+        setTellUsRaw(null)
       }
     })
 
@@ -210,6 +223,7 @@ export function AdminProvider({ children }) {
     loadToken.current++
     applyAll(EMPTY)
     setBlogs([])
+    setTellUsRaw(null)
   }, [])
 
   const allowed = useCallback(action => can(user, action), [user])
@@ -385,6 +399,32 @@ export function AdminProvider({ children }) {
       : appendTo(cols.locations, record)
   }, [cols, upsertInto, appendTo])
   const deleteLocation = useCallback(k => deleteFrom(cols.locations, k), [cols, deleteFrom])
+
+  // Normalised against the current verticals, so a newly added main
+  // treatment shows up with the shared questions already in place.
+  const tellUs = useMemo(
+    () => (tellUsRaw ? normaliseTellUs(tellUsRaw, verticals) : null),
+    [tellUsRaw, verticals],
+  )
+
+  /** Replace the whole questionnaire. Resolves true once saved. */
+  const saveTellUs = useCallback(async doc => {
+    const prev = tellUsRaw
+    setTellUsRaw(doc)
+    setSaving(true)
+    try {
+      await persistTellUs(doc)
+      setError('')
+      setSuccess('Tell Us Everything saved.')
+      return true
+    } catch (e) {
+      setTellUsRaw(prev)
+      setError(e.message)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }, [tellUsRaw])
 
   const upsertBlog = useCallback((r, k) => upsertInto(cols.blogs, r, k), [cols, upsertInto])
   const deleteBlog = useCallback(k => deleteFrom(cols.blogs, k), [cols, deleteFrom])
@@ -629,6 +669,7 @@ export function AdminProvider({ children }) {
     saveSection, resetSectionToShared,
     locations, upsertLocation, deleteLocation,
     blogs, blogsError, upsertBlog, deleteBlog,
+    tellUs, tellUsError, saveTellUs,
     users, setUserRole, refreshUsers,
     moveUp, moveDown,
   }

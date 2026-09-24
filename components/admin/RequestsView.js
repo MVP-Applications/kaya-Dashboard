@@ -27,6 +27,10 @@ function RequestRowSkeleton() {
         <div className="ad-skeleton-block ad-skeleton-block--sm" style={{ width: '45%' }} />
       </td>
       <td>
+        <div className="ad-skeleton-block" style={{ width: '70%' }} />
+        <div className="ad-skeleton-block ad-skeleton-block--sm" style={{ width: '40%' }} />
+      </td>
+      <td>
         <div className="ad-skeleton-block" style={{ width: '50%' }} />
         <div className="ad-skeleton-block ad-skeleton-block--sm" style={{ width: '65%' }} />
       </td>
@@ -103,7 +107,7 @@ function timeAgo(iso) {
 export default function RequestsView() {
   const {
     requestStatusCounts, loadRequestsPage, loadRequestCountries,
-    updateRequestStatus, updateRequestNotes, deleteRequestRecord, allowed,
+    updateRequestStatus, updateRequestNotes, deleteRequestRecord, allowed, services,
   } = useAdmin()
 
   const [query, setQuery] = useState('')
@@ -112,6 +116,8 @@ export default function RequestsView() {
   const [source, setSource] = useState('')
   const [country, setCountry] = useState('')
   const [city, setCity] = useState('')
+  // A treatment's slug — the store resolves it to whatever the backend matches on.
+  const [treatment, setTreatment] = useState('')
   const [range, setRange] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
@@ -145,7 +151,7 @@ export default function RequestsView() {
   // that now has 2 pages would just show an empty screen.
   useEffect(() => {
     setPage(1)
-  }, [debouncedQuery, status, source, country, city, range, from, to])
+  }, [debouncedQuery, status, source, country, city, treatment, range, from, to])
 
   const dateBounds = useMemo(() => {
     const preset = DATE_RANGES.find(d => d.id === range)
@@ -169,10 +175,17 @@ export default function RequestsView() {
     return countries.find(c => c.id === country)?.cities || []
   }, [countries, country])
 
+  const treatmentOptions = useMemo(
+    () => [...services].sort((a, b) => a.name.localeCompare(b.name)),
+    [services],
+  )
+
   const filters = useMemo(() => ({
     search: debouncedQuery, status, source, country, city,
+    // Only sent when set, so an unfiltered request is exactly what it was before.
+    ...(treatment ? { treatment } : {}),
     from: dateBounds.from, to: dateBounds.to,
-  }), [debouncedQuery, status, source, country, city, dateBounds])
+  }), [debouncedQuery, status, source, country, city, treatment, dateBounds])
 
   useEffect(() => {
     let alive = true
@@ -199,12 +212,12 @@ export default function RequestsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId])
 
-  const isFiltered = Boolean(query.trim() || status || source || country || city || range || from || to)
+  const isFiltered = Boolean(query.trim() || status || source || country || city || treatment || range || from || to)
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   function clearFilters() {
     setQuery(''); setStatus(''); setSource('')
-    setCountry(''); setCity(''); setRange(''); setFrom(''); setTo('')
+    setCountry(''); setCity(''); setTreatment(''); setRange(''); setFrom(''); setTo('')
   }
 
   /** Opens the confirmation prompt; the actual API call waits for confirmStatusChange. */
@@ -357,6 +370,16 @@ export default function RequestsView() {
         </select>
         <select
           className="ad-input ad-filter"
+          value={treatment}
+          onChange={e => setTreatment(e.target.value)}
+          disabled={treatmentOptions.length === 0}
+          aria-label="Treatment"
+        >
+          <option value="">All treatments</option>
+          {treatmentOptions.map(t => <option key={t.slug} value={t.slug}>{t.name}</option>)}
+        </select>
+        <select
+          className="ad-input ad-filter"
           value={range}
           // Leaving the custom range clears its dates, so they can't keep
           // filtering invisibly from behind a preset.
@@ -403,6 +426,7 @@ export default function RequestsView() {
           <thead>
             <tr>
               <th>Consumer</th>
+              <th>Treatment</th>
               <th>Interest</th>
               <th>Location</th>
               <th>Received</th>
@@ -419,13 +443,15 @@ export default function RequestsView() {
                   <div className="ad-cell-slug">{r.mobile}</div>
                 </td>
                 <td>
+                  {/* Concern-finder enquiries often name only an area, not a treatment. */}
+                  <div>{r.treatment || <span className="ad-muted">Not specified</span>}</div>
+                  {r.treatmentArea && <div className="ad-cell-slug">{r.treatmentArea}</div>}
+                </td>
+                <td>
                   <span className={`ad-source-pill ad-source-pill--${r.source}`}>
                     {r.source === 'consultation' ? 'Consultation' : 'Concern finder'}
                   </span>
-                  <div className="ad-req-interest">
-                    {r.treatment || r.treatmentArea || <span className="ad-muted">—</span>}
-                    {r.doctor && <span className="ad-req-doc"> · {r.doctor}</span>}
-                  </div>
+                  {r.doctor && <div className="ad-req-interest ad-req-doc">{r.doctor}</div>}
                 </td>
                 <td>
                   <div>{r.city || <span className="ad-muted">—</span>}</div>
@@ -448,7 +474,7 @@ export default function RequestsView() {
               </tr>
             ))}
             {!loading && items.length === 0 && (
-              <tr><td colSpan={6} className="ad-empty">
+              <tr><td colSpan={7} className="ad-empty">
                 {loadError
                   ? `Could not load enquiries — ${loadError}`
                   : total === 0 && !isFiltered
@@ -563,6 +589,21 @@ export default function RequestsView() {
                   </div>
                 )}
               </div>
+
+              {/* Tell Us Everything answers — worded as the person saw them. */}
+              {open.answers && open.answers.length > 0 && (
+                <div className="ad-field">
+                  <span className="ad-field-label">Tell Us Everything answers</span>
+                  <div className="ad-req-detail">
+                    {open.answers.map(a => (
+                      <div key={a.questionId || a.question} className="ad-req-row">
+                        <span className="ad-req-key">{a.question}</span>
+                        <span className="ad-req-val">{(a.answers || []).join(', ') || '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {open.message && (
                 <div className="ad-field">
