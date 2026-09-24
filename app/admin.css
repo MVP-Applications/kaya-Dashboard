@@ -1578,3 +1578,66 @@
 @media (max-width: 480px) {
   .ad-pb-templates { grid-template-columns: 1fr; }
 }
+
+/* ── Customers ─────────────────────────────────────────── */
+.ad-cu-stat { cursor: pointer; border-left-color: var(--mid); }
+.ad-cu-stat--static { cursor: default; }
+.ad-cu-stat--static:hover { transform: none; box-shadow: none; }
+.ad-cu-loading { opacity: .5; }
+.ad-cu-avatar {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; background: var(--lilac-lt); color: var(--primary);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+}
+.ad-cu-avatar--lg { width: 52px; height: 52px; font-size: 17px; }
+.ad-cu-row--disabled td { opacity: .6; }
+.ad-cu-disabled-tag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #6B6577; background: #EFEDF3; padding: 2px 6px; border-radius: 5px; vertical-align: middle; }
+.ad-cu-providers { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.ad-cu-provider { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--r-full); background: var(--mist); color: var(--deep); border: 1px solid var(--line); }
+.ad-cu-provider--google { background: #EAF1FD; color: #1A56B8; border-color: #D3E2FA; }
+.ad-cu-provider--apple { background: #F0F0F2; color: #1D1D1F; border-color: #E0E0E5; }
+.ad-cu-provider--samsung { background: #E8ECFB; color: #1428A0; border-color: #D4DBF6; }
+.ad-cu-provider--phone { background: #E1F1E9; color: #276749; border-color: #BBE0CC; }
+.ad-cu-meter { display: inline-flex; align-items: center; gap: 8px; }
+.ad-cu-meter-track { width: 64px; height: 6px; border-radius: 3px; background: var(--mist); overflow: hidden; }
+.ad-cu-meter-fill { display: block; height: 100%; background: var(--primary); border-radius: 3px; }
+.ad-cu-meter-n { font-size: 12px; color: var(--slate); font-variant-numeric: tabular-nums; }
+
+.ad-cu-head { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+.ad-cu-head-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ad-cu-gap { margin-top: 16px; }
+/* Two account actions can outgrow a phone's width — let them wrap. */
+.ad-cu .ad-editor-actions { flex-wrap: wrap; }
+.ad-cu-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; align-items: start; margin-top: 18px; }
+.ad-cu-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.ad-cu-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ad-cu-note { font-size: 13px; color: var(--slate); line-height: 1.6; }
+.ad-cu-medical { border-color: #E6DDF3; }
+.ad-cu-locked {
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: start;
+  background: var(--whisper); border: 1px dashed var(--lilac); border-radius: 12px; padding: 14px;
+}
+.ad-cu-lock { font-size: 20px; grid-row: span 2; }
+.ad-cu-locked > div { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--slate); }
+.ad-cu-locked strong { color: var(--ink); font-size: 13px; }
+.ad-cu-locked .ad-btn { grid-column: 2; justify-self: start; margin-top: 6px; }
+.ad-cu-locked .ad-confirm-error { grid-column: 2; }
+.ad-cu-medical-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.ad-cu-history { display: flex; flex-direction: column; }
+.ad-cu-history-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.ad-cu-history-row:last-child { border-bottom: 0; }
+.ad-cu-history-row > span:first-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ad-cu-history-row .ad-badge { text-transform: capitalize; flex-shrink: 0; }
+
+@media (max-width: 1000px) {
+  .ad-cu-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 700px) {
+  /* Stack back button, identity and actions instead of squeezing one row. */
+  .ad-cu .ad-editor-head { flex-wrap: wrap; align-items: flex-start; }
+  .ad-cu-head { flex-basis: 100%; order: 2; }
+  .ad-cu .ad-editor-actions { order: 3; width: 100%; }
+}
+@media (max-width: 560px) {
+  .ad-cu-head { align-items: flex-start; }
+  .ad-cu-avatar--lg { width: 42px; height: 42px; font-size: 14px; }
+}
