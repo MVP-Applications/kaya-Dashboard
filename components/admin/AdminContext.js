@@ -53,6 +53,10 @@ export function AdminProvider({ children }) {
   const [pages, setPages] = useState({})
   const [site, setSite] = useState({})
   const [locations, setLocations] = useState([])
+  // Bumped after every full reload (Refresh content, Reset sample data), so
+  // screens that fetch their own data — Requests, Voucher Requests, Customers
+  // — refetch too.
+  const [dataVersion, setDataVersion] = useState(0)
   const [users, setUsers] = useState([])
   // '' means "all countries" — editing the shared copy every market inherits.
   const [activeCountry, setActiveCountry] = useState('')
@@ -121,7 +125,10 @@ export function AdminProvider({ children }) {
       if (token !== loadToken.current) return
       setError(e.message)
     } finally {
-      if (token === loadToken.current) setLoading(false)
+      if (token === loadToken.current) {
+        setLoading(false)
+        setDataVersion(v => v + 1)
+      }
     }
   }, [])
 
@@ -608,6 +615,7 @@ export function AdminProvider({ children }) {
     allOverrides: overrides,
     saveSection, resetSectionToShared,
     locations, upsertLocation, deleteLocation,
+    dataVersion,
     users, setUserRole, refreshUsers,
     moveUp, moveDown,
   }

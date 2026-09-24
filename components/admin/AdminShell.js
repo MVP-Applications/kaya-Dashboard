@@ -10,6 +10,7 @@ import DoctorsView from './DoctorsView'
 import IndulgenceView from './IndulgenceView'
 import VoucherRequestsView from './VoucherRequestsView'
 import ReviewsView from './ReviewsView'
+import CustomersView from './CustomersView'
 import RequestsView from './RequestsView'
 import PagesView from './PagesView'
 import LocationsView from './LocationsView'
@@ -31,6 +32,8 @@ const NAV_GROUPS = [
     items: [
       { id: 'requests', label: 'Requests', icon: '✉' },
       { id: 'voucher-requests', label: 'Voucher Requests', icon: '🎟' },
+      // `permission` hides the item from roles without it (see PERMISSIONS).
+      { id: 'customers', label: 'Customers', icon: '☺', permission: 'viewCustomers' },
     ],
   },
   {
@@ -60,7 +63,7 @@ const NAV_GROUPS = [
 
 export default function AdminShell() {
   const {
-    user, logout, requestStatusCounts, refresh, resetDemo,
+    user, logout, requestStatusCounts, refresh, resetDemo, allowed,
     loading, saving, error, dismissError, success, dismissSuccess, demoMode,
   } = useAdmin()
   const [view, setView] = useState('overview')
@@ -86,7 +89,7 @@ export default function AdminShell() {
           {NAV_GROUPS.map((group, gi) => (
             <div className="ad-nav-group" key={group.label || `g${gi}`}>
               {group.label && <div className="ad-nav-divider">{group.label}</div>}
-              {group.items.map(n => (
+              {group.items.filter(n => !n.permission || allowed(n.permission)).map(n => (
                 <button
                   key={n.id}
                   className={`ad-nav-item${view === n.id ? ' active' : ''}`}
@@ -161,6 +164,7 @@ export default function AdminShell() {
           {view === 'doctors' && <DoctorsView />}
           {view === 'indulgence' && <IndulgenceView />}
           {view === 'voucher-requests' && <VoucherRequestsView />}
+          {view === 'customers' && <CustomersView />}
           {view === 'reviews' && <ReviewsView />}
           {view === 'pages' && <PagesView />}
           {view === 'locations' && <LocationsView />}
