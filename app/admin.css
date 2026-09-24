@@ -1241,3 +1241,14 @@
   .ad-an-funnel-row { grid-template-columns: 84px 1fr 52px; }
   .ad-ov-analytics { padding: 14px; }
 }
+
+/* ── Blog ──────────────────────────────────────────────── */
+.ad-blog-thumb {
+  width: 56px; height: 40px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--mist); color: var(--mid); font-size: 16px;
+}
+.ad-blog-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ad-blog-content { min-height: 320px; }
+.ad-blog-unavailable { font-size: 13px; color: var(--slate); line-height: 1.5; }
+.ad-blog-unavailable strong { color: var(--ink); }

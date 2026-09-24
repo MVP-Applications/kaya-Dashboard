@@ -9,6 +9,7 @@ import {
   persistReviews, removeReview,
   persistVouchers, removeVoucher, reorderVouchers,
   persistLocations, removeLocation,
+  fetchBlogs, persistBlogs, removeBlog,
   persistPageSection, persistSiteSection,
   fetchRequestsPage, fetchRequestStatusCounts, fetchRequestCountries,
   persistRequestStatus, persistRequestNotes, removeRequestRecord,
@@ -53,6 +54,9 @@ export function AdminProvider({ children }) {
   const [pages, setPages] = useState({})
   const [site, setSite] = useState({})
   const [locations, setLocations] = useState([])
+  const [blogs, setBlogs] = useState([])
+  // Blog posts load separately (see refresh) — '' while fine, else why not.
+  const [blogsError, setBlogsError] = useState('')
   const [users, setUsers] = useState([])
   // '' means "all countries" — editing the shared copy every market inherits.
   const [activeCountry, setActiveCountry] = useState('')
@@ -99,6 +103,16 @@ export function AdminProvider({ children }) {
       // falling back to {} — console.error would otherwise trip Next's dev
       // overlay for a failure that isn't actually breaking anything.
       console.warn('Country overrides could not be loaded; using shared copy.', e)
+    }
+
+    // Blog posts: same treatment. The Blog module isn't on the real backend
+    // yet, so this fails there today by design — and must not stop the rest
+    // of the catalogue loading. BlogsView shows blogsError instead.
+    try {
+      const list = await fetchBlogs()
+      if (token === loadToken.current) { setBlogs(list || []); setBlogsError('') }
+    } catch (e) {
+      if (token === loadToken.current) { setBlogs([]); setBlogsError(e.message) }
     }
 
     // Same treatment: the sidebar badge going stale is not worth taking the
@@ -153,6 +167,7 @@ export function AdminProvider({ children }) {
       if (!u) {
         loadToken.current++
         applyAll(EMPTY)
+        setBlogs([])
       }
     })
 
@@ -194,6 +209,7 @@ export function AdminProvider({ children }) {
     setUser(null)
     loadToken.current++
     applyAll(EMPTY)
+    setBlogs([])
   }, [])
 
   const allowed = useCallback(action => can(user, action), [user])
@@ -307,8 +323,9 @@ export function AdminProvider({ children }) {
       reviews: { list: reviews, setList: setReviews, persist: persistReviews, remove: removeReview, keyOf: byId },
       vouchers: { list: vouchers, setList: setVouchers, persist: persistVouchers, remove: removeVoucher, keyOf: byId, reorder: reorderVouchers },
       locations: { list: locations, setList: setLocations, persist: persistLocations, remove: removeLocation, keyOf: byId },
+      blogs: { list: blogs, setList: setBlogs, persist: persistBlogs, remove: removeBlog, keyOf: byId },
     }
-  }, [services, verticals, categories, doctors, reviews, vouchers, locations])
+  }, [services, verticals, categories, doctors, reviews, vouchers, locations, blogs])
 
   // ── Collection CRUD ───────────────────────────────────
   // Verticals and locations append (they render as ordered settings lists);
@@ -368,6 +385,9 @@ export function AdminProvider({ children }) {
       : appendTo(cols.locations, record)
   }, [cols, upsertInto, appendTo])
   const deleteLocation = useCallback(k => deleteFrom(cols.locations, k), [cols, deleteFrom])
+
+  const upsertBlog = useCallback((r, k) => upsertInto(cols.blogs, r, k), [cols, upsertInto])
+  const deleteBlog = useCallback(k => deleteFrom(cols.blogs, k), [cols, deleteFrom])
 
   // ── Requests (consumer submissions) ───────────────────
   // Staff don't create these — they arrive from the public site. Unlike every
@@ -608,6 +628,7 @@ export function AdminProvider({ children }) {
     allOverrides: overrides,
     saveSection, resetSectionToShared,
     locations, upsertLocation, deleteLocation,
+    blogs, blogsError, upsertBlog, deleteBlog,
     users, setUserRole, refreshUsers,
     moveUp, moveDown,
   }
