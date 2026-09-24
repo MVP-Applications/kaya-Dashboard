@@ -143,7 +143,7 @@ export default function BlogForm({ initial, isNew, onClose }) {
                 onChange={e => { setSlugTouched(true); set('slug', e.target.value) }}
                 onBlur={e => set('slug', slugify(e.target.value))}
                 placeholder="made from the title" />
-              <span className="ad-field-hint">The post&apos;s address on the website: /blog/{form.slug || '…'}</span>
+              <span className="ad-field-hint">The post&apos;s address on the website: /blogs/{form.slug || '…'}</span>
             </label>
             <label className="ad-field">
               <span className="ad-field-label">Status</span>

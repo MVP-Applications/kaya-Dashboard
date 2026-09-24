@@ -11,6 +11,7 @@ import {
   persistLocations, removeLocation,
   fetchBlogs, persistBlogs, removeBlog,
   fetchTellUs, persistTellUs,
+  fetchCustomPages, persistCustomPages, removeCustomPage, fetchPageVisibility, persistPageVisibility,
   persistPageSection, persistSiteSection,
   fetchRequestsPage, fetchRequestStatusCounts, fetchRequestCountries,
   persistRequestStatus, persistRequestNotes, removeRequestRecord,
@@ -65,6 +66,10 @@ export function AdminProvider({ children }) {
   // Bumped after every full reload (Refresh content, Reset sample data), so
   // screens that fetch their own data — Requests, Voucher Requests — refetch too.
   const [dataVersion, setDataVersion] = useState(0)
+  // Page builder: custom pages, and { [fixedPageId]: false } for hidden fixed pages.
+  const [customPages, setCustomPages] = useState([])
+  const [customPagesError, setCustomPagesError] = useState('')
+  const [pageVisibility, setPageVisibilityMap] = useState({})
   const [users, setUsers] = useState([])
   // '' means "all countries" — editing the shared copy every market inherits.
   const [activeCountry, setActiveCountry] = useState('')
@@ -130,6 +135,21 @@ export function AdminProvider({ children }) {
       if (token === loadToken.current) { setTellUsRaw(null); setTellUsError(e.message) }
     }
 
+    // Page builder — same treatment; not on the real backend yet.
+    try {
+      const list = await fetchCustomPages()
+      if (token === loadToken.current) { setCustomPages(list || []); setCustomPagesError('') }
+    } catch (e) {
+      if (token === loadToken.current) { setCustomPages([]); setCustomPagesError(e.message) }
+    }
+    try {
+      const map = await fetchPageVisibility()
+      if (token === loadToken.current) setPageVisibilityMap(map || {})
+    } catch {
+      // Unknown means "as the website has it" — every fixed page visible.
+      if (token === loadToken.current) setPageVisibilityMap({})
+    }
+
     // Same treatment: the sidebar badge going stale is not worth taking the
     // whole catalogue load down over.
     try {
@@ -187,6 +207,7 @@ export function AdminProvider({ children }) {
         applyAll(EMPTY)
         setBlogs([])
         setTellUsRaw(null)
+        setCustomPages([])
       }
     })
 
@@ -230,6 +251,7 @@ export function AdminProvider({ children }) {
     applyAll(EMPTY)
     setBlogs([])
     setTellUsRaw(null)
+    setCustomPages([])
   }, [])
 
   const allowed = useCallback(action => can(user, action), [user])
@@ -344,8 +366,9 @@ export function AdminProvider({ children }) {
       vouchers: { list: vouchers, setList: setVouchers, persist: persistVouchers, remove: removeVoucher, keyOf: byId, reorder: reorderVouchers },
       locations: { list: locations, setList: setLocations, persist: persistLocations, remove: removeLocation, keyOf: byId },
       blogs: { list: blogs, setList: setBlogs, persist: persistBlogs, remove: removeBlog, keyOf: byId },
+      customPages: { list: customPages, setList: setCustomPages, persist: persistCustomPages, remove: removeCustomPage, keyOf: byId },
     }
-  }, [services, verticals, categories, doctors, reviews, vouchers, locations, blogs])
+  }, [services, verticals, categories, doctors, reviews, vouchers, locations, blogs, customPages])
 
   // ── Collection CRUD ───────────────────────────────────
   // Verticals and locations append (they render as ordered settings lists);
@@ -431,6 +454,31 @@ export function AdminProvider({ children }) {
       setSaving(false)
     }
   }, [tellUsRaw])
+
+  const upsertCustomPage = useCallback((r, k) => upsertInto(cols.customPages, r, k), [cols, upsertInto])
+  const deleteCustomPage = useCallback(k => deleteFrom(cols.customPages, k), [cols, deleteFrom])
+
+  /** Show or hide one of the fixed pages on the website. */
+  const setPageVisible = useCallback(async (pageId, visible) => {
+    const prev = pageVisibility
+    const next = { ...prev }
+    if (visible) delete next[pageId]
+    else next[pageId] = false
+    setPageVisibilityMap(next)
+    setSaving(true)
+    try {
+      await persistPageVisibility(next)
+      setError('')
+      setSuccess(visible ? 'Page is visible on the website.' : 'Page hidden from the website.')
+      return true
+    } catch (e) {
+      setPageVisibilityMap(prev)
+      setError(e.message)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }, [pageVisibility])
 
   const upsertBlog = useCallback((r, k) => upsertInto(cols.blogs, r, k), [cols, upsertInto])
   const deleteBlog = useCallback(k => deleteFrom(cols.blogs, k), [cols, deleteFrom])
@@ -676,6 +724,8 @@ export function AdminProvider({ children }) {
     locations, upsertLocation, deleteLocation,
     blogs, blogsError, upsertBlog, deleteBlog,
     tellUs, tellUsError, saveTellUs,
+    customPages, customPagesError, upsertCustomPage, deleteCustomPage,
+    pageVisibility, setPageVisible,
     dataVersion,
     users, setUserRole, refreshUsers,
     moveUp, moveDown,
