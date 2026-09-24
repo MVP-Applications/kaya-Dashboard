@@ -107,7 +107,7 @@ function timeAgo(iso) {
 export default function RequestsView() {
   const {
     requestStatusCounts, loadRequestsPage, loadRequestCountries,
-    updateRequestStatus, updateRequestNotes, deleteRequestRecord, allowed, services,
+    updateRequestStatus, updateRequestNotes, deleteRequestRecord, allowed, services, dataVersion,
   } = useAdmin()
 
   const [query, setQuery] = useState('')
@@ -200,7 +200,8 @@ export default function RequestsView() {
       .catch(e => { if (alive) setLoadError(e.message) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [loadRequestsPage, filters, page])
+    // dataVersion: refetch after Refresh content / Reset sample data.
+  }, [loadRequestsPage, filters, page, dataVersion])
 
   const open = openId ? items.find(r => r.id === openId) : null
 

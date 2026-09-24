@@ -19,7 +19,7 @@ const STATUS_LABELS = {
 const PAGE_SIZE = 20
 
 export default function VoucherRequestsView() {
-  const { allowed } = useAdmin()
+  const { allowed, dataVersion } = useAdmin()
   const [items, setItems] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -43,7 +43,9 @@ export default function VoucherRequestsView() {
     } finally {
       setLoading(false)
     }
-  }, [page, status, search])
+    // dataVersion: refetch after Refresh content / Reset sample data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, status, search, dataVersion])
 
   useEffect(() => { load() }, [load])
 

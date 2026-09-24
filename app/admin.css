@@ -103,7 +103,9 @@
 .ad-sidebar-brand { display: flex; align-items: center; gap: 9px; padding: 0 8px 22px; }
 .ad-sidebar-logo { height: 26px; width: auto; }
 .ad-sidebar-badge { background: var(--lilac-lt); color: var(--primary); }
-.ad-nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+/* The menu scrolls on its own so the sidebar footer (Refresh / Reset) stays
+   on screen however long the menu grows or however short the window is. */
+.ad-nav { display: flex; flex-direction: column; gap: 3px; flex: 1; min-height: 0; overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
 .ad-nav-item {
   display: flex; align-items: center; gap: 11px;
   padding: 10px 12px; border-radius: 10px;

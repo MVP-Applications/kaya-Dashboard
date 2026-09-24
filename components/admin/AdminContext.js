@@ -62,6 +62,9 @@ export function AdminProvider({ children }) {
   // Tell Us Everything questionnaire — a single document, loaded the same way.
   const [tellUsRaw, setTellUsRaw] = useState(null)
   const [tellUsError, setTellUsError] = useState('')
+  // Bumped after every full reload (Refresh content, Reset sample data), so
+  // screens that fetch their own data — Requests, Voucher Requests — refetch too.
+  const [dataVersion, setDataVersion] = useState(0)
   const [users, setUsers] = useState([])
   // '' means "all countries" — editing the shared copy every market inherits.
   const [activeCountry, setActiveCountry] = useState('')
@@ -147,7 +150,10 @@ export function AdminProvider({ children }) {
       if (token !== loadToken.current) return
       setError(e.message)
     } finally {
-      if (token === loadToken.current) setLoading(false)
+      if (token === loadToken.current) {
+        setLoading(false)
+        setDataVersion(v => v + 1)
+      }
     }
   }, [])
 
@@ -670,6 +676,7 @@ export function AdminProvider({ children }) {
     locations, upsertLocation, deleteLocation,
     blogs, blogsError, upsertBlog, deleteBlog,
     tellUs, tellUsError, saveTellUs,
+    dataVersion,
     users, setUserRole, refreshUsers,
     moveUp, moveDown,
   }
