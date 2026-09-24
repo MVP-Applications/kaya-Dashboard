@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { ROLE_LABELS } from '@/lib/admin/auth'
 import Overview from './Overview'
+import AnalyticsView from './AnalyticsView'
 import ServicesView from './ServicesView'
 import VerticalsView from './VerticalsView'
 import CategoriesView from './CategoriesView'
@@ -24,7 +25,11 @@ import { SITE_URL } from '@/lib/site'
 const NAV_GROUPS = [
   {
     label: '',
-    items: [{ id: 'overview', label: 'Overview', icon: '◧' }],
+    items: [
+      { id: 'overview', label: 'Overview', icon: '◧' },
+      // `permission` hides the item from roles without it (see PERMISSIONS).
+      { id: 'analytics', label: 'Analytics', icon: '◔', permission: 'viewAnalytics' },
+    ],
   },
   {
     label: 'Enquiries',
@@ -60,7 +65,7 @@ const NAV_GROUPS = [
 
 export default function AdminShell() {
   const {
-    user, logout, requestStatusCounts, refresh, resetDemo,
+    user, logout, requestStatusCounts, refresh, resetDemo, allowed,
     loading, saving, error, dismissError, success, dismissSuccess, demoMode,
   } = useAdmin()
   const [view, setView] = useState('overview')
@@ -86,7 +91,7 @@ export default function AdminShell() {
           {NAV_GROUPS.map((group, gi) => (
             <div className="ad-nav-group" key={group.label || `g${gi}`}>
               {group.label && <div className="ad-nav-divider">{group.label}</div>}
-              {group.items.map(n => (
+              {group.items.filter(n => !n.permission || allowed(n.permission)).map(n => (
                 <button
                   key={n.id}
                   className={`ad-nav-item${view === n.id ? ' active' : ''}`}
@@ -154,6 +159,7 @@ export default function AdminShell() {
 
         <main className="ad-content">
           {view === 'overview' && <Overview onNavigate={setView} />}
+          {view === 'analytics' && <AnalyticsView />}
           {view === 'requests' && <RequestsView />}
           {view === 'services' && <ServicesView />}
           {view === 'verticals' && <VerticalsView />}

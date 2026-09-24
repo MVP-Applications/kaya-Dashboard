@@ -1,7 +1,7 @@
 'use client'
+import { useEffect, useState } from 'react'
 import { useAdmin } from './AdminContext'
-import { COUNTRY_OPTIONS } from '@/lib/admin/seed'
-import { PAGES, CLINIC_COUNTRIES } from '@/lib/admin/content'
+import { fetchVoucherRequestsPage } from '@/lib/admin/store'
 
 function greeting() {
   const h = new Date().getHours()
@@ -10,200 +10,131 @@ function greeting() {
   return 'Good evening'
 }
 
-// Build a conic-gradient string from weighted segments.
-function conic(segments, total) {
-  if (!total) return 'var(--mist)'
-  let acc = 0
-  const stops = segments.map(s => {
-    const start = (acc / total) * 100
-    acc += s.value
-    const end = (acc / total) * 100
-    return `${s.color} ${start}% ${end}%`
-  })
-  return `conic-gradient(${stops.join(', ')})`
+const WEEK = 7 * 86_400_000
+
+/**
+ * Totals the Overview needs beyond what AdminContext already holds — read
+ * with the same list endpoints the Requests and Voucher Requests screens
+ * use (one row per call; only `total` is read). Any that fail show "—"
+ * rather than blocking the page.
+ */
+function useOverviewCounts(loadRequestsPage) {
+  const [counts, setCounts] = useState({ bookedWeek: null, awaitingPayment: null, toFulfil: null })
+
+  useEffect(() => {
+    let alive = true
+    const total = p => p.then(r => r.total).catch(() => null)
+    const vouchers = status => total(fetchVoucherRequestsPage({ status, page: 1, pageSize: 1 }))
+
+    Promise.all([
+      total(loadRequestsPage({ status: 'booked', from: new Date(Date.now() - WEEK).toISOString(), page: 1, pageSize: 1 })),
+      vouchers('REQUESTED'),
+      vouchers('PAYMENT_LINK_SENT'),
+      vouchers('PAID'),
+    ]).then(([bookedWeek, requested, linkSent, paid]) => {
+      if (!alive) return
+      setCounts({
+        bookedWeek,
+        awaitingPayment: requested == null && linkSent == null ? null : (requested || 0) + (linkSent || 0),
+        toFulfil: paid,
+      })
+    })
+    return () => { alive = false }
+  }, [loadRequestsPage])
+
+  return counts
 }
 
+const show = n => (n == null ? '—' : n)
+
 export default function Overview({ onNavigate }) {
-  const { user, services, verticals, doctors, reviews, vouchers, requestStatusCounts, locations } = useAdmin()
-
-  const withBadge = services.filter(s => s.badge).length
-  const withMedia = reviews.filter(r => r.before || r.after).length
-  const newRequests = requestStatusCounts.new
+  const { user, services, doctors, requestStatusCounts, allowed, loadRequestsPage } = useAdmin()
+  const counts = useOverviewCounts(loadRequestsPage)
   const firstName = (user?.name || '').split(' ')[0]
+  const canViewAnalytics = allowed('viewAnalytics')
 
-  // Services counted under every vertical they belong to (many-to-many).
-  const byVertical = verticals.map(v => ({
-    label: v.label,
-    color: v.color,
-    n: services.filter(s => (s.verticals || []).includes(v.id)).length,
-  }))
-  const vMax = Math.max(1, ...byVertical.map(r => r.n))
+  const openRequests = requestStatusCounts.new + requestStatusCounts.contacted
+  const unfiledTreatments = services.filter(s => !(s.verticals || []).length).length
+  const doctorsNoCountry = doctors.filter(d => !(d.countries || []).length).length
 
-  // Doctors per country.
-  const byCountry = COUNTRY_OPTIONS.map(c => ({
-    label: c,
-    n: doctors.filter(d => (d.countries || []).includes(c)).length,
-  }))
-  const cMax = Math.max(1, ...byCountry.map(r => r.n))
-
-  // Clinics per country (from the Locations section).
-  const clinicsByCountry = CLINIC_COUNTRIES.map(c => ({
-    label: c,
-    n: locations.filter(l => l.country === c).length,
-  }))
-  const lMax = Math.max(1, ...clinicsByCountry.map(r => r.n))
+  // Only what needs someone to act — an empty list means all caught up.
+  const attention = [
+    { n: requestStatusCounts.new, label: 'new enquiries waiting for a first reply', view: 'requests', tone: 'urgent' },
+    { n: counts.awaitingPayment, label: 'voucher requests waiting for payment', view: 'voucher-requests', tone: 'warn' },
+    { n: counts.toFulfil, label: 'paid vouchers to send out', view: 'voucher-requests', tone: 'warn' },
+    { n: unfiledTreatments, label: 'treatments not in any vertical', view: 'services', tone: 'info' },
+    { n: doctorsNoCountry, label: 'doctors without a country', view: 'doctors', tone: 'info' },
+  ].filter(a => a.n > 0)
 
   const stats = [
-    { label: 'Requests', value: requestStatusCounts.total, icon: '✉', color: '#2F7DBE', view: 'requests', badge: newRequests || null },
-    { label: 'Services', value: services.length, icon: '✦', color: '#6E5A96', view: 'services' },
-    { label: 'Doctors', value: doctors.length, icon: '⚕', color: '#8570A8', view: 'doctors' },
-    { label: 'Verticals', value: verticals.length, icon: '◈', color: '#B98A2E', view: 'verticals' },
-    { label: 'Vouchers', value: vouchers.length, icon: '🎁', color: '#37795A', view: 'indulgence' },
-    { label: 'Reviews', value: reviews.length, icon: '★', color: '#B23B7A', view: 'reviews' },
-    { label: 'Pages', value: PAGES.length, icon: '▤', color: '#4A6E8A', view: 'pages' },
-    { label: 'Clinics', value: locations.length, icon: '⌖', color: '#8A5A3B', view: 'locations' },
+    { label: 'Open enquiries', value: openRequests, hint: 'New or contacted', view: 'requests' },
+    { label: 'Booked this week', value: show(counts.bookedWeek), hint: 'From enquiries in the last 7 days', view: 'requests' },
+    { label: 'Awaiting payment', value: show(counts.awaitingPayment), hint: 'Voucher requests', view: 'voucher-requests' },
+    { label: 'Vouchers to fulfil', value: show(counts.toFulfil), hint: 'Paid, not yet sent', view: 'voucher-requests' },
   ]
 
-  // Content mix donut.
-  const mix = [
-    { label: 'Services', value: services.length, color: '#6E5A96' },
-    { label: 'Doctors', value: doctors.length, color: '#8570A8' },
-    { label: 'Vouchers', value: vouchers.length, color: '#C3B6DE' },
-    { label: 'Reviews', value: reviews.length, color: '#B98A2E' },
+  const links = [
+    { label: 'Requests', icon: '✉', view: 'requests' },
+    { label: 'Treatments', icon: '✦', view: 'services' },
+    { label: 'Doctors', icon: '⚕', view: 'doctors' },
+    { label: 'Indulgence', icon: '🎁', view: 'indulgence' },
+    { label: 'Pages', icon: '▤', view: 'pages' },
+    { label: 'Locations', icon: '⌖', view: 'locations' },
   ]
-  const mixTotal = mix.reduce((a, s) => a + s.value, 0)
-
-  const featuredPct = services.length ? Math.round((withBadge / services.length) * 100) : 0
-  const mediaPct = reviews.length ? Math.round((withMedia / reviews.length) * 100) : 0
 
   return (
     <div className="ad-ov">
       <div className="ad-ov-head">
         <h1 className="ad-ov-hello">{greeting()}{firstName ? `, ${firstName}` : ''} 👋</h1>
-        <p className="ad-ov-sub">Here&apos;s a snapshot of your Kaya content.</p>
+        <p className="ad-ov-sub">Here&apos;s what needs your attention today.</p>
       </div>
 
-      {/* Stat tiles */}
+      <div className="ad-panel">
+        <div className="ad-panel-head"><h2 className="ad-panel-title">Needs attention</h2></div>
+        {attention.length ? (
+          <div className="ad-ov-todo">
+            {attention.map(a => (
+              <button key={a.label} className={`ad-ov-todo-item ad-ov-todo-item--${a.tone}`} onClick={() => onNavigate(a.view)}>
+                <span className="ad-ov-todo-n">{a.n}</span>
+                <span className="ad-ov-todo-lbl">{a.label}</span>
+                <span className="ad-ov-todo-go" aria-hidden="true">→</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="ad-ov-clear">✓ All caught up — nothing is waiting on you.</p>
+        )}
+      </div>
+
       <div className="ad-ov-stats">
         {stats.map(s => (
           <button key={s.label} className="ad-ov-stat" onClick={() => onNavigate(s.view)}>
-            <span className="ad-ov-stat-ico" style={{ background: `${s.color}1a`, color: s.color }}>
-              {s.icon}
-            </span>
             <span className="ad-ov-stat-val">{s.value}</span>
             <span className="ad-ov-stat-lbl">{s.label}</span>
-            {s.badge ? <span className="ad-ov-stat-badge">{s.badge} new</span> : null}
+            <span className="ad-ov-stat-hint">{s.hint}</span>
           </button>
         ))}
       </div>
 
-      {/* Charts row */}
-      <div className="ad-ov-cols">
-        <div className="ad-panel">
-          <div className="ad-panel-head"><h2 className="ad-panel-title">Services by vertical</h2></div>
-          <div className="ad-bars">
-            {byVertical.map(r => (
-              <div key={r.label} className="ad-bar-row">
-                <span className="ad-bar-label">{r.label}</span>
-                <span className="ad-bar-track">
-                  <span className="ad-bar-fill" style={{ width: `${(r.n / vMax) * 100}%`, background: r.color }} />
-                </span>
-                <span className="ad-bar-value">{r.n}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      {canViewAnalytics && (
+        <button className="ad-ov-analytics" onClick={() => onNavigate('analytics')}>
+          <span className="ad-ov-analytics-ico" aria-hidden="true">◔</span>
+          <span className="ad-ov-analytics-txt">
+            <strong>Revenue, bookings and trends</strong>
+            <span>Filter by country, clinic, treatment, doctor and date in Analytics.</span>
+          </span>
+          <span className="ad-ov-todo-go" aria-hidden="true">→</span>
+        </button>
+      )}
 
-        <div className="ad-panel">
-          <div className="ad-panel-head"><h2 className="ad-panel-title">Content mix</h2></div>
-          <div className="ad-donut-wrap">
-            <div className="ad-donut" style={{ background: conic(mix, mixTotal) }}>
-              <div className="ad-donut-hole">
-                <span className="ad-donut-total">{mixTotal}</span>
-                <span className="ad-donut-cap">items</span>
-              </div>
-            </div>
-            <div className="ad-legend">
-              {mix.map(m => (
-                <div key={m.label} className="ad-legend-item">
-                  <span className="ad-legend-dot" style={{ background: m.color }} />
-                  <span className="ad-legend-lbl">{m.label}</span>
-                  <span className="ad-legend-val">{m.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Insight row */}
-      <div className="ad-ov-cols">
-        <div className="ad-panel">
-          <div className="ad-panel-head"><h2 className="ad-panel-title">Doctors by country</h2></div>
-          <div className="ad-bars">
-            {byCountry.map(r => (
-              <div key={r.label} className="ad-bar-row">
-                <span className="ad-bar-label">{r.label}</span>
-                <span className="ad-bar-track">
-                  <span className="ad-bar-fill" style={{ width: `${(r.n / cMax) * 100}%` }} />
-                </span>
-                <span className="ad-bar-value">{r.n}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="ad-panel">
-          <div className="ad-panel-head"><h2 className="ad-panel-title">At a glance</h2></div>
-          <div className="ad-rings">
-            <div className="ad-ring-card">
-              <div className="ad-ring" style={{ background: `conic-gradient(var(--primary) ${featuredPct}%, var(--mist) 0)` }}>
-                <span className="ad-ring-pct">{featuredPct}%</span>
-              </div>
-              <div className="ad-ring-cap">
-                <strong>{withBadge}</strong> featured services
-              </div>
-            </div>
-            <div className="ad-ring-card">
-              <div className="ad-ring" style={{ background: `conic-gradient(#B98A2E ${mediaPct}%, var(--mist) 0)` }}>
-                <span className="ad-ring-pct">{mediaPct}%</span>
-              </div>
-              <div className="ad-ring-cap">
-                <strong>{withMedia}</strong> reviews with before/after
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Website content row */}
-      <div className="ad-ov-cols">
-        <div className="ad-panel">
-          <div className="ad-panel-head"><h2 className="ad-panel-title">Clinics by country</h2></div>
-          <div className="ad-bars">
-            {clinicsByCountry.map(r => (
-              <div key={r.label} className="ad-bar-row">
-                <span className="ad-bar-label">{r.label}</span>
-                <span className="ad-bar-track">
-                  <span className="ad-bar-fill" style={{ width: `${(r.n / lMax) * 100}%`, background: '#8A5A3B' }} />
-                </span>
-                <span className="ad-bar-value">{r.n}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="ad-panel">
-          <div className="ad-panel-head"><h2 className="ad-panel-title">Website pages</h2></div>
-          <div className="ad-ov-pages">
-            {PAGES.map(p => (
-              <button key={p.id} className="ad-ov-page" onClick={() => onNavigate('pages')}>
-                <span className="ad-ov-page-ico" aria-hidden="true">{p.icon}</span>
-                <span className="ad-ov-page-label">{p.label}</span>
-                <span className="ad-ov-page-n">{p.sections.length}</span>
-              </button>
-            ))}
-          </div>
+      <div className="ad-panel">
+        <div className="ad-panel-head"><h2 className="ad-panel-title">Quick links</h2></div>
+        <div className="ad-ov-links">
+          {links.map(l => (
+            <button key={l.view} className="ad-ov-link" onClick={() => onNavigate(l.view)}>
+              <span aria-hidden="true">{l.icon}</span> {l.label}
+            </button>
+          ))}
         </div>
       </div>
     </div>
