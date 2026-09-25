@@ -1,8 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAdmin } from './AdminContext'
-import { CLINIC_COUNTRIES, emptyLocation } from '@/lib/admin/content'
-import { fetchCountryOptions, createCity } from '@/lib/admin/store'
+import { emptyLocation } from '@/lib/admin/content'
+import { createCity } from '@/lib/admin/store'
 import LocaleToggle from './LocaleToggle'
 
 function slugify(str) {
@@ -15,7 +15,7 @@ const DAYS = [
 ]
 
 export default function LocationsView() {
-  const { locations, upsertLocation, deleteLocation, allowed } = useAdmin()
+  const { locations, upsertLocation, deleteLocation, countryRecords, addCityToCountry, allowed } = useAdmin()
   const [editing, setEditing] = useState(null) // { initial, isNew }
   const [confirm, setConfirm] = useState(null)
   const [country, setCountry] = useState('all')
@@ -30,6 +30,8 @@ export default function LocationsView() {
         initial={editing.initial}
         isNew={editing.isNew}
         existing={locations}
+        countryOptions={countryRecords}
+        onCityAdded={addCityToCountry}
         onSave={(rec, orig) => { upsertLocation(rec, orig); setEditing(null) }}
         onClose={() => setEditing(null)}
       />
@@ -72,9 +74,9 @@ export default function LocationsView() {
         />
         <select className="ad-input ad-filter" value={country} onChange={e => setCountry(e.target.value)}>
           <option value="all">All countries ({locations.length})</option>
-          {CLINIC_COUNTRIES.map(c => (
-            <option key={c} value={c}>
-              {c} ({locations.filter(l => l.country === c).length})
+          {countryRecords.map(c => (
+            <option key={c.code} value={c.code}>
+              {c.code} ({locations.filter(l => l.country === c.code).length})
             </option>
           ))}
         </select>
@@ -137,10 +139,9 @@ export default function LocationsView() {
   )
 }
 
-function LocationForm({ initial, isNew, existing, onSave, onClose }) {
+function LocationForm({ initial, isNew, existing, countryOptions, onCityAdded, onSave, onClose }) {
   const [form, setForm] = useState({ ...initial })
   const [error, setError] = useState('')
-  const [countryOptions, setCountryOptions] = useState([]) // [{id, code, name, cities:[{id,name}]}]
   const [newCityName, setNewCityName] = useState('')
   const [addingCity, setAddingCity] = useState(false)
   const [locale, setLocale] = useState('EN')
@@ -149,14 +150,6 @@ function LocationForm({ initial, isNew, existing, onSave, onClose }) {
   const isAr = locale === 'AR'
   const nameKey = isAr ? 'nameAr' : 'name'
   const addressKey = isAr ? 'addressAr' : 'address'
-
-  useEffect(() => {
-    let cancelled = false
-    fetchCountryOptions()
-      .then(options => { if (!cancelled) setCountryOptions(options) })
-      .catch(() => {}) // Country/City is a supporting field, not worth an error banner over.
-    return () => { cancelled = true }
-  }, [])
 
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
   function setHour(day, value) { setForm(f => ({ ...f, hours: { ...f.hours, [day]: value } })) }
@@ -181,9 +174,7 @@ function LocationForm({ initial, isNew, existing, onSave, onClose }) {
     setAddingCity(true)
     try {
       const city = await createCity(selectedCountry.id, name)
-      setCountryOptions(options => options.map(c => (
-        c.id === selectedCountry.id ? { ...c, cities: [...c.cities, city] } : c
-      )))
+      onCityAdded?.(selectedCountry.id, city)
       setForm(f => ({ ...f, cityId: city.id, city: city.name }))
       setNewCityName('')
     } catch (e) {
@@ -241,7 +232,7 @@ function LocationForm({ initial, isNew, existing, onSave, onClose }) {
             <label className="ad-field">
               <span className="ad-field-label">Country</span>
               <select className="ad-input" value={form.country} onChange={e => chooseCountry(e.target.value)}>
-                {CLINIC_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                {countryOptions.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
               </select>
             </label>
             <label className="ad-field">

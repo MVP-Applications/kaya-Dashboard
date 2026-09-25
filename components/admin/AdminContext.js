@@ -9,6 +9,7 @@ import {
   persistReviews, removeReview,
   persistVouchers, removeVoucher, reorderVouchers,
   persistLocations, removeLocation,
+  persistCountries, removeCountry,
   persistPageSection, persistSiteSection,
   fetchRequestsPage, fetchRequestStatusCounts, fetchRequestCountries,
   persistRequestStatus, persistRequestNotes, removeRequestRecord,
@@ -30,7 +31,7 @@ export function useAdmin() {
 
 const EMPTY = {
   services: [], verticals: [], categories: [], doctors: [], reviews: [],
-  vouchers: [], locations: [], pages: {}, site: {},
+  vouchers: [], locations: [], countries: [], pages: {}, site: {},
 }
 
 const EMPTY_REQUEST_STATUS_COUNTS = { new: 0, contacted: 0, booked: 0, closed: 0, total: 0 }
@@ -53,6 +54,7 @@ export function AdminProvider({ children }) {
   const [pages, setPages] = useState({})
   const [site, setSite] = useState({})
   const [locations, setLocations] = useState([])
+  const [countryRecords, setCountryRecords] = useState([])
   // Bumped after every full reload (Refresh content, Reset sample data), so
   // screens that fetch their own data — Requests, Voucher Requests, Customers
   // — refetch too.
@@ -74,6 +76,7 @@ export function AdminProvider({ children }) {
     setReviews(data.reviews)
     setVouchers(data.vouchers)
     setLocations(data.locations)
+    setCountryRecords(data.countries)
     setPages(data.pages)
     setSite(data.site)
   }
@@ -314,8 +317,9 @@ export function AdminProvider({ children }) {
       reviews: { list: reviews, setList: setReviews, persist: persistReviews, remove: removeReview, keyOf: byId },
       vouchers: { list: vouchers, setList: setVouchers, persist: persistVouchers, remove: removeVoucher, keyOf: byId, reorder: reorderVouchers },
       locations: { list: locations, setList: setLocations, persist: persistLocations, remove: removeLocation, keyOf: byId },
+      countryRecords: { list: countryRecords, setList: setCountryRecords, persist: persistCountries, remove: removeCountry, keyOf: byId },
     }
-  }, [services, verticals, categories, doctors, reviews, vouchers, locations])
+  }, [services, verticals, categories, doctors, reviews, vouchers, locations, countryRecords])
 
   // ── Collection CRUD ───────────────────────────────────
   // Verticals and locations append (they render as ordered settings lists);
@@ -375,6 +379,21 @@ export function AdminProvider({ children }) {
       : appendTo(cols.locations, record)
   }, [cols, upsertInto, appendTo])
   const deleteLocation = useCallback(k => deleteFrom(cols.locations, k), [cols, deleteFrom])
+
+  const upsertCountryRecord = useCallback((record, originalId) => {
+    const exists = originalId != null && cols.countryRecords.list.some(c => c.id === originalId)
+    return exists
+      ? upsertInto(cols.countryRecords, record, originalId)
+      : appendTo(cols.countryRecords, record)
+  }, [cols, upsertInto, appendTo])
+  const deleteCountryRecord = useCallback(k => deleteFrom(cols.countryRecords, k), [cols, deleteFrom])
+
+  /** After "+ Add city" succeeds against the backend, reflect it in the shared country list every screen reads — no separate fetch. */
+  const addCityToCountry = useCallback((countryId, city) => {
+    setCountryRecords(list => list.map(c => (
+      c.id === countryId ? { ...c, cities: [...c.cities, city] } : c
+    )))
+  }, [])
 
   // ── Requests (consumer submissions) ───────────────────
   // Staff don't create these — they arrive from the public site. Unlike every
@@ -615,6 +634,7 @@ export function AdminProvider({ children }) {
     allOverrides: overrides,
     saveSection, resetSectionToShared,
     locations, upsertLocation, deleteLocation,
+    countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry,
     dataVersion,
     users, setUserRole, refreshUsers,
     moveUp, moveDown,

@@ -1,7 +1,7 @@
 'use client'
 import { useAdmin } from './AdminContext'
 import { COUNTRY_OPTIONS } from '@/lib/admin/seed'
-import { PAGES, CLINIC_COUNTRIES } from '@/lib/admin/content'
+import { PAGES } from '@/lib/admin/content'
 
 function greeting() {
   const h = new Date().getHours()
@@ -24,7 +24,7 @@ function conic(segments, total) {
 }
 
 export default function Overview({ onNavigate }) {
-  const { user, services, verticals, doctors, reviews, vouchers, requestStatusCounts, locations } = useAdmin()
+  const { user, services, verticals, doctors, reviews, vouchers, requestStatusCounts, locations, countryRecords } = useAdmin()
 
   const withBadge = services.filter(s => s.badge).length
   const withMedia = reviews.filter(r => r.before || r.after).length
@@ -47,9 +47,9 @@ export default function Overview({ onNavigate }) {
   const cMax = Math.max(1, ...byCountry.map(r => r.n))
 
   // Clinics per country (from the Locations section).
-  const clinicsByCountry = CLINIC_COUNTRIES.map(c => ({
-    label: c,
-    n: locations.filter(l => l.country === c).length,
+  const clinicsByCountry = countryRecords.map(c => ({
+    label: c.code,
+    n: locations.filter(l => l.country === c.code).length,
   }))
   const lMax = Math.max(1, ...clinicsByCountry.map(r => r.n))
 
