@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
 import { ProviderBadges, relativeDate } from './CustomerBits'
@@ -8,9 +8,8 @@ import {
   fetchVoucherRequestsPage,
 } from '@/lib/admin/store'
 import {
-  STATUS_LABELS, ageFrom, bmi, completeness, countryFromPhone, formatPhone, displayName, initials,
+  STATUS_LABELS, ageFrom, bmi, completeness, countryFromPhone, formatPhone, displayName, initials, dialCodesFrom,
 } from '@/lib/admin/customers'
-import { COUNTRY_LABELS } from '@/lib/countries'
 import { REQUEST_STATUS_LABELS } from '@/lib/admin/seed'
 
 function fullDate(iso, withTime = false) {
@@ -65,8 +64,9 @@ function useHistory(customer, loadRequestsPage) {
 }
 
 export default function CustomerProfile({ id, onClose }) {
-  const { user, allowed, loadRequestsPage } = useAdmin()
+  const { user, allowed, loadRequestsPage, countryRecords } = useAdmin()
   const canDelete = allowed('delete')
+  const dialCodes = useMemo(() => dialCodesFrom(countryRecords), [countryRecords])
 
   const [customer, setCustomer] = useState(null)
   const [loadError, setLoadError] = useState('')
@@ -136,7 +136,8 @@ export default function CustomerProfile({ id, onClose }) {
 
   const c = customer
   const age = ageFrom(c.dateOfBirth)
-  const country = countryFromPhone(c.phone)
+  const country = countryFromPhone(c.phone, dialCodes)
+  const countryName = countryRecords.find(x => x.code === country)?.name || country
   const pct = completeness(c)
   const index = bmi(c)
   const disabled = c.status === 'DISABLED'
@@ -148,7 +149,7 @@ export default function CustomerProfile({ id, onClose }) {
         <div className="ad-cu-head">
           <span className="ad-cu-avatar ad-cu-avatar--lg" aria-hidden="true">{initials(c)}</span>
           <div className="ad-editor-titles">
-            <h1 className="ad-view-title">{displayName(c)}</h1>
+            <h1 className="ad-view-title">{displayName(c, dialCodes)}</h1>
             <p className="ad-view-sub ad-cu-head-meta">
               <span className={`ad-status ad-status--${disabled ? 'closed' : 'booked'}`}><span className="ad-status-dot" />{STATUS_LABELS[c.status] || c.status}</span>
               <span>Joined {fullDate(c.createdAt)}</span>
@@ -181,8 +182,8 @@ export default function CustomerProfile({ id, onClose }) {
             <div className="ad-req-detail">
               <Row label="Full name">{orNone(c.fullName)}</Row>
               <Row label="Email">{c.email ? <a className="ad-req-link" href={`mailto:${c.email}`}>{c.email}</a> : null}</Row>
-              <Row label="Mobile">{c.phone ? <a className="ad-req-link" href={`tel:${c.phone}`}>{formatPhone(c.phone)}</a> : null}</Row>
-              <Row label="Country">{country ? COUNTRY_LABELS[country] : null}</Row>
+              <Row label="Mobile">{c.phone ? <a className="ad-req-link" href={`tel:${c.phone}`}>{formatPhone(c.phone, dialCodes)}</a> : null}</Row>
+              <Row label="Country">{country ? countryName : null}</Row>
               <Row label="Date of birth">{c.dateOfBirth ? `${fullDate(c.dateOfBirth)}${age != null ? ` · ${age} years` : ''}` : null}</Row>
               <Row label="Gender">{c.gender === 'FEMALE' ? 'Female' : c.gender === 'MALE' ? 'Male' : null}</Row>
               <Row label="Height">{c.heightCm ? `${c.heightCm} cm` : null}</Row>
@@ -307,9 +308,9 @@ export default function CustomerProfile({ id, onClose }) {
           onCancel={() => { setConfirm(null); setActionError('') }}
           onConfirm={runAction}
         >
-          {confirm === 'delete' && <>This permanently deletes <strong>{displayName(c)}</strong>&apos;s website account, profile and medical information — use it when the customer asks for their data to be erased. Their enquiries and voucher requests stay in Requests.</>}
-          {confirm === 'disable' && <><strong>{displayName(c)}</strong> won&apos;t be able to sign in on the website until you re-enable the account. Nothing is deleted.</>}
-          {confirm === 'enable' && <><strong>{displayName(c)}</strong> will be able to sign in on the website again.</>}
+          {confirm === 'delete' && <>This permanently deletes <strong>{displayName(c, dialCodes)}</strong>&apos;s website account, profile and medical information — use it when the customer asks for their data to be erased. Their enquiries and voucher requests stay in Requests.</>}
+          {confirm === 'disable' && <><strong>{displayName(c, dialCodes)}</strong> won&apos;t be able to sign in on the website until you re-enable the account. Nothing is deleted.</>}
+          {confirm === 'enable' && <><strong>{displayName(c, dialCodes)}</strong> will be able to sign in on the website again.</>}
         </ConfirmDialog>
       )}
     </div>

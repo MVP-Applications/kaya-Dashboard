@@ -3,11 +3,11 @@ import { useMemo, useState } from 'react'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
 import ReorderCell from './ReorderCell'
-import { COUNTRY_OPTIONS, emptyDoctor } from '@/lib/admin/seed'
+import { emptyDoctor } from '@/lib/admin/seed'
 import DoctorForm from './DoctorForm'
 
 export default function DoctorsView() {
-  const { doctors, verticals, deleteDoctor, allowed } = useAdmin()
+  const { doctors, verticals, countryRecords, deleteDoctor, allowed } = useAdmin()
   const [query, setQuery] = useState('')
   const [vertical, setVertical] = useState('')
   const [country, setCountry] = useState('')
@@ -68,7 +68,7 @@ export default function DoctorsView() {
         </select>
         <select className="ad-input ad-filter" value={country} onChange={e => setCountry(e.target.value)}>
           <option value="">All countries</option>
-          {COUNTRY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+          {countryRecords.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
         </select>
       </div>
 

@@ -1,6 +1,5 @@
 'use client'
 import { useAdmin } from './AdminContext'
-import { COUNTRY_OPTIONS } from '@/lib/admin/seed'
 import { PAGES } from '@/lib/admin/content'
 
 function greeting() {
@@ -40,9 +39,9 @@ export default function Overview({ onNavigate }) {
   const vMax = Math.max(1, ...byVertical.map(r => r.n))
 
   // Doctors per country.
-  const byCountry = COUNTRY_OPTIONS.map(c => ({
-    label: c,
-    n: doctors.filter(d => (d.countries || []).includes(c)).length,
+  const byCountry = countryRecords.map(c => ({
+    label: c.code,
+    n: doctors.filter(d => (d.countries || []).includes(c.code)).length,
   }))
   const cMax = Math.max(1, ...byCountry.map(r => r.n))
 

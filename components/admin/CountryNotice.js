@@ -1,6 +1,5 @@
 'use client'
 import { useAdmin } from './AdminContext'
-import { COUNTRY_LABELS } from '@/lib/countries'
 
 /**
  * Says which copy is being edited: the shared version, or one market's
@@ -11,7 +10,8 @@ import { COUNTRY_LABELS } from '@/lib/countries'
  * edit never reached the others. Worth a permanent line rather than a subtlety.
  */
 export default function CountryNotice() {
-  const { activeCountry, setActiveCountry } = useAdmin()
+  const { activeCountry, setActiveCountry, countryRecords } = useAdmin()
+  const activeCountryName = countryRecords.find(c => c.code === activeCountry)?.name || activeCountry
 
   if (!activeCountry) {
     return (
@@ -25,7 +25,7 @@ export default function CountryNotice() {
   return (
     <div className="ad-note ad-note--country">
       <span>
-        <strong>Editing {COUNTRY_LABELS[activeCountry] || activeCountry} only.</strong>{' '}
+        <strong>Editing {activeCountryName} only.</strong>{' '}
         Fields you change here stop following the shared copy. Anything you leave
         alone keeps updating with it.
       </span>

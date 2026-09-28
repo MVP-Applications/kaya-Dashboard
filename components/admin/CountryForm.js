@@ -39,15 +39,6 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
     if (!form.code.trim()) return setError('Country code is required.')
     if (!/^[A-Z]{2}$/.test(form.isoCode.trim())) return setError('ISO code must be 2 uppercase letters, e.g. "AE".')
     if (!/^\+[1-9]\d{0,3}$/.test(form.dialCode.trim())) return setError('Dial code must look like "+971".')
-    if (!/^\+\d{7,15}$/.test(form.primaryCallNumber.trim())) {
-      return setError('Primary call number is required, in E.164 format (e.g. "+97144501001").')
-    }
-    if (form.secondaryCallNumber && !/^\+\d{7,15}$/.test(form.secondaryCallNumber.trim())) {
-      return setError('Secondary call number must be in E.164 format.')
-    }
-    if (form.whatsappNumber && !/^\+\d{7,15}$/.test(form.whatsappNumber.trim())) {
-      return setError('WhatsApp number must be in E.164 format.')
-    }
     const id = isNew ? (form.code.trim() || name) : form.id
     if (isNew && existing.some(c => c.id === id)) {
       return setError(`A country with code "${id}" already exists.`)
@@ -124,24 +115,24 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
         <fieldset className="ad-fieldset">
           <legend>Contact</legend>
           <p className="ad-fieldset-hint">
-            Shown on the website for visitors browsing from this country. Primary call number is required;
-            WhatsApp and a secondary number are optional — leave either blank to hide that option on the site.
+            Phone and WhatsApp numbers are managed on the <strong>Contacts</strong> screen, not here — each
+            country has exactly one contact record there.
           </p>
-          <label className="ad-field">
-            <span className="ad-field-label">Primary call number *</span>
-            <input className="ad-input" value={form.primaryCallNumber}
-              onChange={e => set('primaryCallNumber', e.target.value)} placeholder="+97144501001" />
-          </label>
-          <label className="ad-field">
-            <span className="ad-field-label">Secondary call number</span>
-            <input className="ad-input" value={form.secondaryCallNumber}
-              onChange={e => set('secondaryCallNumber', e.target.value)} placeholder="+97144501002" />
-          </label>
-          <label className="ad-field">
-            <span className="ad-field-label">WhatsApp number</span>
-            <input className="ad-input" value={form.whatsappNumber}
-              onChange={e => set('whatsappNumber', e.target.value)} placeholder="+971501234567" />
-          </label>
+          {!isNew && (
+            form.contact ? (
+              <div className="ad-badge-row" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <span className="ad-badge">Phone: {form.contact.phoneNumber}</span>
+                {form.contact.secondaryPhoneNumber && (
+                  <span className="ad-badge">Secondary: {form.contact.secondaryPhoneNumber}</span>
+                )}
+                {form.contact.whatsappNumber && (
+                  <span className="ad-badge">WhatsApp: {form.contact.whatsappNumber}</span>
+                )}
+              </div>
+            ) : (
+              <p className="ad-fieldset-hint">No contact added yet for this country.</p>
+            )
+          )}
         </fieldset>
 
         <fieldset className="ad-fieldset">

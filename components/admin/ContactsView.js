@@ -1,11 +1,11 @@
 'use client'
 import { useState } from 'react'
 import { useAdmin } from './AdminContext'
-import { emptyCountry } from '@/lib/admin/content'
-import CountryForm from './CountryForm'
+import { emptyContact } from '@/lib/admin/content'
+import ContactForm from './ContactForm'
 
-export default function CountriesView() {
-  const { countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry, allowed } = useAdmin()
+export default function ContactsView() {
+  const { contacts, countryRecords, upsertContact, deleteContact, allowed } = useAdmin()
   const [editing, setEditing] = useState(null) // { initial, isNew }
   const [confirm, setConfirm] = useState(null)
   const [query, setQuery] = useState('')
@@ -13,39 +13,43 @@ export default function CountriesView() {
   const canCreate = allowed('create')
   const canDelete = allowed('delete')
 
+  // Countries without a contact yet — the only ones offered when creating a new one.
+  const availableCountries = countryRecords.filter(c => !contacts.some(k => k.countryId === c.id))
+
   if (editing) {
     return (
-      <CountryForm
+      <ContactForm
         initial={editing.initial}
         isNew={editing.isNew}
-        existing={countryRecords}
-        onSave={(rec, orig) => { upsertCountryRecord(rec, orig); setEditing(null) }}
+        availableCountries={availableCountries}
+        onSave={(rec, orig) => { upsertContact(rec, orig); setEditing(null) }}
         onClose={() => setEditing(null)}
-        onCityAdded={addCityToCountry}
       />
     )
   }
 
   const q = query.trim().toLowerCase()
-  const filtered = countryRecords.filter(c => (
-    !q || `${c.name} ${c.nameAr} ${c.code} ${c.isoCode}`.toLowerCase().includes(q)
+  const filtered = contacts.filter(c => (
+    !q || `${c.countryName} ${c.countryCode} ${c.phoneNumber} ${c.whatsappNumber}`.toLowerCase().includes(q)
   ))
 
-  const target = confirm ? countryRecords.find(c => c.id === confirm) : null
+  const target = confirm ? contacts.find(c => c.id === confirm) : null
 
   return (
     <div className="ad-view">
       <div className="ad-view-head">
         <div>
-          <h1 className="ad-view-title">Countries</h1>
+          <h1 className="ad-view-title">Contacts</h1>
           <p className="ad-view-sub">
-            The markets Kaya operates in — cities, flag, contact numbers, dial code, and default language for the website.
+            Phone and WhatsApp numbers the website shows per country — one contact per country.
           </p>
         </div>
         {canCreate && (
           <button className="ad-btn ad-btn--primary"
-            onClick={() => setEditing({ initial: emptyCountry(), isNew: true })}>
-            + New country
+            disabled={availableCountries.length === 0}
+            title={availableCountries.length === 0 ? 'Every country already has a contact.' : undefined}
+            onClick={() => setEditing({ initial: emptyContact(), isNew: true })}>
+            + New contact
           </button>
         )}
       </div>
@@ -53,7 +57,7 @@ export default function CountriesView() {
       <div className="ad-toolbar">
         <input
           className="ad-input ad-search"
-          placeholder="Search countries…"
+          placeholder="Search contacts…"
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
@@ -64,11 +68,9 @@ export default function CountriesView() {
           <thead>
             <tr>
               <th>Country</th>
-              <th>Code</th>
-              <th>Dial code</th>
-              <th>Cities</th>
-              <th>Contact</th>
-              <th>Language</th>
+              <th>Phone</th>
+              <th>Secondary</th>
+              <th>WhatsApp</th>
               <th className="ad-th-actions">Actions</th>
             </tr>
           </thead>
@@ -76,17 +78,12 @@ export default function CountriesView() {
             {filtered.map(c => (
               <tr key={c.id}>
                 <td>
-                  <div className="ad-cell-name">
-                    {c.flagUrl && <img src={c.flagUrl} alt="" style={{ width: 20, height: 14, objectFit: 'cover', marginRight: 8, verticalAlign: 'middle' }} />}
-                    {c.name}
-                  </div>
-                  {c.nameAr && <div className="ad-cell-slug" dir="rtl">{c.nameAr}</div>}
+                  <div className="ad-cell-name">{c.countryName}</div>
+                  <div className="ad-cell-slug">{c.countryCode}</div>
                 </td>
-                <td><span className="ad-badge">{c.code}</span></td>
-                <td>{c.dialCode}</td>
-                <td>{c.cities.length}</td>
-                <td>{c.contact ? c.contact.phoneNumber : <span className="ad-cell-slug">Not added</span>}</td>
-                <td>{c.preferredLanguage}</td>
+                <td>{c.phoneNumber}</td>
+                <td>{c.secondaryPhoneNumber || '—'}</td>
+                <td>{c.whatsappNumber || '—'}</td>
                 <td className="ad-td-actions">
                   <button className="ad-btn ad-btn--soft ad-btn--sm"
                     onClick={() => setEditing({ initial: c, isNew: false })}>Edit</button>
@@ -98,7 +95,7 @@ export default function CountriesView() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="ad-empty">No countries match this filter.</td></tr>
+              <tr><td colSpan={5} className="ad-empty">No contacts match this filter.</td></tr>
             )}
           </tbody>
         </table>
@@ -107,15 +104,14 @@ export default function CountriesView() {
       {target && (
         <div className="ad-drawer-scrim" onClick={() => setConfirm(null)}>
           <div className="ad-confirm" onClick={e => e.stopPropagation()}>
-            <h3 className="ad-confirm-title">Delete country?</h3>
+            <h3 className="ad-confirm-title">Delete contact?</h3>
             <p className="ad-confirm-text">
-              <strong>{target.name}</strong> will be removed. This isn&apos;t possible while it still has cities or
-              clinics under it — remove those first.
+              The phone/WhatsApp numbers for <strong>{target.countryName}</strong> will be removed from the site.
             </p>
             <div className="ad-confirm-actions">
               <button className="ad-btn ad-btn--ghost" onClick={() => setConfirm(null)}>Cancel</button>
               <button className="ad-btn ad-btn--danger"
-                onClick={() => { deleteCountryRecord(target.id); setConfirm(null) }}>Delete</button>
+                onClick={() => { deleteContact(target.id); setConfirm(null) }}>Delete</button>
             </div>
           </div>
         </div>

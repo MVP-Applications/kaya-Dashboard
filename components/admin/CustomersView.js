@@ -6,16 +6,16 @@ import { ProviderBadges, relativeDate } from './CustomerBits'
 import { fetchCustomersPage, fetchCustomerCounts, exportCustomersCsv } from '@/lib/admin/store'
 import {
   PROVIDER_OPTIONS, PROVIDER_LABELS, STATUS_LABELS,
-  completeness, countryFromPhone, formatPhone, displayName, initials,
+  completeness, countryFromPhone, formatPhone, displayName, initials, dialCodesFrom,
 } from '@/lib/admin/customers'
-import { COUNTRIES } from '@/lib/countries'
 import { downloadCsv, stampedName } from '@/lib/admin/csv'
 
 const PAGE_SIZE = 20
 
 export default function CustomersView() {
-  const { allowed, dataVersion } = useAdmin()
+  const { allowed, dataVersion, countryRecords } = useAdmin()
   const canView = allowed('viewCustomers')
+  const dialCodes = useMemo(() => dialCodesFrom(countryRecords), [countryRecords])
 
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
@@ -136,7 +136,7 @@ export default function CustomersView() {
         </select>
         <select className="ad-input ad-filter" value={country} onChange={e => setCountry(e.target.value)} aria-label="Country">
           <option value="">All countries</option>
-          {COUNTRIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+          {countryRecords.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
         </select>
         <select className="ad-input ad-filter" value={comp} onChange={e => setComp(e.target.value)} aria-label="Profile">
           <option value="">Any profile</option>
@@ -178,7 +178,7 @@ export default function CustomersView() {
                       <span className="ad-cu-avatar" aria-hidden="true">{initials(c)}</span>
                       <span>
                         <span className="ad-cell-name">
-                          {displayName(c)}
+                          {displayName(c, dialCodes)}
                           {c.status === 'DISABLED' && <span className="ad-cu-disabled-tag">Disabled</span>}
                         </span>
                         <span className="ad-cell-slug">{c.email || 'No email'}</span>
@@ -186,8 +186,8 @@ export default function CustomersView() {
                     </div>
                   </td>
                   <td>
-                    <div>{formatPhone(c.phone) || <span className="ad-muted">—</span>}</div>
-                    {countryFromPhone(c.phone) && <div className="ad-cell-slug">{countryFromPhone(c.phone)}</div>}
+                    <div>{formatPhone(c.phone, dialCodes) || <span className="ad-muted">—</span>}</div>
+                    {countryFromPhone(c.phone, dialCodes) && <div className="ad-cell-slug">{countryFromPhone(c.phone, dialCodes)}</div>}
                   </td>
                   <td><ProviderBadges providers={c.authProviders} /></td>
                   <td>
