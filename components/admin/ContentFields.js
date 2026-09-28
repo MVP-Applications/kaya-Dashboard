@@ -8,7 +8,32 @@ import { emptyListItem } from '@/lib/admin/content'
  * A section declares its fields; this turns them into inputs and reports every
  * change back through `onChange(key, value)`. Consecutive fields marked
  * `width: 'half'` are paired into a two-column row.
+ *
+ * Optional per-field extras:
+ * - `hint`: instructions shown between the label and the input
+ * - `showIf(values)`: hide the field unless it applies to these values
+ *   (for a list item, `values` is that item)
+ * - `validate(value, values)`: returns an error message, or '' when valid.
+ *   Errors show inline, and ContentEditor blocks Save while any remain.
  */
+
+/** The fields that apply to these values — see `showIf` above. */
+function visibleFields(fields, values) {
+  return fields.filter(f => !f.showIf || f.showIf(values || {}))
+}
+
+/** How many visible fields fail `validate`, following list fields into each item. */
+export function countFieldErrors(fields, values) {
+  let count = 0
+  for (const field of visibleFields(fields, values)) {
+    const value = values?.[field.key]
+    if (field.validate?.(value, values || {})) count++
+    if (field.type === 'list' && Array.isArray(value)) {
+      for (const item of value) count += countFieldErrors(field.fields || [], item)
+    }
+  }
+  return count
+}
 
 /** Group consecutive half-width fields into rows so they render side by side. */
 function toRows(fields) {
@@ -30,16 +55,16 @@ function toRows(fields) {
 export function SectionFields({ fields, values, onChange, disabled }) {
   return (
     <>
-      {toRows(fields).map(row => (
+      {toRows(visibleFields(fields, values)).map(row => (
         row.length === 2 ? (
           <div className="ad-grid2" key={row[0].key}>
             {row.map(f => (
-              <Field key={f.key} field={f} value={values?.[f.key]}
+              <Field key={f.key} field={f} value={values?.[f.key]} values={values}
                 onChange={v => onChange(f.key, v)} disabled={disabled} />
             ))}
           </div>
         ) : (
-          <Field key={row[0].key} field={row[0]} value={values?.[row[0].key]}
+          <Field key={row[0].key} field={row[0]} value={values?.[row[0].key]} values={values}
             onChange={v => onChange(row[0].key, v)} disabled={disabled} />
         )
       ))}
@@ -47,7 +72,12 @@ export function SectionFields({ fields, values, onChange, disabled }) {
   )
 }
 
-function Field({ field, value, onChange, disabled }) {
+function Field({ field, value, values, onChange, disabled }) {
+  const error = field.validate?.(value, values || {}) || ''
+  const hint = field.hint ? <span className="ad-field-hint ad-cf-hint">{field.hint}</span> : null
+  const errorNote = error ? <span className="ad-field-error" role="alert">{error}</span> : null
+  const inputClass = `ad-input${error ? ' ad-input--invalid' : ''}`
+
   switch (field.type) {
     case 'toggle':
       return (
@@ -59,13 +89,29 @@ function Field({ field, value, onChange, disabled }) {
         </label>
       )
 
+    case 'select':
+      return (
+        <label className="ad-field">
+          <span className="ad-field-label">{field.label}</span>
+          {hint}
+          <select className={inputClass} value={value || ''} disabled={disabled}
+            onChange={e => onChange(e.target.value)}>
+            {!value && <option value="">Choose…</option>}
+            {(field.options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          {errorNote}
+        </label>
+      )
+
     case 'textarea':
       return (
         <label className="ad-field">
           <span className="ad-field-label">{field.label}</span>
+          {hint}
           <textarea className="ad-textarea" rows={field.rows || 3} value={value || ''}
             placeholder={field.placeholder} disabled={disabled}
             onChange={e => onChange(e.target.value)} />
+          {errorNote}
         </label>
       )
 
@@ -104,8 +150,10 @@ function Field({ field, value, onChange, disabled }) {
       return (
         <label className="ad-field">
           <span className="ad-field-label">{field.label}</span>
-          <input className="ad-input" value={value || ''} placeholder={field.placeholder}
+          {hint}
+          <input className={inputClass} value={value || ''} placeholder={field.placeholder}
             disabled={disabled} onChange={e => onChange(e.target.value)} />
+          {errorNote}
         </label>
       )
   }
