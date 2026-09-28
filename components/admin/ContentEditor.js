@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { SectionFields } from './ContentFields'
+import { SectionFields, countFieldErrors } from './ContentFields'
 import LocaleToggle from './LocaleToggle'
 
 /**
@@ -35,6 +35,21 @@ export default function ContentEditor({
     [draft, values, group.sections],
   )
   const dirty = changed.length > 0
+
+  // Fields with a `validate` rule that currently fail, per locale — both
+  // count, since a save sends every locale and the backend checks them all.
+  const errors = useMemo(() => {
+    const out = { EN: 0, AR: 0 }
+    for (const s of group.sections) {
+      for (const loc of Object.keys(out)) {
+        const v = draft[s.id]?.[loc]
+        if (v) out[loc] += countFieldErrors(s.fields, v)
+      }
+    }
+    return out
+  }, [draft, group.sections])
+  const errorCount = errors.EN + errors.AR
+  const otherLocale = locale === 'EN' ? 'AR' : 'EN'
 
   useEffect(() => {
     if (!saved) return
@@ -83,8 +98,14 @@ export default function ContentEditor({
             disabled={!dirty} onClick={() => setDraft(values || {})}>
             Discard
           </button>
+          {errorCount > 0 && (
+            <span className="ad-cf-invalid">
+              {errorCount} {errorCount === 1 ? 'field needs' : 'fields need'} fixing
+              {errors[otherLocale] > 0 && ` (${errors[otherLocale]} in ${otherLocale})`}
+            </span>
+          )}
           <button type="button" className="ad-btn ad-btn--primary"
-            disabled={!dirty || !canEdit} onClick={save}>
+            disabled={!dirty || !canEdit || errorCount > 0} onClick={save}>
             Save changes
           </button>
         </div>

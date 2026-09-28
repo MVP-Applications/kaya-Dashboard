@@ -536,6 +536,15 @@
 }
 .ad-input:focus { outline: none; border-color: var(--mid); box-shadow: 0 0 0 3px rgba(133,112,168,.15); }
 .ad-textarea { resize: vertical; line-height: 1.6; }
+.ad-input--invalid, .ad-input--invalid:focus { border-color: #D98C8C; }
+.ad-input--invalid:focus { box-shadow: 0 0 0 3px rgba(178,59,59,.12); }
+.ad-field-error { font-size: 11.5px; line-height: 1.45; color: #B23B3B; }
+/* In content forms the hint sits between the label and the input. */
+.ad-field .ad-cf-hint { margin-top: 0; }
+.ad-cf-invalid {
+  font-size: 11.5px; font-weight: 600; color: #B23B3B;
+  background: #FDECEC; border: 1px solid #F5C6C6; padding: 3px 9px; border-radius: var(--r-full);
+}
 .ad-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .ad-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .ad-color-row { display: flex; gap: 8px; align-items: center; }
