@@ -1,6 +1,5 @@
 'use client'
 import { useAdmin } from './AdminContext'
-import { COUNTRIES } from '@/lib/countries'
 import { countOverrides } from '@/lib/admin/country-content'
 
 /**
@@ -15,7 +14,7 @@ import { countOverrides } from '@/lib/admin/country-content'
  * how much?
  */
 export default function CountrySwitcher() {
-  const { activeCountry, setActiveCountry, allOverrides } = useAdmin()
+  const { activeCountry, setActiveCountry, allOverrides, countryRecords } = useAdmin()
 
   return (
     <label className="ad-country">
@@ -26,11 +25,11 @@ export default function CountrySwitcher() {
         onChange={e => setActiveCountry(e.target.value)}
       >
         <option value="">All countries</option>
-        {COUNTRIES.map(c => {
-          const n = countOverrides(allOverrides?.[c.id])
+        {countryRecords.map(c => {
+          const n = countOverrides(allOverrides?.[c.code])
           return (
-            <option key={c.id} value={c.id}>
-              {c.short}{n ? ` (${n} changed)` : ''}
+            <option key={c.code} value={c.code}>
+              {c.code}{n ? ` (${n} changed)` : ''}
             </option>
           )
         })}

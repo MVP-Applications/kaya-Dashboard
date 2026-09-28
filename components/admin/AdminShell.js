@@ -14,6 +14,8 @@ import CustomersView from './CustomersView'
 import RequestsView from './RequestsView'
 import PagesView from './PagesView'
 import LocationsView from './LocationsView'
+import CountriesView from './CountriesView'
+import ContactsView from './ContactsView'
 import SiteView from './SiteView'
 import UsersView from './UsersView'
 import PublishButton from './PublishButton'
@@ -52,6 +54,8 @@ const NAV_GROUPS = [
     items: [
       { id: 'pages', label: 'Pages', icon: '▤' },
       { id: 'locations', label: 'Locations', icon: '⌖' },
+      { id: 'countries', label: 'Countries', icon: '🌐' },
+      { id: 'contacts', label: 'Contacts', icon: '☎' },
       { id: 'site', label: 'Footer & Global', icon: '▭' },
     ],
   },
@@ -168,6 +172,8 @@ export default function AdminShell() {
           {view === 'reviews' && <ReviewsView />}
           {view === 'pages' && <PagesView />}
           {view === 'locations' && <LocationsView />}
+          {view === 'countries' && <CountriesView />}
+          {view === 'contacts' && <ContactsView />}
           {view === 'site' && <SiteView />}
           {view === 'users' && <UsersView />}
         </main>

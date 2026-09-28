@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useAdmin } from './AdminContext'
-import { COUNTRY_OPTIONS } from '@/lib/admin/seed'
 import { fetchClinicOptions } from '@/lib/admin/store'
 import LocaleToggle from './LocaleToggle'
 
@@ -19,7 +18,7 @@ function cloneSafe(obj) {
 }
 
 export default function DoctorForm({ initial, isNew, onClose }) {
-  const { verticals, services, doctors, upsertDoctor } = useAdmin()
+  const { verticals, services, doctors, countryRecords, upsertDoctor } = useAdmin()
   const [form, setForm] = useState(() => ({ image: '', ...cloneSafe(initial) }))
   const [error, setError] = useState('')
   const [clinicOptions, setClinicOptions] = useState([])
@@ -221,11 +220,11 @@ export default function DoctorForm({ initial, isNew, onClose }) {
           <div className="ad-field">
             <span className="ad-field-label">Countries</span>
             <div className="ad-check-grid">
-              {COUNTRY_OPTIONS.map(c => (
-                <label key={c} className={`ad-check${form.countries.includes(c) ? ' active' : ''}`}>
-                  <input type="checkbox" checked={form.countries.includes(c)}
-                    onChange={() => toggleIn('countries', c)} />
-                  {c}
+              {countryRecords.map(c => (
+                <label key={c.code} className={`ad-check${form.countries.includes(c.code) ? ' active' : ''}`}>
+                  <input type="checkbox" checked={form.countries.includes(c.code)}
+                    onChange={() => toggleIn('countries', c.code)} />
+                  {c.code}
                 </label>
               ))}
             </div>

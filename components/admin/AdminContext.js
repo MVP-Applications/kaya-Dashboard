@@ -9,6 +9,8 @@ import {
   persistReviews, removeReview,
   persistVouchers, removeVoucher, reorderVouchers,
   persistLocations, removeLocation,
+  persistCountries, removeCountry,
+  persistContacts, removeContact,
   persistPageSection, persistSiteSection,
   fetchRequestsPage, fetchRequestStatusCounts, fetchRequestCountries,
   persistRequestStatus, persistRequestNotes, removeRequestRecord,
@@ -17,7 +19,6 @@ import {
   isDemoMode, resetDemo as resetDemoData,
 } from '@/lib/admin/store'
 import { resolveContent, setOverride, clearSectionOverride } from '@/lib/admin/country-content'
-import { COUNTRY_IDS } from '@/lib/countries'
 import { signIn, signOut, getCurrentUser, onAuthChange, can } from '@/lib/admin/auth'
 
 const AdminContext = createContext(null)
@@ -30,7 +31,7 @@ export function useAdmin() {
 
 const EMPTY = {
   services: [], verticals: [], categories: [], doctors: [], reviews: [],
-  vouchers: [], locations: [], pages: {}, site: {},
+  vouchers: [], locations: [], countries: [], contacts: [], pages: {}, site: {},
 }
 
 const EMPTY_REQUEST_STATUS_COUNTS = { new: 0, contacted: 0, booked: 0, closed: 0, total: 0 }
@@ -53,6 +54,8 @@ export function AdminProvider({ children }) {
   const [pages, setPages] = useState({})
   const [site, setSite] = useState({})
   const [locations, setLocations] = useState([])
+  const [countryRecords, setCountryRecords] = useState([])
+  const [contacts, setContacts] = useState([])
   // Bumped after every full reload (Refresh content, Reset sample data), so
   // screens that fetch their own data — Requests, Voucher Requests, Customers
   // — refetch too.
@@ -74,6 +77,8 @@ export function AdminProvider({ children }) {
     setReviews(data.reviews)
     setVouchers(data.vouchers)
     setLocations(data.locations)
+    setCountryRecords(data.countries)
+    setContacts(data.contacts)
     setPages(data.pages)
     setSite(data.site)
   }
@@ -314,8 +319,10 @@ export function AdminProvider({ children }) {
       reviews: { list: reviews, setList: setReviews, persist: persistReviews, remove: removeReview, keyOf: byId },
       vouchers: { list: vouchers, setList: setVouchers, persist: persistVouchers, remove: removeVoucher, keyOf: byId, reorder: reorderVouchers },
       locations: { list: locations, setList: setLocations, persist: persistLocations, remove: removeLocation, keyOf: byId },
+      countryRecords: { list: countryRecords, setList: setCountryRecords, persist: persistCountries, remove: removeCountry, keyOf: byId },
+      contacts: { list: contacts, setList: setContacts, persist: persistContacts, remove: removeContact, keyOf: byId },
     }
-  }, [services, verticals, categories, doctors, reviews, vouchers, locations])
+  }, [services, verticals, categories, doctors, reviews, vouchers, locations, countryRecords, contacts])
 
   // ── Collection CRUD ───────────────────────────────────
   // Verticals and locations append (they render as ordered settings lists);
@@ -375,6 +382,51 @@ export function AdminProvider({ children }) {
       : appendTo(cols.locations, record)
   }, [cols, upsertInto, appendTo])
   const deleteLocation = useCallback(k => deleteFrom(cols.locations, k), [cols, deleteFrom])
+
+  const upsertCountryRecord = useCallback((record, originalId) => {
+    const exists = originalId != null && cols.countryRecords.list.some(c => c.id === originalId)
+    return exists
+      ? upsertInto(cols.countryRecords, record, originalId)
+      : appendTo(cols.countryRecords, record)
+  }, [cols, upsertInto, appendTo])
+  const deleteCountryRecord = useCallback(k => deleteFrom(cols.countryRecords, k), [cols, deleteFrom])
+
+  /** Mirrors a saved Contact onto its country's embedded `contact` field, so the Countries screen never shows stale data after a Contacts-screen edit. */
+  const syncContactOntoCountry = useCallback((countryId, contactSummary) => {
+    setCountryRecords(list => list.map(c => (
+      c.id === countryId ? { ...c, contact: contactSummary } : c
+    )))
+  }, [])
+
+  const upsertContact = useCallback(async (record, originalId) => {
+    const exists = originalId != null && cols.contacts.list.some(c => c.id === originalId)
+    const ok = exists
+      ? await upsertInto(cols.contacts, record, originalId)
+      : await appendTo(cols.contacts, record)
+    if (ok) {
+      syncContactOntoCountry(record.countryId, {
+        id: record.id,
+        phoneNumber: record.phoneNumber,
+        secondaryPhoneNumber: record.secondaryPhoneNumber || null,
+        whatsappNumber: record.whatsappNumber || null,
+      })
+    }
+    return ok
+  }, [cols, upsertInto, appendTo, syncContactOntoCountry])
+
+  const deleteContact = useCallback(async k => {
+    const target = cols.contacts.list.find(c => c.id === k)
+    const ok = await deleteFrom(cols.contacts, k)
+    if (ok && target) syncContactOntoCountry(target.countryId, null)
+    return ok
+  }, [cols, deleteFrom, syncContactOntoCountry])
+
+  /** After "+ Add city" succeeds against the backend, reflect it in the shared country list every screen reads — no separate fetch. */
+  const addCityToCountry = useCallback((countryId, city) => {
+    setCountryRecords(list => list.map(c => (
+      c.id === countryId ? { ...c, cities: [...c.cities, city] } : c
+    )))
+  }, [])
 
   // ── Requests (consumer submissions) ───────────────────
   // Staff don't create these — they arrive from the public site. Unlike every
@@ -608,13 +660,14 @@ export function AdminProvider({ children }) {
     pages: resolvedPages, updatePageSection,
     site: resolvedSite, updateSiteSection,
     basePages: pages, baseSite: site,
-    countries: COUNTRY_IDS,
     activeCountry, setActiveCountry,
     overrides: countryOverrides,
     // The full map, so the switcher can show how much each market differs.
     allOverrides: overrides,
     saveSection, resetSectionToShared,
     locations, upsertLocation, deleteLocation,
+    countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry,
+    contacts, upsertContact, deleteContact,
     dataVersion,
     users, setUserRole, refreshUsers,
     moveUp, moveDown,
