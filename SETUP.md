@@ -62,7 +62,8 @@ step 1.
 | Area | Status |
 |---|---|
 | Sign in / sign out / session | Connected to `kaya-nest-api` |
-| Services, Doctors, Reviews, Vouchers, Locations | Not connected yet — screen shows an error banner |
+| Vouchers & Voucher Requests | Connected — offers with per-country prices and validity; requests follow the backend's status flow (issue code, redeem by code) |
+| Services, Doctors, Reviews, Locations | Not connected yet — screen shows an error banner |
 | Pages, Footer & Global | Not connected yet |
 | Enquiry inbox (Requests) | Not connected yet; no realtime push exists on the backend either — this will need polling or a new backend endpoint when it's integrated |
 | Users & Roles | Not connected yet — the backend also has no way to edit or delete a staff account once created |

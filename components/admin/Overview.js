@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { fetchVoucherRequestsPage } from '@/lib/admin/store'
+import { VOUCHER_STATUS } from '@/lib/admin/voucher-status'
 
 function greeting() {
   const h = new Date().getHours()
@@ -28,9 +29,9 @@ function useOverviewCounts(loadRequestsPage, dataVersion) {
 
     Promise.all([
       total(loadRequestsPage({ status: 'booked', from: new Date(Date.now() - WEEK).toISOString(), page: 1, pageSize: 1 })),
-      vouchers('REQUESTED'),
-      vouchers('PAYMENT_LINK_SENT'),
-      vouchers('PAID'),
+      vouchers(VOUCHER_STATUS.REQUESTED),
+      vouchers(VOUCHER_STATUS.PAYMENT_LINK_SENT),
+      vouchers(VOUCHER_STATUS.PAID),
     ]).then(([bookedWeek, requested, linkSent, paid]) => {
       if (!alive) return
       setCounts({
@@ -60,7 +61,7 @@ export default function Overview({ onNavigate }) {
   const attention = [
     { n: requestStatusCounts.new, label: 'new enquiries waiting for a first reply', view: 'requests', tone: 'urgent' },
     { n: counts.awaitingPayment, label: 'voucher requests waiting for payment', view: 'voucher-requests', tone: 'warn' },
-    { n: counts.toFulfil, label: 'paid vouchers to send out', view: 'voucher-requests', tone: 'warn' },
+    { n: counts.toFulfil, label: 'paid vouchers to issue', view: 'voucher-requests', tone: 'warn' },
     { n: unfiledTreatments, label: 'treatments not in any vertical', view: 'services', tone: 'info' },
     { n: doctorsNoCountry, label: 'doctors without a country', view: 'doctors', tone: 'info' },
   ].filter(a => a.n > 0)
@@ -69,7 +70,7 @@ export default function Overview({ onNavigate }) {
     { label: 'Open enquiries', value: openRequests, hint: 'New or contacted', view: 'requests' },
     { label: 'Booked this week', value: show(counts.bookedWeek), hint: 'From enquiries in the last 7 days', view: 'requests' },
     { label: 'Awaiting payment', value: show(counts.awaitingPayment), hint: 'Voucher requests', view: 'voucher-requests' },
-    { label: 'Vouchers to fulfil', value: show(counts.toFulfil), hint: 'Paid, not yet sent', view: 'voucher-requests' },
+    { label: 'Vouchers to issue', value: show(counts.toFulfil), hint: 'Paid, not yet issued', view: 'voucher-requests' },
   ]
 
   const links = [

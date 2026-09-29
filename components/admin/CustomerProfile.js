@@ -11,6 +11,7 @@ import {
   STATUS_LABELS, ageFrom, bmi, completeness, countryFromPhone, formatPhone, displayName, initials, dialCodesFrom,
 } from '@/lib/admin/customers'
 import { REQUEST_STATUS_LABELS } from '@/lib/admin/seed'
+import { VOUCHER_STATUS, voucherStatusLabel } from '@/lib/admin/voucher-status'
 
 function fullDate(iso, withTime = false) {
   if (!iso) return '—'
@@ -292,9 +293,13 @@ export default function CustomerProfile({ id, onClose }) {
                     <div key={v.id} className="ad-cu-history-row">
                       <span>
                         <strong>{v.offerTitle}</strong>
-                        <span className="ad-cell-slug">{v.offerCurrency} {v.offerPrice} · {v.isGift ? 'Gift' : 'For themselves'} · {fullDate(v.submittedAt)}</span>
+                        <span className="ad-cell-slug">
+                          {v.offerCurrency} {v.offerPrice} · {v.isGift ? 'Gift' : 'For themselves'} · {fullDate(v.submittedAt)}
+                          {v.code && <> · <code className="ad-vcode">{v.code}</code></>}
+                          {v.expiresAt && v.status === VOUCHER_STATUS.FULFILLED && <> · valid until {fullDate(v.expiresAt)}</>}
+                        </span>
                       </span>
-                      <span className="ad-badge">{String(v.status).replace(/_/g, ' ').toLowerCase()}</span>
+                      <span className={`ad-vstatus ad-vstatus--${String(v.status).toLowerCase()}`}>{voucherStatusLabel(v.status)}</span>
                     </div>
                   ))}
                 </div>
