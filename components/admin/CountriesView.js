@@ -1,16 +1,17 @@
 'use client'
 import { useState } from 'react'
 import { useAdmin } from './AdminContext'
-import { emptyCountry } from '@/lib/admin/content'
+import { emptyCountry, sortCountries } from '@/lib/admin/content'
 import CountryForm from './CountryForm'
 
 export default function CountriesView() {
-  const { countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry, allowed } = useAdmin()
+  const { countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry, replaceCityInCountry, allowed } = useAdmin()
   const [editing, setEditing] = useState(null) // { initial, isNew }
   const [confirm, setConfirm] = useState(null)
   const [query, setQuery] = useState('')
 
-  const canCreate = allowed('create')
+  // Countries and cities are ADMIN-only on the backend.
+  const canCreate = allowed('manageCountries')
   const canDelete = allowed('delete')
 
   if (editing) {
@@ -19,15 +20,17 @@ export default function CountriesView() {
         initial={editing.initial}
         isNew={editing.isNew}
         existing={countryRecords}
+        canEdit={allowed('manageCountries')}
         onSave={(rec, orig) => { upsertCountryRecord(rec, orig); setEditing(null) }}
         onClose={() => setEditing(null)}
         onCityAdded={addCityToCountry}
+        onCityUpdated={replaceCityInCountry}
       />
     )
   }
 
   const q = query.trim().toLowerCase()
-  const filtered = countryRecords.filter(c => (
+  const filtered = sortCountries(countryRecords).filter(c => (
     !q || `${c.name} ${c.nameAr} ${c.code} ${c.isoCode}`.toLowerCase().includes(q)
   ))
 
@@ -63,6 +66,7 @@ export default function CountriesView() {
         <table className="ad-table">
           <thead>
             <tr>
+              <th>Order</th>
               <th>Country</th>
               <th>Code</th>
               <th>Dial code</th>
@@ -75,6 +79,7 @@ export default function CountriesView() {
           <tbody>
             {filtered.map(c => (
               <tr key={c.id}>
+                <td>{c.displayOrder ?? 0}</td>
                 <td>
                   <div className="ad-cell-name">
                     {c.flagUrl && <img src={c.flagUrl} alt="" style={{ width: 20, height: 14, objectFit: 'cover', marginRight: 8, verticalAlign: 'middle' }} />}
@@ -89,7 +94,9 @@ export default function CountriesView() {
                 <td>{c.preferredLanguage}</td>
                 <td className="ad-td-actions">
                   <button className="ad-btn ad-btn--soft ad-btn--sm"
-                    onClick={() => setEditing({ initial: c, isNew: false })}>Edit</button>
+                    onClick={() => setEditing({ initial: c, isNew: false })}>
+                    {allowed('manageCountries') ? 'Edit' : 'View'}
+                  </button>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm"
                       onClick={() => setConfirm(c.id)}>Delete</button>
@@ -98,7 +105,7 @@ export default function CountriesView() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="ad-empty">No countries match this filter.</td></tr>
+              <tr><td colSpan={8} className="ad-empty">No countries match this filter.</td></tr>
             )}
           </tbody>
         </table>

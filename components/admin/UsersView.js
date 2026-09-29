@@ -72,6 +72,7 @@ function RoleCard({ role }) {
     ['Edit records', p.edit],
     ['Delete records', p.delete],
     ['Manage users', p.manageUsers],
+    ['Manage countries & cities', p.manageCountries],
   ]
   return (
     <div className="ad-role-card">

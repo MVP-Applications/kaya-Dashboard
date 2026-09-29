@@ -1,14 +1,17 @@
 'use client'
 import { useState } from 'react'
-import { createCity } from '@/lib/admin/store'
+import { createCity, updateCity } from '@/lib/admin/store'
 import ImagePicker from './ImagePicker'
 import LocaleToggle from './LocaleToggle'
 
-export default function CountryForm({ initial, isNew, existing, onSave, onClose, onCityAdded }) {
+export default function CountryForm({ initial, isNew, existing, onSave, onClose, onCityAdded, onCityUpdated, canEdit = true }) {
   const [form, setForm] = useState({ ...initial })
   const [error, setError] = useState('')
   const [newCityName, setNewCityName] = useState('')
+  const [newCityNameAr, setNewCityNameAr] = useState('')
   const [addingCity, setAddingCity] = useState(false)
+  const [editingCity, setEditingCity] = useState(null) // { id, name, nameAr }
+  const [savingCity, setSavingCity] = useState(false)
   const [locale, setLocale] = useState('EN')
   const originalId = isNew ? null : initial.id
 
@@ -21,14 +24,33 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
     if (!name || !form.id) return
     setAddingCity(true)
     try {
-      const city = await createCity(form.id, name)
+      const city = await createCity(form.id, name, newCityNameAr)
       setForm(f => ({ ...f, cities: [...f.cities, city] }))
       onCityAdded?.(form.id, city)
       setNewCityName('')
+      setNewCityNameAr('')
     } catch (e) {
       setError(e.message)
     } finally {
       setAddingCity(false)
+    }
+  }
+
+  // Cities save on their own (like "+ Add city"), not with the country form.
+  async function saveCity() {
+    const name = editingCity.name.trim()
+    if (!name) return setError('City name is required.')
+    setSavingCity(true)
+    try {
+      const city = await updateCity(editingCity.id, { name, nameAr: editingCity.nameAr.trim() })
+      setForm(f => ({ ...f, cities: f.cities.map(c => (c.id === city.id ? city : c)) }))
+      onCityUpdated?.(form.id, city)
+      setEditingCity(null)
+      setError('')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSavingCity(false)
     }
   }
 
@@ -43,7 +65,9 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
     if (isNew && existing.some(c => c.id === id)) {
       return setError(`A country with code "${id}" already exists.`)
     }
-    onSave({ ...form, id, name, isoCode: form.isoCode.trim().toUpperCase() }, originalId)
+    const order = String(form.displayOrder ?? '').trim()
+    if (order !== '' && !/^\d{1,4}$/.test(order)) return setError('Display order must be a whole number from 0 to 9999.')
+    onSave({ ...form, id, name, isoCode: form.isoCode.trim().toUpperCase(), displayOrder: order === '' ? 0 : Number(order) }, originalId)
   }
 
   return (
@@ -56,15 +80,21 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
         </div>
         <div className="ad-editor-actions">
           <button type="button" className="ad-btn ad-btn--ghost" onClick={onClose}>Cancel</button>
-          <button type="submit" className="ad-btn ad-btn--primary">
-            {isNew ? 'Create country' : 'Save changes'}
-          </button>
+          {canEdit && (
+            <button type="submit" className="ad-btn ad-btn--primary">
+              {isNew ? 'Create country' : 'Save changes'}
+            </button>
+          )}
         </div>
       </div>
 
       {error && <div className="ad-form-error ad-editor-error">{error}</div>}
+      {!canEdit && (
+        <p className="ad-cf-readonly">Only administrators can change countries and cities — this is read-only.</p>
+      )}
 
       <div className="ad-editor-body">
+        <fieldset disabled={!canEdit} style={{ display: 'contents' }}>
         <fieldset className="ad-fieldset">
           <legend>Name</legend>
           <p className="ad-fieldset-hint">
@@ -108,7 +138,18 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
         </fieldset>
 
         <fieldset className="ad-fieldset">
+          <legend>Display order</legend>
+          <p className="ad-fieldset-hint">
+            Countries are listed in this order on the website (About page, region switcher) and across the
+            dashboard — lowest first. Countries with the same number sort by name.
+          </p>
+          <input className="ad-input" type="number" min="0" max="9999" step="1" style={{ maxWidth: 140 }}
+            value={form.displayOrder ?? 0} onChange={e => set('displayOrder', e.target.value)} />
+        </fieldset>
+
+        <fieldset className="ad-fieldset">
           <legend>Flag</legend>
+          <p className="ad-fieldset-hint">Shown next to the country on the website’s About page.</p>
           <ImagePicker value={form.flagUrl} onChange={v => set('flagUrl', v)} icon="🏳" />
         </fieldset>
 
@@ -153,16 +194,45 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
             <p className="ad-fieldset-hint">Save the country first, then add cities under it.</p>
           ) : (
             <>
+              <p className="ad-fieldset-hint">
+                Click a city to rename it or add its Arabic name — the website shows the Arabic name to visitors
+                browsing in Arabic.
+              </p>
               {form.cities.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-                  {form.cities.map(c => <span key={c.id} className="ad-badge">{c.name}</span>)}
+                  {form.cities.map(c => (
+                    <button key={c.id} type="button"
+                      className={`ad-badge ad-city-chip${editingCity?.id === c.id ? ' active' : ''}${c.nameAr ? '' : ' ad-city-chip--no-ar'}`}
+                      title={c.nameAr ? undefined : 'No Arabic name yet'}
+                      onClick={() => setEditingCity({ id: c.id, name: c.name, nameAr: c.nameAr || '' })}>
+                      {c.name}{c.nameAr && <span dir="rtl"> · {c.nameAr}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {editingCity && (
+                <div className="ad-field">
+                  <span className="ad-field-label">Edit city</span>
+                  <div className="ad-repeat-row">
+                    <input className="ad-input" value={editingCity.name} placeholder="English name"
+                      onChange={e => setEditingCity(c => ({ ...c, name: e.target.value }))} />
+                    <input className="ad-input" dir="rtl" value={editingCity.nameAr} placeholder="الاسم بالعربية"
+                      onChange={e => setEditingCity(c => ({ ...c, nameAr: e.target.value }))} />
+                    <button type="button" className="ad-btn ad-btn--primary" disabled={!editingCity.name.trim() || savingCity}
+                      onClick={saveCity}>
+                      {savingCity ? 'Saving…' : 'Save city'}
+                    </button>
+                    <button type="button" className="ad-btn ad-btn--ghost" onClick={() => setEditingCity(null)}>Cancel</button>
+                  </div>
                 </div>
               )}
               <div className="ad-field">
                 <span className="ad-field-label">Add a city</span>
                 <div className="ad-repeat-row">
-                  <input className="ad-input" value={newCityName} placeholder="e.g. Al Ain"
+                  <input className="ad-input" value={newCityName} placeholder="English name, e.g. Al Ain"
                     onChange={e => setNewCityName(e.target.value)} />
+                  <input className="ad-input" dir="rtl" value={newCityNameAr} placeholder="الاسم بالعربية، مثل العين"
+                    onChange={e => setNewCityNameAr(e.target.value)} />
                   <button type="button" className="ad-btn ad-btn--soft" disabled={!newCityName.trim() || addingCity}
                     onClick={addCity}>
                     {addingCity ? 'Adding…' : '+ Add city'}
@@ -171,6 +241,7 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
               </div>
             </>
           )}
+        </fieldset>
         </fieldset>
       </div>
     </form>

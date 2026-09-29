@@ -8,7 +8,7 @@ import {
   persistDoctors, removeDoctor, reorderDoctors,
   persistReviews, removeReview,
   persistVouchers, removeVoucher, reorderVouchers,
-  persistLocations, removeLocation,
+  persistLocations, removeLocation, fetchLocation, persistLocation,
   persistCountries, removeCountry,
   persistContacts, removeContact,
   persistPageSection, persistSiteSection,
@@ -375,12 +375,42 @@ export function AdminProvider({ children }) {
   const upsertVoucher = useCallback((r, k) => upsertInto(cols.vouchers, r, k), [cols, upsertInto])
   const deleteVoucher = useCallback(k => deleteFrom(cols.vouchers, k), [cols, deleteFrom])
 
-  const upsertLocation = useCallback((record, originalId) => {
-    const exists = originalId != null && cols.locations.list.some(l => l.id === originalId)
-    return exists
-      ? upsertInto(cols.locations, record, originalId)
-      : appendTo(cols.locations, record)
-  }, [cols, upsertInto, appendTo])
+  /**
+   * Save one clinic. Unlike `commit`, this is not optimistic: the list only
+   * changes once the backend has accepted the clinic, so LocationForm can stay
+   * open (with the admin's input intact) when a save fails. Resolves true/false.
+   */
+  const saveLocation = useCallback(async (record, originalId) => {
+    setSaving(true)
+    try {
+      const saved = await persistLocation(record, originalId)
+      setLocations(list => (
+        originalId != null && list.some(l => l.id === originalId)
+          ? list.map(l => (l.id === originalId ? saved : l))
+          : [...list, saved]
+      ))
+      setError('')
+      setSuccess('Changes saved.')
+      return true
+    } catch (e) {
+      setError(e.message)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }, [])
+
+  /** Fresh copy of one clinic for its Edit page; null (with an error toast) if it can't be loaded. */
+  const loadLocation = useCallback(async id => {
+    try {
+      const fresh = await fetchLocation(id)
+      setLocations(list => list.map(l => (l.id === id ? fresh : l)))
+      return fresh
+    } catch (e) {
+      setError(`Could not load this clinic. ${e.message}`)
+      return null
+    }
+  }, [])
   const deleteLocation = useCallback(k => deleteFrom(cols.locations, k), [cols, deleteFrom])
 
   const upsertCountryRecord = useCallback((record, originalId) => {
@@ -425,6 +455,13 @@ export function AdminProvider({ children }) {
   const addCityToCountry = useCallback((countryId, city) => {
     setCountryRecords(list => list.map(c => (
       c.id === countryId ? { ...c, cities: [...c.cities, city] } : c
+    )))
+  }, [])
+
+  /** Same, after a city is renamed / given an Arabic name. */
+  const replaceCityInCountry = useCallback((countryId, city) => {
+    setCountryRecords(list => list.map(c => (
+      c.id === countryId ? { ...c, cities: c.cities.map(x => (x.id === city.id ? city : x)) } : c
     )))
   }, [])
 
@@ -665,8 +702,8 @@ export function AdminProvider({ children }) {
     // The full map, so the switcher can show how much each market differs.
     allOverrides: overrides,
     saveSection, resetSectionToShared,
-    locations, upsertLocation, deleteLocation,
-    countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry,
+    locations, saveLocation, loadLocation, deleteLocation,
+    countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry, replaceCityInCountry,
     contacts, upsertContact, deleteContact,
     dataVersion,
     users, setUserRole, refreshUsers,
