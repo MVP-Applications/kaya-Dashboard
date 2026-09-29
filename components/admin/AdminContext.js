@@ -16,10 +16,12 @@ import {
   persistRequestStatus, persistRequestNotes, removeRequestRecord,
   fetchUsers, updateUserRole,
   fetchOverrides, persistOverrideSection,
+  fetchTellUs, persistTellUs,
   isDemoMode, resetDemo as resetDemoData,
 } from '@/lib/admin/store'
 import { resolveContent, setOverride, clearSectionOverride } from '@/lib/admin/country-content'
 import { signIn, signOut, getCurrentUser, onAuthChange, can } from '@/lib/admin/auth'
+import { normaliseTellUs } from '@/lib/admin/tell-us'
 
 const AdminContext = createContext(null)
 
@@ -56,6 +58,10 @@ export function AdminProvider({ children }) {
   const [locations, setLocations] = useState([])
   const [countryRecords, setCountryRecords] = useState([])
   const [contacts, setContacts] = useState([])
+  // Tell Us Everything questionnaire — one document, loaded on its own so a
+  // failure there never takes the catalogue down with it.
+  const [tellUsRaw, setTellUsRaw] = useState(null)
+  const [tellUsError, setTellUsError] = useState('')
   // Bumped after every full reload (Refresh content, Reset sample data), so
   // screens that fetch their own data — Requests, Voucher Requests, Customers
   // — refetch too.
@@ -122,6 +128,13 @@ export function AdminProvider({ children }) {
     }
 
     try {
+      const doc = await fetchTellUs()
+      if (token === loadToken.current) { setTellUsRaw(doc); setTellUsError('') }
+    } catch (e) {
+      if (token === loadToken.current) { setTellUsRaw(null); setTellUsError(e.message) }
+    }
+
+    try {
       const data = await fetchAll()
       if (token !== loadToken.current) return
       applyAll(data)
@@ -165,6 +178,7 @@ export function AdminProvider({ children }) {
       if (!u) {
         loadToken.current++
         applyAll(EMPTY)
+        setTellUsRaw(null)
       }
     })
 
@@ -206,6 +220,7 @@ export function AdminProvider({ children }) {
     setUser(null)
     loadToken.current++
     applyAll(EMPTY)
+    setTellUsRaw(null)
   }, [])
 
   const allowed = useCallback(action => can(user, action), [user])
@@ -450,6 +465,34 @@ export function AdminProvider({ children }) {
     if (ok && target) syncContactOntoCountry(target.countryId, null)
     return ok
   }, [cols, deleteFrom, syncContactOntoCountry])
+
+  // ── Tell Us Everything ────────────────────────────────
+  // Normalised against the live verticals: areas keyed by pillar id, one per
+  // vertical, every shared question referenced.
+  const tellUs = useMemo(
+    () => (tellUsRaw ? normaliseTellUs(tellUsRaw, verticals) : null),
+    [tellUsRaw, verticals],
+  )
+
+  /** Saves the whole questionnaire; the backend's pruned copy becomes the saved state. */
+  const saveTellUs = useCallback(async doc => {
+    const prev = tellUsRaw
+    setTellUsRaw(doc)
+    setSaving(true)
+    try {
+      const saved = await persistTellUs(doc)
+      if (saved) setTellUsRaw(saved)
+      setError('')
+      setSuccess('Tell Us Everything saved.')
+      return true
+    } catch (e) {
+      setTellUsRaw(prev)
+      setError(e.message)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }, [tellUsRaw])
 
   /** After "+ Add city" succeeds against the backend, reflect it in the shared country list every screen reads — no separate fetch. */
   const addCityToCountry = useCallback((countryId, city) => {
@@ -705,6 +748,7 @@ export function AdminProvider({ children }) {
     locations, saveLocation, loadLocation, deleteLocation,
     countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry, replaceCityInCountry,
     contacts, upsertContact, deleteContact,
+    tellUs, tellUsError, saveTellUs,
     dataVersion,
     users, setUserRole, refreshUsers,
     moveUp, moveDown,

@@ -564,6 +564,21 @@ export default function RequestsView() {
                 )}
               </div>
 
+              {/* Tell Us Everything answers — worded as the person saw them. */}
+              {open.answers && open.answers.length > 0 && (
+                <div className="ad-field">
+                  <span className="ad-field-label">Tell Us Everything answers</span>
+                  <div className="ad-req-detail">
+                    {open.answers.map(a => (
+                      <div key={a.questionId || a.question} className="ad-req-row">
+                        <span className="ad-req-key">{a.question}</span>
+                        <span className="ad-req-val">{(a.answers || []).join(', ') || '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {open.message && (
                 <div className="ad-field">
                   <span className="ad-field-label">Message from consumer</span>

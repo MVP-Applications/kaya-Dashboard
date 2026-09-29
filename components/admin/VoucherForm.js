@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { VOUCHER_TYPE_OPTIONS, BADGE_STYLE_OPTIONS } from '@/lib/admin/seed'
+import { parsePriceInput } from '@/lib/admin/price'
 import CountryFields from './CountryFields'
 import ImagePicker from './ImagePicker'
 import LocaleToggle from './LocaleToggle'
@@ -21,12 +22,14 @@ function cloneSafe(obj) {
 
 export default function VoucherForm({ initial, isNew, onClose }) {
   const { vouchers, upsertVoucher } = useAdmin()
-  // Back-fill `regions` / `isPublished` for vouchers saved before they existed.
+  // Back-fill fields for vouchers saved before they existed.
   const [form, setForm] = useState(() => {
     const base = cloneSafe(initial)
     return {
       ...base,
       regions: Array.isArray(base.regions) ? base.regions : [],
+      pricing: base.pricing && typeof base.pricing === 'object' ? base.pricing : {},
+      validityMonths: base.validityMonths ?? 6,
       isPublished: base.isPublished !== false,
     }
   })
@@ -48,13 +51,21 @@ export default function VoucherForm({ initial, isNew, onClose }) {
     const title = form.title.trim()
     if (!title) return setError('Title is required.')
     if (!form.description.trim()) return setError('Description is required.')
+    const badPrice = Object.entries(form.pricing || {}).find(([, p]) => parsePriceInput(p?.price) === null)
+    if (badPrice) {
+      return setError(`The ${badPrice[0]} price "${badPrice[1].price}" isn't a number — use digits, e.g. 1800 or 1,800.`)
+    }
+    const months = Number(form.validityMonths)
+    if (!Number.isInteger(months) || months < 1 || months > 120) {
+      return setError('Valid for must be a whole number of months, from 1 to 120.')
+    }
 
     const id = form.id.trim() || slugify(title)
     const clash = vouchers.some(v => v.id === id && v.id !== originalId)
     if (clash) return setError(`The id "${id}" is already in use.`)
 
     upsertVoucher(
-      { ...form, id, title, price: form.price === '' ? '' : Number(form.price) },
+      { ...form, id, title, price: form.price === '' ? '' : Number(form.price), validityMonths: months },
       originalId,
     )
     onClose()
@@ -119,10 +130,14 @@ export default function VoucherForm({ initial, isNew, onClose }) {
         </fieldset>
 
         <fieldset className="ad-fieldset">
-          <legend>Pricing</legend>
-          <div className="ad-grid2">
+          <legend>Pricing &amp; validity</legend>
+          <p className="ad-fieldset-hint">
+            The default price applies in every country that has no price of its own (set those under
+            Availability). The price a customer was quoted is kept with their request.
+          </p>
+          <div className="ad-grid3">
             <label className="ad-field">
-              <span className="ad-field-label">Price</span>
+              <span className="ad-field-label">Default price</span>
               <input className="ad-input" type="number" min="0" value={form.price}
                 onChange={e => set('price', e.target.value)} />
             </label>
@@ -131,15 +146,24 @@ export default function VoucherForm({ initial, isNew, onClose }) {
               <input className="ad-input" value={form.currency}
                 onChange={e => set('currency', e.target.value)} />
             </label>
+            <label className="ad-field">
+              <span className="ad-field-label">Valid for (months)</span>
+              <input className="ad-input" type="number" min="1" max="120" step="1" value={form.validityMonths}
+                onChange={e => set('validityMonths', e.target.value)} />
+            </label>
           </div>
+          <span className="ad-field-hint">
+            An issued voucher can be redeemed for this long; the expiry date is set when it&apos;s issued.
+          </span>
         </fieldset>
 
         <fieldset className="ad-fieldset">
           <legend>Availability</legend>
           <CountryFields
             countries={form.regions}
-            showPricing={false}
-            onChange={({ countries }) => set('regions', countries)}
+            pricing={form.pricing}
+            pricingHint="Leave a country blank to use the default price there."
+            onChange={({ countries, pricing }) => setForm(f => ({ ...f, regions: countries, pricing }))}
           />
           <label className="ad-field ad-field--toggle">
             <span className="ad-field-label">Website</span>

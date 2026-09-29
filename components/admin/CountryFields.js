@@ -33,7 +33,7 @@ function normalisePricing(stored, countryRecords) {
  * than silently invisible until someone remembers to tick three boxes — the
  * safer default for a catalogue that is mostly shared.
  */
-export default function CountryFields({ countries, pricing, onChange, showPricing = true }) {
+export default function CountryFields({ countries, pricing, onChange, showPricing = true, pricingHint }) {
   const { countryRecords } = useAdmin()
   const selected = Array.isArray(countries) ? countries : []
   const prices = normalisePricing(pricing, countryRecords)
@@ -107,8 +107,7 @@ export default function CountryFields({ countries, pricing, onChange, showPricin
             })}
           </div>
           <span className="ad-field-hint">
-            Leave a price blank to hide it in that country rather than showing
-            another market&apos;s figure.
+            {pricingHint || 'Leave a price blank to hide it in that country rather than showing another market\u2019s figure.'}
           </span>
         </div>
       )}

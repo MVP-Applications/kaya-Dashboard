@@ -8,6 +8,7 @@ import VerticalsView from './VerticalsView'
 import CategoriesView from './CategoriesView'
 import DoctorsView from './DoctorsView'
 import IndulgenceView from './IndulgenceView'
+import TellUsView from './TellUsView'
 import VoucherRequestsView from './VoucherRequestsView'
 import ReviewsView from './ReviewsView'
 import CustomersView from './CustomersView'
@@ -44,6 +45,7 @@ const NAV_GROUPS = [
       { id: 'services', label: 'Treatments & Services', icon: '✦' },
       { id: 'verticals', label: 'Verticals', icon: '◈' },
       { id: 'categories', label: 'Categories', icon: '▣' },
+      { id: 'tell-us', label: 'Tell Us Everything', icon: '◎' },
       { id: 'doctors', label: 'Doctors', icon: '⚕' },
       { id: 'indulgence', label: 'Indulgence', icon: '🎁' },
       { id: 'reviews', label: 'Reviews', icon: '★' },
@@ -165,6 +167,7 @@ export default function AdminShell() {
           {view === 'services' && <ServicesView />}
           {view === 'verticals' && <VerticalsView />}
           {view === 'categories' && <CategoriesView />}
+          {view === 'tell-us' && <TellUsView />}
           {view === 'doctors' && <DoctorsView />}
           {view === 'indulgence' && <IndulgenceView />}
           {view === 'voucher-requests' && <VoucherRequestsView />}
