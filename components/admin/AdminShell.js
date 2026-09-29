@@ -53,7 +53,7 @@ const NAV_GROUPS = [
     label: 'Website',
     items: [
       { id: 'pages', label: 'Pages', icon: '▤' },
-      { id: 'locations', label: 'Locations', icon: '⌖' },
+      { id: 'locations', label: 'Clinics', icon: '⌖' },
       { id: 'countries', label: 'Countries', icon: '🌐' },
       { id: 'contacts', label: 'Contacts', icon: '☎' },
       { id: 'site', label: 'Footer & Global', icon: '▭' },

@@ -21,10 +21,14 @@ function cloneSafe(obj) {
 
 export default function VoucherForm({ initial, isNew, onClose }) {
   const { vouchers, upsertVoucher } = useAdmin()
-  // Back-fill `regions` for vouchers saved before it existed.
+  // Back-fill `regions` / `isPublished` for vouchers saved before they existed.
   const [form, setForm] = useState(() => {
     const base = cloneSafe(initial)
-    return { ...base, regions: Array.isArray(base.regions) ? base.regions : [] }
+    return {
+      ...base,
+      regions: Array.isArray(base.regions) ? base.regions : [],
+      isPublished: base.isPublished !== false,
+    }
   })
   const [error, setError] = useState('')
   const [locale, setLocale] = useState('EN')
@@ -137,6 +141,17 @@ export default function VoucherForm({ initial, isNew, onClose }) {
             showPricing={false}
             onChange={({ countries }) => set('regions', countries)}
           />
+          <label className="ad-field ad-field--toggle">
+            <span className="ad-field-label">Website</span>
+            <label className="ad-check">
+              <input type="checkbox" checked={form.isPublished}
+                onChange={e => set('isPublished', e.target.checked)} />
+              Show this voucher on the Indulgence page
+            </label>
+          </label>
+          <p className="ad-fieldset-hint">
+            Untick to hide it without deleting — a voucher that already has requests can&apos;t be deleted.
+          </p>
         </fieldset>
 
         <fieldset className="ad-fieldset">

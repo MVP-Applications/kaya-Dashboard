@@ -35,6 +35,9 @@ const orNone = v => (v == null || v === '' ? null : v)
 /**
  * The customer's enquiries and voucher requests, found by email and phone
  * through the same search the Requests and Voucher Requests screens use.
+ * Voucher requests submitted while signed in are also fetched by the
+ * account link (customerId), so they show even if a different email or
+ * phone was typed into the form.
  */
 function useHistory(customer, loadRequestsPage) {
   const [history, setHistory] = useState({ loading: true, requests: [], vouchers: [], error: '' })
@@ -42,11 +45,14 @@ function useHistory(customer, loadRequestsPage) {
     if (!customer) return
     let alive = true
     const terms = [customer.email, customer.phone].filter(Boolean)
-    if (!terms.length) { setHistory({ loading: false, requests: [], vouchers: [], error: '' }); return }
     const dedupe = lists => [...new Map(lists.flat().map(x => [x.id, x])).values()]
+    const voucherQueries = [
+      ...terms.map(search => ({ search })),
+      ...(customer.id ? [{ customerId: customer.id }] : []),
+    ]
     Promise.all([
       Promise.all(terms.map(t => loadRequestsPage({ search: t, page: 1, pageSize: 50 }).then(r => r.items))),
-      Promise.all(terms.map(t => fetchVoucherRequestsPage({ search: t, page: 1, pageSize: 50 }).then(r => r.items))),
+      Promise.all(voucherQueries.map(q => fetchVoucherRequestsPage({ ...q, page: 1, pageSize: 50 }).then(r => r.items))),
     ])
       .then(([reqs, vrs]) => {
         if (!alive) return
@@ -277,7 +283,7 @@ export default function CustomerProfile({ id, onClose }) {
           <div className="ad-panel">
             <div className="ad-panel-head">
               <h2 className="ad-panel-title">Voucher requests</h2>
-              <p className="ad-an-note">Matched by email and mobile number.</p>
+              <p className="ad-an-note">Linked to this account, or matched by email and mobile number.</p>
             </div>
             {history.loading ? <p className="ad-an-empty">Loading…</p>
               : history.vouchers.length ? (

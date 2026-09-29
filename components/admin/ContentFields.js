@@ -97,6 +97,10 @@ function Field({ field, value, values, onChange, disabled }) {
           <select className={inputClass} value={value || ''} disabled={disabled}
             onChange={e => onChange(e.target.value)}>
             {!value && <option value="">Choose…</option>}
+            {/* A saved value that's no longer offered stays visible rather than silently showing option 1. */}
+            {value && !(field.options || []).some(o => o.value === value) && (
+              <option value={value}>{value} (not in the list — choose another)</option>
+            )}
             {(field.options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           {errorNote}

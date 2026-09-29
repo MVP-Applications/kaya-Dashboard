@@ -98,12 +98,18 @@
   background: #fff; color: var(--ink);
   border-right: 1px solid var(--line);
   display: flex; flex-direction: column;
-  padding: 22px 16px; position: sticky; top: 0; height: 100vh;
+  padding: 22px 16px; position: sticky; top: 0; height: 100vh; height: 100dvh;
 }
 .ad-sidebar-brand { display: flex; align-items: center; gap: 9px; padding: 0 8px 22px; }
 .ad-sidebar-logo { height: 26px; width: auto; }
 .ad-sidebar-badge { background: var(--lilac-lt); color: var(--primary); }
-.ad-nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+/* min-height: 0 lets the nav shrink inside the fixed-height sidebar so it
+   scrolls on its own, keeping the brand and footer buttons in view. */
+.ad-nav {
+  display: flex; flex-direction: column; gap: 3px; flex: 1; min-height: 0; overflow-y: auto;
+  scrollbar-width: none; /* still scrollable, just no visible bar */
+}
+.ad-nav::-webkit-scrollbar { display: none; }
 .ad-nav-item {
   display: flex; align-items: center; gap: 11px;
   padding: 10px 12px; border-radius: 10px;
@@ -218,6 +224,11 @@
   cursor: pointer; padding: 0 2px; opacity: .75;
 }
 .ad-toast-close:hover { opacity: 1; }
+/* Narrow phones: span the width instead of overflowing the left edge. */
+@media (max-width: 520px) {
+  .ad-toast-stack { left: 12px; right: 12px; top: 12px; align-items: stretch; }
+  .ad-toast { min-width: 0; max-width: none; }
+}
 .ad-topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 .ad-menu-toggle {
   display: none; background: none; border: 1px solid var(--line); border-radius: 8px;
@@ -246,6 +257,9 @@
 .ad-stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); line-height: 1; letter-spacing: -.02em; }
 .ad-stat-label { font-size: 13px; font-weight: 600; color: var(--ink); margin-top: 6px; }
 .ad-stat-hint { font-size: 11.5px; color: var(--slate); }
+.ad-loc-totals .ad-stat-card { text-align: start; font-family: inherit; cursor: pointer; }
+.ad-loc-totals .ad-stat-card.active { border-color: var(--mid); box-shadow: 0 0 0 3px rgba(133,112,168,.15); }
+.ad-loc-flag { width: 18px; height: 12px; object-fit: cover; border-radius: 2px; margin-inline-end: 6px; vertical-align: -1px; }
 
 /* ── Overview (visual) ─────────────────────────────────── */
 .ad-ov { display: flex; flex-direction: column; gap: 22px; }
@@ -551,6 +565,10 @@
 .ad-color { width: 42px; height: 38px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer; }
 
 .ad-repeat-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+.ad-city-chip { cursor: pointer; border: 1px solid transparent; font-family: inherit; }
+.ad-city-chip:hover, .ad-city-chip.active { border-color: var(--mid); }
+/* A city still missing its Arabic name — shows in English to Arabic visitors. */
+.ad-city-chip--no-ar { border-style: dashed; border-color: var(--line); }
 .ad-repeat-main { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .ad-input--icon { width: 52px; text-align: center; flex-shrink: 0; }
 
@@ -1140,3 +1158,32 @@
   .ad-cu-head { align-items: flex-start; }
   .ad-cu-avatar--lg { width: 42px; height: 42px; font-size: 14px; }
 }
+
+/* ── Overview (simplified) ─────────────────────────────── */
+.ad-ov-stat-hint { font-size: 11.5px; color: var(--slate); margin-top: 2px; }
+.ad-ov-todo { display: flex; flex-direction: column; gap: 8px; }
+.ad-ov-todo-item {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
+  background: var(--whisper); border: 1px solid var(--line); border-left-width: 3px;
+  border-radius: 10px; padding: 11px 14px; font: inherit;
+  transition: background .15s, border-color .15s;
+}
+.ad-ov-todo-item:hover { background: #fff; border-color: rgba(133,112,168,.35); }
+.ad-ov-todo-item--urgent { border-left-color: #E7513B; }
+.ad-ov-todo-item--warn { border-left-color: #C7902B; }
+.ad-ov-todo-item--info { border-left-color: var(--mid); }
+.ad-ov-todo-n { font-size: 1.15rem; font-weight: 700; color: var(--ink); min-width: 28px; }
+.ad-ov-todo-lbl { flex: 1; font-size: 13px; color: var(--ink); }
+.ad-ov-todo-go { color: var(--slate); font-size: 14px; }
+.ad-ov-clear { font-size: 13px; color: #37795A; }
+
+.ad-ov-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.ad-ov-link {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font: inherit;
+  font-size: 12.5px; color: var(--ink); background: var(--whisper);
+  border: 1px solid var(--line); border-radius: var(--r-full); padding: 7px 14px;
+}
+.ad-ov-link:hover { border-color: var(--mid); color: var(--primary); }
+
+/* Indulgence: offer hidden from the website (unpublished). */
+.ad-voucher-hidden { margin-left: 8px; vertical-align: middle; }

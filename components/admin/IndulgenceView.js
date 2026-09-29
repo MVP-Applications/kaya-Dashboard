@@ -66,7 +66,10 @@ export default function IndulgenceView() {
               {v.badge && <span className={`ad-voucher-badge ad-vb--${v.badgeStyle || 'default'}`}>{v.badge}</span>}
             </div>
             <div className="ad-voucher-body">
-              <div className="ad-voucher-type">{v.type}</div>
+              <div className="ad-voucher-type">
+                {v.type}
+                {v.isPublished === false && <span className="ad-badge ad-voucher-hidden">Hidden</span>}
+              </div>
               <div className="ad-voucher-title">{v.title}</div>
               <div className="ad-voucher-sub">{v.subtitle}</div>
               <div className="ad-voucher-price">
