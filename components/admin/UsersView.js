@@ -3,11 +3,13 @@ import { useMemo, useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { ROLE_LABELS, PERMISSIONS } from '@/lib/admin/auth'
 import { inviteStaffUser } from '@/lib/admin/store'
+import { sortCountries } from '@/lib/admin/content'
 
 const ROLES = ['admin', 'editor']
 
-function InviteForm({ onClose, onInvited }) {
+function InviteForm({ onClose, onInvited, countries }) {
   const [name, setName] = useState('')
+  const [country, setCountry] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('editor')
   const [error, setError] = useState('')
@@ -19,7 +21,7 @@ function InviteForm({ onClose, onInvited }) {
     if (!email.trim()) return setError('Email is required.')
     setSending(true)
     try {
-      await inviteStaffUser({ name: name.trim(), email: email.trim(), role })
+      await inviteStaffUser({ name: name.trim(), email: email.trim(), role, country })
       onInvited(email.trim())
     } catch (e2) {
       setError(e2.message)
@@ -45,6 +47,13 @@ function InviteForm({ onClose, onInvited }) {
           <span className="ad-field-label">Role</span>
           <select className="ad-input" value={role} onChange={e => setRole(e.target.value)}>
             {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+          </select>
+        </label>
+        <label className="ad-field">
+          <span className="ad-field-label">Country</span>
+          <select className="ad-input" value={country} onChange={e => setCountry(e.target.value)}>
+            <option value="">— not set —</option>
+            {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
           </select>
         </label>
         <div className="ad-confirm-actions">
@@ -90,7 +99,9 @@ function RoleCard({ role }) {
 }
 
 export default function UsersView() {
-  const { users, setUserRole, user, allowed, loading, demoMode, refreshUsers } = useAdmin()
+  const { users, setUserRole, setUserCountry, user, allowed, loading, demoMode, refreshUsers, countryRecords } = useAdmin()
+  const countries = sortCountries(countryRecords)
+  const countryName = code => countries.find(c => c.code === code)?.name || code
   const [query, setQuery] = useState('')
   const [inviting, setInviting] = useState(false)
   const [invited, setInvited] = useState('')
@@ -158,17 +169,18 @@ export default function UsersView() {
             <tr>
               <th>Person</th>
               <th>Role</th>
+              <th>Country</th>
               <th className="ad-th-actions">Change role</th>
             </tr>
           </thead>
           <tbody>
             {loading && !users.length && (
-              <tr><td colSpan={3} className="ad-empty">Loading people…</td></tr>
+              <tr><td colSpan={4} className="ad-empty">Loading people…</td></tr>
             )}
 
             {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan={3} className="ad-empty">
+                <td colSpan={4} className="ad-empty">
                   {query
                     ? 'No one matches that search.'
                     : "No accounts yet — this screen isn't connected to the backend yet."}
@@ -196,6 +208,18 @@ export default function UsersView() {
                     <span className={`ad-role-pill ad-role-pill--${u.role}`}>
                       {ROLE_LABELS[u.role] || u.role}
                     </span>
+                  </td>
+                  <td>
+                    {canManage ? (
+                      <select className="ad-input ad-input--sm" value={u.country || ''}
+                        aria-label={`${u.name}'s country`}
+                        onChange={e => setUserCountry(u.id, e.target.value)}>
+                        <option value="">— not set —</option>
+                        {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                      </select>
+                    ) : (
+                      <span className={u.country ? undefined : 'ad-muted'}>{u.country ? countryName(u.country) : '—'}</span>
+                    )}
                   </td>
                   <td className="ad-td-actions">
                     {/* Changing your own role is blocked so the last admin
@@ -239,6 +263,7 @@ export default function UsersView() {
 
       {inviting && (
         <InviteForm
+          countries={countries}
           onClose={() => setInviting(false)}
           onInvited={async email => {
             setInviting(false)

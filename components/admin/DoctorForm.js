@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useAdmin } from './AdminContext'
+import { sortCountries } from '@/lib/admin/content'
 import { fetchClinicOptions } from '@/lib/admin/store'
 import LocaleToggle from './LocaleToggle'
 
@@ -220,11 +221,11 @@ export default function DoctorForm({ initial, isNew, onClose }) {
           <div className="ad-field">
             <span className="ad-field-label">Countries</span>
             <div className="ad-check-grid">
-              {countryRecords.map(c => (
+              {sortCountries(countryRecords).map(c => (
                 <label key={c.code} className={`ad-check${form.countries.includes(c.code) ? ' active' : ''}`}>
                   <input type="checkbox" checked={form.countries.includes(c.code)}
                     onChange={() => toggleIn('countries', c.code)} />
-                  {c.code}
+                  {c.name}
                 </label>
               ))}
             </div>

@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useAdmin } from './AdminContext'
+import { sortCountries } from '@/lib/admin/content'
 import ImagePicker from './ImagePicker'
 import LocaleToggle from './LocaleToggle'
 
@@ -18,7 +19,7 @@ function cloneSafe(obj) {
 }
 
 export default function ReviewForm({ initial, isNew, onClose }) {
-  const { services, reviews, upsertReview } = useAdmin()
+  const { services, reviews, upsertReview, countryRecords } = useAdmin()
   const [form, setForm] = useState(() => cloneSafe(initial))
   const [error, setError] = useState('')
   const [locale, setLocale] = useState('EN')
@@ -82,6 +83,20 @@ export default function ReviewForm({ initial, isNew, onClose }) {
                 onChange={e => set(locationKey, e.target.value)} placeholder="e.g. Dubai" />
             </label>
           </div>
+        </fieldset>
+
+        <fieldset className="ad-fieldset">
+          <legend>Country</legend>
+          <label className="ad-field">
+            <span className="ad-field-label">Client&apos;s country</span>
+            <select className="ad-input" value={form.country || ''} onChange={e => set('country', e.target.value)}>
+              <option value="">— none —</option>
+              {sortCountries(countryRecords).map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+            </select>
+            <span className="ad-field-hint">
+              Shown on the website when the review has no location — in Arabic too.
+            </span>
+          </label>
         </fieldset>
 
         <fieldset className="ad-fieldset">

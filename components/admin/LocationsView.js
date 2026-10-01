@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useAdmin } from './AdminContext'
 import { emptyLocation, sortCountries } from '@/lib/admin/content'
-import { createCity } from '@/lib/admin/store'
+import { createCity, updateCity } from '@/lib/admin/store'
 import LocaleToggle from './LocaleToggle'
 
 function slugify(str) {
@@ -56,7 +56,7 @@ function LocationFormSkeleton({ onClose }) {
 }
 
 export default function LocationsView() {
-  const { locations, saveLocation, loadLocation, deleteLocation, countryRecords, addCityToCountry, allowed, loading } = useAdmin()
+  const { locations, saveLocation, loadLocation, deleteLocation, countryRecords, addCityToCountry, replaceCityInCountry, allowed, loading } = useAdmin()
   const [editing, setEditing] = useState(null) // { initial, isNew, loading? }
   const [confirm, setConfirm] = useState(null)
   const [country, setCountry] = useState('all')
@@ -89,7 +89,8 @@ export default function LocationsView() {
         existing={locations}
         countryOptions={countryRecords}
         onCityAdded={addCityToCountry}
-        canAddCity={allowed('manageCountries')}
+        onCityUpdated={replaceCityInCountry}
+        canManageCities={allowed('manageCountries')}
         onSave={async (rec, orig) => {
           const ok = await saveLocation(rec, orig)
           if (ok) setEditing(null)
@@ -229,11 +230,15 @@ export default function LocationsView() {
   )
 }
 
-function LocationForm({ initial, isNew, existing, countryOptions, onCityAdded, onSave, onClose, canAddCity = true }) {
+function LocationForm({ initial, isNew, existing, countryOptions, onCityAdded, onCityUpdated, onSave, onClose, canManageCities = true }) {
   const [form, setForm] = useState({ ...initial })
   const [error, setError] = useState('')
   const [newCityName, setNewCityName] = useState('')
+  const [newCityNameAr, setNewCityNameAr] = useState('')
   const [addingCity, setAddingCity] = useState(false)
+  // Draft of the selected city's Arabic name; null = untouched (show the saved one).
+  const [cityArDraft, setCityArDraft] = useState(null)
+  const [savingCityAr, setSavingCityAr] = useState(false)
   const [locale, setLocale] = useState('EN')
   const [submitting, setSubmitting] = useState(false)
   const originalId = isNew ? null : initial.id
@@ -247,16 +252,21 @@ function LocationForm({ initial, isNew, existing, countryOptions, onCityAdded, o
 
   const selectedCountry = countryOptions.find(c => c.code === form.country)
   const cities = selectedCountry?.cities || []
+  const selectedCity = cities.find(c => c.id === form.cityId)
+  const cityAr = cityArDraft ?? selectedCity?.nameAr ?? ''
+  const cityArChanged = cityArDraft !== null && cityArDraft.trim() !== (selectedCity?.nameAr || '')
 
   function chooseCountry(code) {
     set('country', code)
     set('cityId', '')
     set('city', '')
+    setCityArDraft(null)
   }
 
   function chooseCity(cityId) {
     const city = cities.find(c => c.id === cityId)
     setForm(f => ({ ...f, cityId, city: city?.name || '' }))
+    setCityArDraft(null)
   }
 
   async function addCity() {
@@ -264,15 +274,39 @@ function LocationForm({ initial, isNew, existing, countryOptions, onCityAdded, o
     if (!name || !selectedCountry) return
     setAddingCity(true)
     try {
-      const city = await createCity(selectedCountry.id, name)
+      const city = await createCity(selectedCountry.id, name, newCityNameAr)
       onCityAdded?.(selectedCountry.id, city)
       setForm(f => ({ ...f, cityId: city.id, city: city.name }))
+      setCityArDraft(null)
       setNewCityName('')
+      setNewCityNameAr('')
     } catch (e) {
       setError(e.message)
     } finally {
       setAddingCity(false)
     }
+  }
+
+  // Like "+ Add city", this saves the city straight away (it's a Countries
+  // record shared by every clinic in that city), not with the clinic form.
+  async function saveCityAr() {
+    if (!selectedCity || !cityArChanged) return
+    setSavingCityAr(true)
+    try {
+      const city = await updateCity(selectedCity.id, { name: selectedCity.name, nameAr: cityArDraft.trim() })
+      onCityUpdated?.(selectedCountry.id, city)
+      setCityArDraft(null)
+      setError('')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSavingCityAr(false)
+    }
+  }
+
+  // Enter in a city input should act on that city, not submit the clinic form.
+  const onEnter = action => e => {
+    if (e.key === 'Enter') { e.preventDefault(); action() }
   }
 
   async function submit(e) {
@@ -341,20 +375,42 @@ function LocationForm({ initial, isNew, existing, countryOptions, onCityAdded, o
               </select>
             </label>
           </div>
-          {canAddCity ? (
+          {selectedCity && (
+            canManageCities ? (
+              <div className="ad-field">
+                <span className="ad-field-label">City name in Arabic</span>
+                <div className="ad-repeat-row">
+                  <input className="ad-input" dir="rtl" value={cityAr} placeholder="الاسم بالعربية، مثل دبي"
+                    onChange={e => setCityArDraft(e.target.value)} onKeyDown={onEnter(saveCityAr)} />
+                  <button type="button" className="ad-btn ad-btn--soft" disabled={!cityArChanged || savingCityAr}
+                    onClick={saveCityAr}>
+                    {savingCityAr ? 'Saving…' : 'Save Arabic name'}
+                  </button>
+                </div>
+                <span className="ad-field-hint">
+                  Saves to the city itself, so every clinic in {selectedCity.name} shows it on the Arabic site.
+                </span>
+              </div>
+            ) : (
+              <span className="ad-field-hint">
+                Arabic city name: {selectedCity.nameAr ? <span dir="rtl">{selectedCity.nameAr}</span> : 'not set'}
+                {' '}— an administrator can change it here or on the <strong>Countries</strong> screen.
+              </span>
+            )
+          )}
+          {canManageCities ? (
             <div className="ad-field">
               <span className="ad-field-label">City not listed?</span>
               <div className="ad-repeat-row">
-                <input className="ad-input" value={newCityName} placeholder="e.g. Al Ain"
-                  onChange={e => setNewCityName(e.target.value)} />
+                <input className="ad-input" value={newCityName} placeholder="English name, e.g. Al Ain"
+                  onChange={e => setNewCityName(e.target.value)} onKeyDown={onEnter(addCity)} />
+                <input className="ad-input" dir="rtl" value={newCityNameAr} placeholder="الاسم بالعربية، مثل العين"
+                  onChange={e => setNewCityNameAr(e.target.value)} onKeyDown={onEnter(addCity)} />
                 <button type="button" className="ad-btn ad-btn--soft" disabled={!newCityName.trim() || addingCity}
                   onClick={addCity}>
                   {addingCity ? 'Adding…' : '+ Add city'}
                 </button>
               </div>
-              <span className="ad-field-hint">
-                Adds the English name only — add its Arabic name on the <strong>Countries</strong> screen.
-              </span>
             </div>
           ) : (
             <span className="ad-field-hint">

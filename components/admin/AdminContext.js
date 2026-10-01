@@ -14,9 +14,10 @@ import {
   persistPageSection, persistSiteSection,
   fetchRequestsPage, fetchRequestStatusCounts, fetchRequestCountries,
   persistRequestStatus, persistRequestNotes, removeRequestRecord,
-  fetchUsers, updateUserRole,
+  fetchUsers, updateUserRole, updateStaffCountry,
   fetchOverrides, persistOverrideSection,
   fetchTellUs, persistTellUs,
+  fetchCustomPages, persistCustomPages, removeCustomPage,
   isDemoMode, resetDemo as resetDemoData,
 } from '@/lib/admin/store'
 import { resolveContent, setOverride, clearSectionOverride } from '@/lib/admin/country-content'
@@ -62,6 +63,9 @@ export function AdminProvider({ children }) {
   // failure there never takes the catalogue down with it.
   const [tellUsRaw, setTellUsRaw] = useState(null)
   const [tellUsError, setTellUsError] = useState('')
+  // Page builder pages — loaded on their own, like Tell Us.
+  const [customPages, setCustomPages] = useState([])
+  const [customPagesError, setCustomPagesError] = useState('')
   // Bumped after every full reload (Refresh content, Reset sample data), so
   // screens that fetch their own data — Requests, Voucher Requests, Customers
   // — refetch too.
@@ -128,6 +132,13 @@ export function AdminProvider({ children }) {
     }
 
     try {
+      const list = await fetchCustomPages()
+      if (token === loadToken.current) { setCustomPages(list || []); setCustomPagesError('') }
+    } catch (e) {
+      if (token === loadToken.current) { setCustomPages([]); setCustomPagesError(e.message) }
+    }
+
+    try {
       const doc = await fetchTellUs()
       if (token === loadToken.current) { setTellUsRaw(doc); setTellUsError('') }
     } catch (e) {
@@ -179,6 +190,7 @@ export function AdminProvider({ children }) {
         loadToken.current++
         applyAll(EMPTY)
         setTellUsRaw(null)
+        setCustomPages([])
       }
     })
 
@@ -221,6 +233,7 @@ export function AdminProvider({ children }) {
     loadToken.current++
     applyAll(EMPTY)
     setTellUsRaw(null)
+    setCustomPages([])
   }, [])
 
   const allowed = useCallback(action => can(user, action), [user])
@@ -336,8 +349,9 @@ export function AdminProvider({ children }) {
       locations: { list: locations, setList: setLocations, persist: persistLocations, remove: removeLocation, keyOf: byId },
       countryRecords: { list: countryRecords, setList: setCountryRecords, persist: persistCountries, remove: removeCountry, keyOf: byId },
       contacts: { list: contacts, setList: setContacts, persist: persistContacts, remove: removeContact, keyOf: byId },
+      customPages: { list: customPages, setList: setCustomPages, persist: persistCustomPages, remove: removeCustomPage, keyOf: byId },
     }
-  }, [services, verticals, categories, doctors, reviews, vouchers, locations, countryRecords, contacts])
+  }, [services, verticals, categories, doctors, reviews, vouchers, locations, countryRecords, contacts, customPages])
 
   // ── Collection CRUD ───────────────────────────────────
   // Verticals and locations append (they render as ordered settings lists);
@@ -465,6 +479,10 @@ export function AdminProvider({ children }) {
     if (ok && target) syncContactOntoCountry(target.countryId, null)
     return ok
   }, [cols, deleteFrom, syncContactOntoCountry])
+
+  // ── Page builder ──────────────────────────────────────
+  const upsertCustomPage = useCallback((r, k) => upsertInto(cols.customPages, r, k), [cols, upsertInto])
+  const deleteCustomPage = useCallback(k => deleteFrom(cols.customPages, k), [cols, deleteFrom])
 
   // ── Tell Us Everything ────────────────────────────────
   // Normalised against the live verticals: areas keyed by pillar id, one per
@@ -715,6 +733,20 @@ export function AdminProvider({ children }) {
     }
   }, [users])
 
+  /** Waits for the API (the country is looked up by id there), then updates the list. */
+  const setUserCountry = useCallback(async (id, country) => {
+    setSaving(true)
+    try {
+      const updated = await updateStaffCountry(id, country)
+      setUsers(list => list.map(u => (u.id === id ? { ...u, country: updated.country } : u)))
+      setError('')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }, [])
+
   /** Preview only — restore every collection to its seed. */
   const resetDemo = useCallback(async () => {
     resetDemoData()
@@ -749,8 +781,9 @@ export function AdminProvider({ children }) {
     countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry, replaceCityInCountry,
     contacts, upsertContact, deleteContact,
     tellUs, tellUsError, saveTellUs,
+    customPages, customPagesError, upsertCustomPage, deleteCustomPage,
     dataVersion,
-    users, setUserRole, refreshUsers,
+    users, setUserRole, setUserCountry, refreshUsers,
     moveUp, moveDown,
   }
 
