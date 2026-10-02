@@ -8,9 +8,9 @@ with one, follow this file and flag the conflict.
 - Every slug that becomes a public address (treatments, doctors, verticals, categories, custom
   pages — and any new record with one) is lowercase letters and digits joined by single
   hyphens: `hair-spa`, never `Hair Spa`, `MakeUp` or `test_2`. Slugs are unique per record type.
-- Use the shared helpers in `lib/admin/slug.js` — never a local `slugify` or a hand-written
+- Use the shared helpers in `shared/lib/slug.js` — never a local `slugify` or a hand-written
   pattern:
-  - `<SlugField>` (`components/admin/SlugField.js`) for the input. It cleans typing as it goes
+  - `<SlugField>` (`shared/components/SlugField.js`) for the input. It cleans typing as it goes
     (lowercase, spaces → hyphens) and shows the slug generated from the name as the placeholder.
   - `resolveSlug(typed, name, takenSlugs)` on save. It returns the slug to save (the admin's own,
     or one generated from the name) and an error for a bad or duplicate one. Block the save on
@@ -26,10 +26,10 @@ the same screen.
 
 - Every section is a route: `/` is Overview, every other section is `/<id>/` (trailing slash,
   matching `next.config.mjs`). Adding a section = add the id to `VIEW_IDS` in
-  `lib/admin/routes.js`, the component to `components/admin/AdminView.js`, and the nav item to
-  `AdminShell`.
+  `shared/lib/routes.js`, the component to `app/AdminView.js`, and the nav item to
+  `features/shell/components/AdminShell.js`.
 - Everything else worth getting back goes in query params, through the hooks in
-  `components/admin/useUrlState.js` — never `useState` alone:
+  `shared/hooks/useUrlState.js` — never `useState` alone:
   - open record: `?edit=<id>`, `?new=1`, `?open=<id>` (drawers, profiles)
   - tabs: `?tab=<id>`
   - filters and search: `useQueryParam(key)` / `useQueryText('q')`
@@ -45,3 +45,31 @@ the same screen.
   `MissingRecord` (loading while `dataVersion === 0`), or fetch it by id, rather than silently
   showing the list.
 - Stays local: confirm dialogs, unsaved form drafts, the EN/AR toggle inside a form, busy flags.
+
+## Folder structure: features and shared
+
+Code is grouped by feature, not by file type. Everything a feature needs sits together; only
+code used by more than one feature goes in `shared/`.
+
+```
+app/                         # routes only — thin page files that render a feature
+features/
+  <feature>/                 # one folder per feature: doctors, vouchers, requests, pages…
+    components/              # components only this feature uses
+    hooks/                   # hooks only this feature uses
+    lib/                     # this feature's helpers, data access, constants
+shared/
+  components/                # used by 2+ features (dialogs, buttons, empty/loading states)
+  hooks/                     # used by 2+ features
+  context/                   # React context providers used across features
+  lib/                       # used by 2+ features (API client, formatting, validation)
+```
+
+- A new feature gets its own folder under `features/`, with its components underneath. Don't add
+  feature components to a flat `components/` folder.
+- Start code inside the feature. When a second feature needs it, move it to `shared/` and update
+  both imports. Never import one feature's internals from another feature.
+- `shared/` never imports from `features/`.
+- `app/` files stay thin: routing, metadata and params. The UI and logic live in the feature.
+  Here `app/AdminView.js` maps each section id to its feature's view, and `features/shell/` is
+  the app frame (sign-in gate, sidebar, publish).

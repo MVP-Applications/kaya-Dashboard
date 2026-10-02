@@ -69,7 +69,7 @@ step 1.
 | Users & Roles | Not connected yet — the backend also has no way to edit or delete a staff account once created |
 | Publish to site | Not connected — no backend endpoint for triggering a rebuild exists yet |
 
-Each of the above gets wired up individually; `lib/api/endpoints.js` already
+Each of the above gets wired up individually; `shared/lib/api/endpoints.js` already
 lists every route `kaya-nest-api` exposes for when that happens.
 
 ---
@@ -87,14 +87,14 @@ lists every route `kaya-nest-api` exposes for when that happens.
 
 | Path | What |
 |---|---|
-| `lib/api/client.js` | The one place that calls `fetch()` against the backend — envelope unwrapping, auth header, 401 → refresh → retry |
-| `lib/api/endpoints.js` | Every backend route, centralized |
-| `lib/api/config.js` | `NEXT_PUBLIC_API_BASE_URL` / whether the backend is configured |
-| `lib/api/token.js` | In-memory access-token holder |
-| `lib/admin/store.js` | Picks the API backend or the preview backend |
-| `lib/admin/store-api.js` | The API backend — auth aside, every function is a "not connected yet" stub until integrated |
-| `lib/admin/auth.js` | Sign-in, session, roles |
-| `lib/seed-data/` | The original hardcoded content — backs preview mode |
+| `shared/lib/api/client.js` | The one place that calls `fetch()` against the backend — envelope unwrapping, auth header, 401 → refresh → retry |
+| `shared/lib/api/endpoints.js` | Every backend route, centralized |
+| `shared/lib/api/config.js` | `NEXT_PUBLIC_API_BASE_URL` / whether the backend is configured |
+| `shared/lib/api/token.js` | In-memory access-token holder |
+| `shared/lib/store.js` | Picks the API backend or the preview backend |
+| `shared/lib/store-api.js` | The API backend — auth aside, every function is a "not connected yet" stub until integrated |
+| `shared/lib/auth.js` | Sign-in, session, roles |
+| `shared/lib/seed-data/` | The original hardcoded content — backs preview mode |
 
 ---
 

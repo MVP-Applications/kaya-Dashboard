@@ -22,7 +22,7 @@ ids. So switching over changes nothing visible.
 | Dashboard | `PUT` | `/api/v1/admin/tell-us` | the whole document |
 | Website | `GET` | `/api/v1/public/tell-us` | returns the document |
 
-Set in `lib/api/endpoints.js` under `tellUs` in both the dashboard and the
+Set in `shared/lib/api/endpoints.js` under `tellUs` in both the dashboard and the
 website. It is one document, saved whole, like Footer and Global. There is no
 list and no pagination. The admin routes need a staff login (STAFF or ADMIN);
 the public route is open and carries both languages, so it takes no locale.
@@ -129,7 +129,7 @@ steps pointing at a deleted shared question are dropped.
 slug, so renaming a pillar doesn't break the questionnaire. The website matches
 them to `/public/pillars` items by `id`. In the dashboard, a vertical's key is
 `v.backendId` (preview mode, which has no backend, uses `v.id`) — see
-`areaKey` in `lib/admin/tell-us.js`.
+`areaKey` in `shared/lib/tell-us.js`.
 
 **Arabic:** the `…Ar` fields may be empty. In that case, fall back to the English value.
 
@@ -156,7 +156,7 @@ After someone picks a main treatment `areaId`:
    answered, the same as today's concern step.
 
 The dashboard's "Try it" panel runs this exact rule (`suggestTreatments` in
-`lib/admin/tell-us.js`), so the website and the dashboard preview agree.
+`shared/lib/tell-us.js`), so the website and the dashboard preview agree.
 
 **Edge cases to handle:**
 - A `shared` step whose id isn't in `shared[]`: skip it. The dashboard never saves one, but don't crash.

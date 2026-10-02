@@ -1,5 +1,5 @@
 import './globals.css'
-import AdminApp from '@/components/admin/AdminApp'
+import AdminApp from '@/features/shell/components/AdminApp'
 
 export const metadata = {
   title: 'Kaya CMS — Content Dashboard',
