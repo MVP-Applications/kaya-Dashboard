@@ -5,14 +5,8 @@ import { BADGE_OPTIONS, THUMB_OPTIONS } from '@/lib/admin/seed'
 import LocaleToggle from './LocaleToggle'
 import ImagePicker from './ImagePicker'
 import MarketScopeFields from './MarketScopeFields'
-
-function slugify(str) {
-  return String(str)
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
+import SlugField from './SlugField'
+import { resolveSlug } from '@/lib/admin/slug'
 
 export default function ServiceForm({ initial, isNew, onClose }) {
   const { verticals, categories, upsertService, services } = useAdmin()
@@ -90,9 +84,10 @@ export default function ServiceForm({ initial, isNew, onClose }) {
     if (!mechanism) return setError('"How it works" is required.')
     if (!form.countries.length) return setError('Pick at least one country.')
 
-    const slug = form.slug.trim() || slugify(name)
-    const clash = services.some(s => s.slug === slug && s.slug !== originalSlug)
-    if (clash) return setError(`The slug "${slug}" is already in use.`)
+    const { slug, error: slugError } = resolveSlug(
+      form.slug, name, services.map(s => s.slug).filter(s => s !== originalSlug),
+    )
+    if (slugError) return setError(slugError)
 
     // The backend requires a title per benefit (not a description) — a row
     // with only an icon/description typed in is dropped as incomplete.
@@ -170,12 +165,8 @@ export default function ServiceForm({ initial, isNew, onClose }) {
               <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
                 onChange={e => set(nameKey, e.target.value)} />
             </label>
-            <label className="ad-field ad-w-md">
-              <span className="ad-field-label">Slug</span>
-              <input className="ad-input" value={form.slug}
-                placeholder={slugify(form.name) || 'auto-generated'}
-                onChange={e => set('slug', e.target.value)} />
-            </label>
+            <SlugField className="ad-field ad-w-md" value={form.slug} source={form.name}
+              onChange={v => set('slug', v)} />
           </div>
           <label className="ad-field ad-w-xl">
             <span className="ad-field-label">{isAr ? 'مقتطف قصير (Short teaser)' : 'Short teaser'}</span>

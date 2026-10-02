@@ -11,6 +11,7 @@ import {
 } from '@/lib/admin/page-builder'
 import { PAGES } from '@/lib/admin/content'
 import { siteUrl } from '@/lib/site'
+import { slugInput } from '@/lib/admin/slug'
 
 function cloneSafe(obj) {
   if (typeof structuredClone === 'function') return structuredClone(obj)
@@ -275,7 +276,7 @@ export default function PageBuilder({ initial, isNew, onClose }) {
                   <span className="ad-pb-slug">
                     <span>kaya.ae/</span>
                     <input className="ad-input" value={page.slug}
-                      onChange={e => { setSlugTouched(true); set({ slug: e.target.value.toLowerCase() }) }}
+                      onChange={e => { setSlugTouched(true); set({ slug: slugInput(e.target.value) }) }}
                       onBlur={e => set({ slug: slugify(e.target.value) })} placeholder="ramadan-offers" />
                   </span>
                   <span className="ad-field-hint">Addresses the website already uses, like /treatments, can’t be taken.</span>

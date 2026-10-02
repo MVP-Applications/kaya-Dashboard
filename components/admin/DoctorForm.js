@@ -4,14 +4,8 @@ import { useAdmin } from './AdminContext'
 import { sortCountries } from '@/lib/admin/content'
 import { fetchClinicOptions } from '@/lib/admin/store'
 import LocaleToggle from './LocaleToggle'
-
-function slugify(str) {
-  return String(str)
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
+import SlugField from './SlugField'
+import { resolveSlug } from '@/lib/admin/slug'
 
 function cloneSafe(obj) {
   if (typeof structuredClone === 'function') return structuredClone(obj)
@@ -67,9 +61,10 @@ export default function DoctorForm({ initial, isNew, onClose }) {
     const name = form.name.trim()
     if (!name) return setError('Name is required.')
 
-    const slug = form.slug.trim() || slugify(name)
-    const clash = doctors.some(d => d.slug === slug && d.slug !== originalSlug)
-    if (clash) return setError(`The slug "${slug}" is already in use.`)
+    const { slug, error: slugError } = resolveSlug(
+      form.slug, name, doctors.map(d => d.slug).filter(s => s !== originalSlug),
+    )
+    if (slugError) return setError(slugError)
 
     const record = {
       ...form,
@@ -104,12 +99,7 @@ export default function DoctorForm({ initial, isNew, onClose }) {
         <fieldset className="ad-fieldset">
           <legend>Profile</legend>
           <div className="ad-grid2">
-            <label className="ad-field">
-              <span className="ad-field-label">Slug</span>
-              <input className="ad-input" value={form.slug}
-                placeholder={slugify(form.name) || 'auto-generated'}
-                onChange={e => set('slug', e.target.value)} />
-            </label>
+            <SlugField value={form.slug} source={form.name} onChange={v => set('slug', v)} />
             <label className="ad-field">
               <span className="ad-field-label">Years of experience</span>
               <input className="ad-input" type="number" min="0" value={form.yearsExp}

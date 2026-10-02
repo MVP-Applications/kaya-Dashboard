@@ -5,10 +5,8 @@ import ConfirmDialog from './ConfirmDialog'
 import ReorderCell from './ReorderCell'
 import LocaleToggle from './LocaleToggle'
 import { emptyCategory } from '@/lib/admin/seed'
-
-function slugify(str) {
-  return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-}
+import SlugField from './SlugField'
+import { resolveSlug } from '@/lib/admin/slug'
 
 export default function CategoriesView() {
   const { categories, services, upsertCategory, deleteCategory, allowed } = useAdmin()
@@ -152,9 +150,10 @@ function CategoryForm({ initial, isNew, existing, onSave, onClose }) {
     const name = form.name.trim()
     if (!name) return setError('Name is required.')
 
-    const slug = form.slug.trim() || slugify(name)
-    const clash = existing.some(c => c.slug === slug && c.slug !== originalSlug)
-    if (clash) return setError(`The slug "${slug}" is already in use.`)
+    const { slug, error: slugError } = resolveSlug(
+      form.slug, name, existing.map(c => c.slug).filter(s => s !== originalSlug),
+    )
+    if (slugError) return setError(slugError)
 
     onSave({
       ...form, id: form.id, slug, name,
@@ -185,12 +184,7 @@ function CategoryForm({ initial, isNew, existing, onSave, onClose }) {
       <div className="ad-editor-body">
         <fieldset className="ad-fieldset">
           <legend>Basics</legend>
-          <label className="ad-field">
-            <span className="ad-field-label">Slug</span>
-            <input className="ad-input" value={form.slug}
-              placeholder={slugify(form.name) || 'auto'}
-              onChange={e => set('slug', e.target.value)} />
-          </label>
+          <SlugField value={form.slug} source={form.name} onChange={v => set('slug', v)} />
         </fieldset>
 
         <fieldset className="ad-fieldset">

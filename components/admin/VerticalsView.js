@@ -4,10 +4,8 @@ import { useAdmin } from './AdminContext'
 import LocaleToggle from './LocaleToggle'
 import ImagePicker from './ImagePicker'
 import MarketScopeFields from './MarketScopeFields'
-
-function slugify(str) {
-  return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-}
+import SlugField from './SlugField'
+import { resolveSlug } from '@/lib/admin/slug'
 
 // The vertical page hero renders full-bleed at ~2:1 (see vp-hero in the
 // website's globals.css) — anything far off that gets cropped hard by
@@ -197,10 +195,10 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
     const label = form.label.trim()
     if (!label) return setError('Label is required.')
     if (!form.countries.length) return setError('Pick at least one country.')
-    const id = (form.id.trim() || slugify(label))
-    if (existing.some(v => v.id === id && v.id !== originalId)) {
-      return setError(`The slug "${id}" is already in use.`)
-    }
+    const { slug: id, error: slugError } = resolveSlug(
+      form.id, label, existing.map(v => v.id).filter(v => v !== originalId),
+    )
+    if (slugError) return setError(slugError)
 
     // Trust points/stats need at least a label/value to be worth keeping —
     // same "drop incomplete rows" rule ServiceForm applies to benefits.
@@ -266,12 +264,8 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
                   onChange={e => set('labelAr', e.target.value)} />
               </label>
             )}
-            <label className="ad-field ad-w-md">
-              <span className="ad-field-label">Slug</span>
-              <input className="ad-input" value={form.id}
-                placeholder={slugify(form.label) || 'auto'}
-                onChange={e => set('id', e.target.value)} />
-            </label>
+            <SlugField className="ad-field ad-w-md" value={form.id} source={form.label}
+              onChange={v => set('id', v)} />
             <label className="ad-field">
               <span className="ad-field-label">Color</span>
               <input className="ad-color" type="color" value={form.color}
