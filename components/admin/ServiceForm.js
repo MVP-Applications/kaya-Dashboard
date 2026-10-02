@@ -4,6 +4,7 @@ import { useAdmin } from './AdminContext'
 import { BADGE_OPTIONS, THUMB_OPTIONS } from '@/lib/admin/seed'
 import LocaleToggle from './LocaleToggle'
 import ImagePicker from './ImagePicker'
+import MarketScopeFields from './MarketScopeFields'
 
 function slugify(str) {
   return String(str)
@@ -17,6 +18,7 @@ export default function ServiceForm({ initial, isNew, onClose }) {
   const { verticals, categories, upsertService, services } = useAdmin()
   const [form, setForm] = useState(() => ({
     slug: '', name: '', image: '', thumb: '', category: '', verticals: [], badge: '',
+    countries: [], clinics: [],
     isPopular: false,
     sub: '', what: '', mechanism: '', durationMins: '', sessions: '',
     downtimeNotes: '', downtimeLevel: '', suitable: [],
@@ -86,6 +88,7 @@ export default function ServiceForm({ initial, isNew, onClose }) {
     if (!what) return setError('"What it is" is required.')
     const mechanism = form.mechanism.trim()
     if (!mechanism) return setError('"How it works" is required.')
+    if (!form.countries.length) return setError('Pick at least one country.')
 
     const slug = form.slug.trim() || slugify(name)
     const clash = services.some(s => s.slug === slug && s.slug !== originalSlug)
@@ -105,6 +108,8 @@ export default function ServiceForm({ initial, isNew, onClose }) {
       thumb: form.thumb,
       category: form.category,
       verticals: form.verticals,
+      countries: form.countries,
+      clinics: form.clinics,
       badge: form.badge,
       isPopular: form.isPopular,
       sub: form.sub.trim(),
@@ -151,76 +156,7 @@ export default function ServiceForm({ initial, isNew, onClose }) {
 
       {error && <div className="ad-form-error ad-editor-error">{error}</div>}
 
-      <div className="ad-editor-body">
-        <fieldset className="ad-fieldset">
-          <legend>Basics</legend>
-          <label className="ad-field">
-            <span className="ad-field-label">Slug</span>
-            <input className="ad-input" value={form.slug}
-              placeholder={slugify(form.name) || 'auto-generated'}
-              onChange={e => set('slug', e.target.value)} />
-          </label>
-        </fieldset>
-
-        <fieldset className="ad-fieldset">
-          <legend>Media</legend>
-          <div className="ad-field">
-            <span className="ad-field-label">Image</span>
-            <ImagePicker value={form.image} onChange={v => set('image', v)} />
-          </div>
-          <label className="ad-field">
-            <span className="ad-field-label">Icon</span>
-            <select className="ad-input" value={form.thumb}
-              onChange={e => set('thumb', e.target.value)}>
-              <option value="">— none —</option>
-              {THUMB_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </label>
-        </fieldset>
-
-        <fieldset className="ad-fieldset">
-          <legend>Classification</legend>
-          <div className="ad-field">
-            <span className="ad-field-label">Verticals</span>
-            <div className="ad-check-grid">
-              {verticals.map(v => (
-                <label key={v.id} className={`ad-check${form.verticals.includes(v.id) ? ' active' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={form.verticals.includes(v.id)}
-                    onChange={() => toggleVertical(v.id)}
-                  />
-                  <span className="ad-check-dot" style={{ background: v.color }} />
-                  {v.label}
-                </label>
-              ))}
-            </div>
-          </div>
-          <label className="ad-field">
-            <span className="ad-field-label">Category</span>
-            <select className="ad-input" value={form.category}
-              onChange={e => set('category', e.target.value)}>
-              <option value="">— none —</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </label>
-          <label className="ad-field">
-            <span className="ad-field-label">Badge</span>
-            <select className="ad-input" value={form.badge}
-              onChange={e => set('badge', e.target.value)}>
-              {BADGE_OPTIONS.map(b => <option key={b.value || 'none'} value={b.value}>{b.label}</option>)}
-            </select>
-          </label>
-          <label className="ad-field ad-field--toggle">
-            <span className="ad-field-label">Popular</span>
-            <label className="ad-check">
-              <input type="checkbox" checked={form.isPopular}
-                onChange={e => set('isPopular', e.target.checked)} />
-              Show this treatment in the site&apos;s Popular treatments section
-            </label>
-          </label>
-        </fieldset>
-
+      <div className="ad-editor-body ad-form-sections">
         <fieldset className="ad-fieldset">
           <legend>Name &amp; content</legend>
           <p className="ad-fieldset-hint">
@@ -228,95 +164,105 @@ export default function ServiceForm({ initial, isNew, onClose }) {
             and &quot;How it works&quot; to add an Arabic translation.
           </p>
           <LocaleToggle locale={locale} onChange={setLocale} />
-          <label className="ad-field">
-            <span className="ad-field-label">{isAr ? 'الاسم (Name)' : 'Name *'}</span>
-            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
-              onChange={e => set(nameKey, e.target.value)} />
-          </label>
-          <label className="ad-field">
+          <div className="ad-frow">
+            <label className="ad-field ad-w-lg">
+              <span className="ad-field-label">{isAr ? 'الاسم (Name)' : 'Name *'}</span>
+              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
+                onChange={e => set(nameKey, e.target.value)} />
+            </label>
+            <label className="ad-field ad-w-md">
+              <span className="ad-field-label">Slug</span>
+              <input className="ad-input" value={form.slug}
+                placeholder={slugify(form.name) || 'auto-generated'}
+                onChange={e => set('slug', e.target.value)} />
+            </label>
+          </div>
+          <label className="ad-field ad-w-xl">
             <span className="ad-field-label">{isAr ? 'مقتطف قصير (Short teaser)' : 'Short teaser'}</span>
             <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[subKey]}
               placeholder="A one-line summary shown on service cards"
               onChange={e => set(subKey, e.target.value)} />
           </label>
-          <label className="ad-field">
-            <span className="ad-field-label">{isAr ? 'ما هو (What it is)' : 'What it is *'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
-              value={form[whatKey]} onChange={e => set(whatKey, e.target.value)} />
-          </label>
-          <label className="ad-field">
-            <span className="ad-field-label">{isAr ? 'كيف يعمل (How it works)' : 'How it works (mechanism) *'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={3}
-              value={form[mechanismKey]} onChange={e => set(mechanismKey, e.target.value)} />
-          </label>
-        </fieldset>
-
-        <fieldset className="ad-fieldset">
-          <legend>What to expect {isAr ? '(العربية)' : ''}</legend>
-          <p className="ad-fieldset-hint">
-            English is required. Fill in the Arabic versions so visitors browsing
-            in Arabic see these details in Arabic too.
-          </p>
-          <div className="ad-grid2">
+          <div className="ad-split">
             <label className="ad-field">
-              <span className="ad-field-label">{isAr ? 'المدة (Duration)' : 'Duration'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[durationKey]}
-                placeholder="e.g. 45 mins"
-                onChange={e => set(durationKey, e.target.value)} />
+              <span className="ad-field-label">{isAr ? 'ما هو (What it is)' : 'What it is *'}</span>
+              <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
+                value={form[whatKey]} onChange={e => set(whatKey, e.target.value)} />
             </label>
             <label className="ad-field">
-              <span className="ad-field-label">{isAr ? 'الجلسات (Sessions)' : 'Sessions'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[sessionsKey]}
-                placeholder="e.g. 3–6 sessions"
-                onChange={e => set(sessionsKey, e.target.value)} />
-            </label>
-          </div>
-          <div className="ad-grid2">
-            <label className="ad-field">
-              <span className="ad-field-label">{isAr ? 'فترة التعافي (Downtime)' : 'Downtime'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeNotesKey]}
-                onChange={e => set(downtimeNotesKey, e.target.value)} />
-            </label>
-            <label className="ad-field">
-              <span className="ad-field-label">
-                {isAr ? 'شدة فترة التعافي (Downtime severity)' : 'Downtime severity'}
-              </span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeLevelKey]}
-                placeholder="e.g. Minimal, Mild, Moderate"
-                onChange={e => set(downtimeLevelKey, e.target.value)} />
+              <span className="ad-field-label">{isAr ? 'كيف يعمل (How it works)' : 'How it works (mechanism) *'}</span>
+              <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
+                value={form[mechanismKey]} onChange={e => set(mechanismKey, e.target.value)} />
             </label>
           </div>
         </fieldset>
 
-        <fieldset className="ad-fieldset">
-          <legend>Suitable for {isAr ? '(العربية)' : ''}</legend>
-          {form[suitableKey].map((s, i) => (
-            <div key={i} className="ad-repeat-row">
-              <div className="ad-repeat-main">
-                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={s}
-                  placeholder="e.g. Oily or acne-prone skin"
-                  onChange={e => updateSuitable(i, e.target.value)} />
-              </div>
-              <button type="button" className="ad-icon-btn" onClick={() => removeSuitable(i)}
-                aria-label="Remove">✕</button>
+        <div className="ad-pair">
+          <fieldset className="ad-fieldset">
+            <legend>What to expect {isAr ? '(العربية)' : ''}</legend>
+            <p className="ad-fieldset-hint">
+              English is required. Fill in the Arabic versions so visitors browsing
+              in Arabic see these details in Arabic too.
+            </p>
+            <div className="ad-frow">
+              <label className="ad-field ad-w-md">
+                <span className="ad-field-label">{isAr ? 'المدة (Duration)' : 'Duration'}</span>
+                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[durationKey]}
+                  placeholder="e.g. 45 mins"
+                  onChange={e => set(durationKey, e.target.value)} />
+              </label>
+              <label className="ad-field ad-w-md">
+                <span className="ad-field-label">{isAr ? 'الجلسات (Sessions)' : 'Sessions'}</span>
+                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[sessionsKey]}
+                  placeholder="e.g. 3–6 sessions"
+                  onChange={e => set(sessionsKey, e.target.value)} />
+              </label>
             </div>
-          ))}
-          <button type="button" className="ad-btn ad-btn--soft" onClick={addSuitable}>+ Add</button>
-        </fieldset>
+            <div className="ad-frow">
+              <label className="ad-field ad-w-md">
+                <span className="ad-field-label">{isAr ? 'فترة التعافي (Downtime)' : 'Downtime'}</span>
+                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeNotesKey]}
+                  onChange={e => set(downtimeNotesKey, e.target.value)} />
+              </label>
+              <label className="ad-field ad-w-md">
+                <span className="ad-field-label">
+                  {isAr ? 'شدة فترة التعافي (Downtime severity)' : 'Downtime severity'}
+                </span>
+                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeLevelKey]}
+                  placeholder="e.g. Minimal, Mild, Moderate"
+                  onChange={e => set(downtimeLevelKey, e.target.value)} />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset className="ad-fieldset">
+            <legend>Suitable for {isAr ? '(العربية)' : ''}</legend>
+            {form[suitableKey].map((s, i) => (
+              <div key={i} className="ad-repeat-row">
+                <div className="ad-frow">
+                  <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={s}
+                    placeholder="e.g. Oily or acne-prone skin"
+                    onChange={e => updateSuitable(i, e.target.value)} />
+                </div>
+                <button type="button" className="ad-icon-btn" onClick={() => removeSuitable(i)}
+                  aria-label="Remove">✕</button>
+              </div>
+            ))}
+            <button type="button" className="ad-btn ad-btn--soft" onClick={addSuitable}>+ Add</button>
+          </fieldset>
+        </div>
 
         <fieldset className="ad-fieldset">
           <legend>Benefits {isAr ? '(العربية)' : ''}</legend>
           {form[benefitsKey].map((b, i) => (
             <div key={i} className="ad-repeat-row">
-              <div className="ad-repeat-main">
-                <div className="ad-grid2">
-                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={b.i} placeholder="Icon (e.g. ✦)"
-                    onChange={e => updateBenefit(i, 'i', e.target.value)} />
-                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={b.t} placeholder="Title"
-                    onChange={e => updateBenefit(i, 't', e.target.value)} />
-                </div>
-                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={b.d} placeholder="Description"
-                  onChange={e => updateBenefit(i, 'd', e.target.value)} />
+              <div className="ad-frow">
+                <input className="ad-input ad-w-xs" dir={isAr ? 'rtl' : undefined} value={b.i} placeholder="Icon (e.g. ✦)"
+                  aria-label="Icon" onChange={e => updateBenefit(i, 'i', e.target.value)} />
+                <input className="ad-input ad-w-md" dir={isAr ? 'rtl' : undefined} value={b.t} placeholder="Title"
+                  aria-label="Title" onChange={e => updateBenefit(i, 't', e.target.value)} />
+                <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={b.d} placeholder="Description"
+                  aria-label="Description" onChange={e => updateBenefit(i, 'd', e.target.value)} />
               </div>
               <button type="button" className="ad-icon-btn" onClick={() => removeBenefit(i)}
                 aria-label="Remove benefit">✕</button>
@@ -324,6 +270,72 @@ export default function ServiceForm({ initial, isNew, onClose }) {
           ))}
           <button type="button" className="ad-btn ad-btn--soft" onClick={addBenefit}>+ Add benefit</button>
         </fieldset>
+
+        <div className="ad-pair">
+          <fieldset className="ad-fieldset">
+            <legend>Media</legend>
+            <div className="ad-field">
+              <span className="ad-field-label">Image</span>
+              <ImagePicker value={form.image} onChange={v => set('image', v)} />
+            </div>
+            <label className="ad-field ad-w-md">
+              <span className="ad-field-label">Icon</span>
+              <select className="ad-input" value={form.thumb}
+                onChange={e => set('thumb', e.target.value)}>
+                <option value="">— none —</option>
+                {THUMB_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
+          </fieldset>
+
+          <fieldset className="ad-fieldset">
+            <legend>Classification</legend>
+            <div className="ad-field">
+              <span className="ad-field-label">Verticals</span>
+              <div className="ad-check-grid">
+                {verticals.map(v => (
+                  <label key={v.id} className={`ad-check${form.verticals.includes(v.id) ? ' active' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={form.verticals.includes(v.id)}
+                      onChange={() => toggleVertical(v.id)}
+                    />
+                    <span className="ad-check-dot" style={{ background: v.color }} />
+                    {v.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="ad-frow">
+              <label className="ad-field ad-w-md">
+                <span className="ad-field-label">Category</span>
+                <select className="ad-input" value={form.category}
+                  onChange={e => set('category', e.target.value)}>
+                  <option value="">— none —</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </label>
+              <label className="ad-field ad-w-md">
+                <span className="ad-field-label">Badge</span>
+                <select className="ad-input" value={form.badge}
+                  onChange={e => set('badge', e.target.value)}>
+                  {BADGE_OPTIONS.map(b => <option key={b.value || 'none'} value={b.value}>{b.label}</option>)}
+                </select>
+              </label>
+            </div>
+            <label className="ad-field ad-field--toggle">
+              <span className="ad-field-label">Popular</span>
+              <label className="ad-check">
+                <input type="checkbox" checked={form.isPopular}
+                  onChange={e => set('isPopular', e.target.checked)} />
+                Show this treatment in the site&apos;s Popular treatments section
+              </label>
+            </label>
+          </fieldset>
+        </div>
+
+        <MarketScopeFields countries={form.countries} clinics={form.clinics}
+          onChange={scope => setForm(f => ({ ...f, ...scope }))} />
       </div>
     </form>
   )
