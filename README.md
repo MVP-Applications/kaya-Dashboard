@@ -15,7 +15,7 @@ npm run dev        # http://localhost:1000
 ```
 
 **No setup needed to look around.** Without a backend configured the dashboard
-runs in **preview mode**: it loads the real site content from `lib/seed-data/`
+runs in **preview mode**: it loads the real site content from `shared/lib/seed-data/`
 into your browser's storage, and every screen, form, filter and save works
 normally. Pick one of the two sample accounts on the login screen — sign in as
 the Content Editor to see how permissions hide destructive actions.
@@ -57,15 +57,19 @@ Permissions are enforced by the backend, not only hidden in the interface.
 ## Layout
 
 ```
-app/                 layout, globals, the dashboard page, admin.css
-components/admin/    every dashboard screen and form
-lib/
-  admin/             store (API + preview backends), auth, form options,
-                     page-copy schema, demo seed
-  api/               API client, config, endpoints, token handling
-  seed-data/         the site's original content — backs preview mode
-  taxonomy.js        the four treatment categories
-  site.js            where the public site lives (NEXT_PUBLIC_SITE_URL)
+app/                 routes only (layout, Overview, /[view]/), globals, admin.css
+features/<section>/  one folder per dashboard section (doctors, requests, pages…)
+  components/        that section's screens and forms
+  lib/               helpers only that section uses
+features/shell/      the app frame: sign-in gate, sidebar, publish, crash guard
+shared/
+  components/        UI used by 2+ sections (dialogs, image picker, slug field…)
+  context/           AdminContext — loaded content and actions
+  hooks/             useUrlState — navigation state in the URL
+  lib/               store (API + preview backends), auth, routes, page-copy
+                     schema, demo seed
+    api/             API client, config, endpoints, token handling
+    seed-data/       the site's original content — backs preview mode
 docs/                how to connect the public website
 ```
 

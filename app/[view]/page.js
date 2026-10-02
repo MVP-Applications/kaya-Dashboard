@@ -1,5 +1,5 @@
-import AdminView from '@/components/admin/AdminView'
-import { VIEW_IDS } from '@/lib/admin/routes'
+import AdminView from '@/app/AdminView'
+import { VIEW_IDS } from '@/shared/lib/routes'
 
 // Static export: one HTML file per section, and anything else is a 404.
 export const dynamicParams = false

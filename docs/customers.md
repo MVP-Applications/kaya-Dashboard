@@ -3,7 +3,7 @@
 **For:** the backend team, with a note for the website team at the end.
 **Status:** the dashboard screen (**Enquiries → Customers**) is built and works
 in preview mode. There are no admin endpoints yet, so the dashboard's client is
-switched off (`CUSTOMERS_API_READY` in `lib/admin/store-api.js`).
+switched off (`CUSTOMERS_API_READY` in `shared/lib/store-api.js`).
 
 These are the accounts the website creates when someone signs in with a
 mobile OTP, Google, Apple or Samsung (`/customer/*`, see the website's
@@ -11,7 +11,7 @@ mobile OTP, Google, Apple or Samsung (`/customer/*`, see the website's
 Kaya's Administrators view and manage those accounts.
 
 The customer record is the website's own `Customer` shape
-(`kaya-website/lib/api/auth.js`), plus two fields only staff see:
+(`kaya-website/shared/lib/api/auth.js`), plus two fields only staff see:
 `status` and `lastSignInAt`.
 
 ---
@@ -53,7 +53,7 @@ on its own. The server must enforce every rule below.
 | `DELETE` | `/api/v1/admin/customers/:id` | Erases the account (section 4) |
 | `GET` | `/api/v1/admin/customers/export.csv` | CSV, same filters as the list |
 
-These routes are proposals, also set in `lib/api/endpoints.js` under
+These routes are proposals, also set in `shared/lib/api/endpoints.js` under
 `customers`. Rename them there if the backend differs.
 
 **List filters** (query parameters, all optional):

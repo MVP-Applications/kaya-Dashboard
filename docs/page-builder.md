@@ -24,7 +24,7 @@ own pages (Homepage, About…) stay in "Website pages", where their copy is edit
 | Website | `GET` | `/api/v1/public/custom-pages` | Header links for every **visible** page: `[{ slug, title, titleAr, navPosition }]`, oldest first. |
 | Website | `GET` | `/api/v1/public/custom-pages/:slug` | One **visible** page by slug, hidden blocks removed. 404 if it's hidden or doesn't exist. |
 
-Set in `lib/api/endpoints.js` under `customPages` in the dashboard and the
+Set in `shared/lib/api/endpoints.js` under `customPages` in the dashboard and the
 website. Admin routes need a staff login; deleting needs ADMIN. The backend
 validates every block's `data` against its type, rejects unknown fields, and
 refuses reserved addresses and slugs already in use.
@@ -55,7 +55,7 @@ every other form. A page's image fields hold URLs.
 
 - **`slug`** is lowercase `a-z`, `0-9` and `-`, and unique among custom pages.
   The dashboard refuses the website's own routes and common reserved words
-  (`RESERVED_SLUGS` in `lib/admin/page-builder.js`): `about`, `aesthetic`,
+  (`RESERVED_SLUGS` in `features/pages/lib/page-builder.js`): `about`, `aesthetic`,
   `blog`, `blogs`, `booking`, `doctors`, `find-us`, `indulgence`, `login`,
   `mens`, `profile`, `surgery`, `tell-us`, `treatments`, `wellness-longevity`,
   `api`, `admin`, `app`, `assets`, `static`, `public`, `search`, `sitemap`,
@@ -103,7 +103,7 @@ An empty `buttonLabel` means no button.
 \* localised: also has an `…Ar` twin.
 
 For how each block should look, open **Pages → Summer Glow** in the dashboard.
-Its preview is a close guide to layout and hierarchy (`components/admin/PagePreview.js`).
+Its preview is a close guide to layout and hierarchy (`features/pages/components/PagePreview.js`).
 It isn't pixel-exact: use the site's own components and styles.
 
 ---

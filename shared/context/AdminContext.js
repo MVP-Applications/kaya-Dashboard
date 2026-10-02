@@ -1,0 +1,803 @@
+'use client'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import {
+  fetchAll,
+  persistServices, removeService, reorderServices, fetchService,
+  persistVerticals, removeVertical,
+  persistCategories, removeCategory, reorderCategories,
+  persistDoctors, removeDoctor, reorderDoctors,
+  persistReviews, removeReview,
+  persistVouchers, removeVoucher, reorderVouchers,
+  persistLocations, removeLocation, fetchLocation, persistLocation,
+  persistCountries, removeCountry,
+  persistContacts, removeContact,
+  persistPageSection, persistSiteSection,
+  fetchRequestsPage, fetchRequestStatusCounts, fetchRequestCountries,
+  persistRequestStatus, persistRequestNotes, removeRequestRecord,
+  fetchUsers, updateUserRole, updateStaffCountry,
+  fetchOverrides, persistOverrideSection,
+  fetchTellUs, persistTellUs,
+  fetchCustomPages, persistCustomPages, removeCustomPage,
+  isDemoMode, resetDemo as resetDemoData,
+} from '@/shared/lib/store'
+import { resolveContent, setOverride, clearSectionOverride } from '@/shared/lib/country-content'
+import { signIn, signOut, getCurrentUser, onAuthChange, can } from '@/shared/lib/auth'
+import { normaliseTellUs } from '@/shared/lib/tell-us'
+
+const AdminContext = createContext(null)
+
+export function useAdmin() {
+  const ctx = useContext(AdminContext)
+  if (!ctx) throw new Error('useAdmin must be used within <AdminProvider>')
+  return ctx
+}
+
+const EMPTY = {
+  services: [], verticals: [], categories: [], doctors: [], reviews: [],
+  vouchers: [], locations: [], countries: [], contacts: [], pages: {}, site: {},
+}
+
+const EMPTY_REQUEST_STATUS_COUNTS = { new: 0, contacted: 0, booked: 0, closed: 0, total: 0 }
+
+export function AdminProvider({ children }) {
+  const [ready, setReady] = useState(false)
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const [services, setServices] = useState([])
+  const [verticals, setVerticals] = useState([])
+  const [categories, setCategories] = useState([])
+  const [doctors, setDoctors] = useState([])
+  const [reviews, setReviews] = useState([])
+  const [vouchers, setVouchers] = useState([])
+  const [requestStatusCounts, setRequestStatusCounts] = useState(EMPTY_REQUEST_STATUS_COUNTS)
+  const [pages, setPages] = useState({})
+  const [site, setSite] = useState({})
+  const [locations, setLocations] = useState([])
+  const [countryRecords, setCountryRecords] = useState([])
+  const [contacts, setContacts] = useState([])
+  // Tell Us Everything questionnaire — one document, loaded on its own so a
+  // failure there never takes the catalogue down with it.
+  const [tellUsRaw, setTellUsRaw] = useState(null)
+  const [tellUsError, setTellUsError] = useState('')
+  // Page builder pages — loaded on their own, like Tell Us.
+  const [customPages, setCustomPages] = useState([])
+  const [customPagesError, setCustomPagesError] = useState('')
+  // Bumped after every full reload (Refresh content, Reset sample data), so
+  // screens that fetch their own data — Requests, Voucher Requests, Customers
+  // — refetch too.
+  const [dataVersion, setDataVersion] = useState(0)
+  const [users, setUsers] = useState([])
+  // '' means "all countries" — editing the shared copy every market inherits.
+  const [activeCountry, setActiveCountry] = useState('')
+  const [overrides, setOverrides] = useState({})
+
+  // Guards against a slow load from a previous session overwriting fresh state
+  // after a sign-out / sign-in.
+  const loadToken = useRef(0)
+
+  function applyAll(data) {
+    setServices(data.services)
+    setVerticals(data.verticals)
+    setCategories(data.categories)
+    setDoctors(data.doctors)
+    setReviews(data.reviews)
+    setVouchers(data.vouchers)
+    setLocations(data.locations)
+    setCountryRecords(data.countries)
+    setContacts(data.contacts)
+    setPages(data.pages)
+    setSite(data.site)
+  }
+
+  /**
+   * Pull everything. Safe to call repeatedly.
+   *
+   * Content and country overrides load INDEPENDENTLY. They were briefly loaded
+   * together with Promise.all, which meant a failure fetching overrides —
+   * secondary data most installations don't even have — rejected the whole
+   * thing, applyAll never ran, and every list rendered empty. Optional data
+   * must not be able to take the catalogue down with it.
+   */
+  const refresh = useCallback(async () => {
+    const token = ++loadToken.current
+    setLoading(true)
+
+    // Overrides first and on their own terms: failing here is survivable, so
+    // it must not reach the catch below.
+    try {
+      const ov = await fetchOverrides()
+      if (token === loadToken.current) setOverrides(ov || {})
+    } catch (e) {
+      if (token === loadToken.current) setOverrides({})
+      // warn, not error: this is expected today (country overrides aren't
+      // wired to the real backend yet) and is already handled above by
+      // falling back to {} — console.error would otherwise trip Next's dev
+      // overlay for a failure that isn't actually breaking anything.
+      console.warn('Country overrides could not be loaded; using shared copy.', e)
+    }
+
+    // Same treatment: the sidebar badge going stale is not worth taking the
+    // whole catalogue load down over.
+    try {
+      const counts = await fetchRequestStatusCounts()
+      if (token === loadToken.current) setRequestStatusCounts(counts)
+    } catch (e) {
+      if (token === loadToken.current) setRequestStatusCounts(EMPTY_REQUEST_STATUS_COUNTS)
+      // warn, not error — same reasoning as the overrides fetch above.
+      console.warn('Enquiry status counts could not be loaded.', e)
+    }
+
+    try {
+      const list = await fetchCustomPages()
+      if (token === loadToken.current) { setCustomPages(list || []); setCustomPagesError('') }
+    } catch (e) {
+      if (token === loadToken.current) { setCustomPages([]); setCustomPagesError(e.message) }
+    }
+
+    try {
+      const doc = await fetchTellUs()
+      if (token === loadToken.current) { setTellUsRaw(doc); setTellUsError('') }
+    } catch (e) {
+      if (token === loadToken.current) { setTellUsRaw(null); setTellUsError(e.message) }
+    }
+
+    try {
+      const data = await fetchAll()
+      if (token !== loadToken.current) return
+      applyAll(data)
+      setError('')
+    } catch (e) {
+      if (token !== loadToken.current) return
+      setError(e.message)
+    } finally {
+      if (token === loadToken.current) {
+        setLoading(false)
+        setDataVersion(v => v + 1)
+      }
+    }
+  }, [])
+
+  /** Staff list, loaded alongside the content. */
+  const refreshUsers = useCallback(async () => {
+    try {
+      setUsers(await fetchUsers())
+    } catch {
+      // A non-admin can only read their own profile; an empty list is the
+      // correct outcome there, not an error worth interrupting them with.
+      setUsers([])
+    }
+  }, [])
+
+  // ── Session ───────────────────────────────────────────
+  // Resolve any stored session on mount, then follow auth changes (including
+  // sign-out in another tab).
+  useEffect(() => {
+    let alive = true
+
+    getCurrentUser()
+      .then(u => { if (alive) setUser(u) })
+      .catch(() => {})
+      .finally(() => { if (alive) setReady(true) })
+
+    const unsubscribe = onAuthChange(u => {
+      if (!alive) return
+      setUser(u)
+      if (!u) {
+        loadToken.current++
+        applyAll(EMPTY)
+        setTellUsRaw(null)
+        setCustomPages([])
+      }
+    })
+
+    return () => { alive = false; unsubscribe() }
+  }, [])
+
+  // Load content once signed in; drop it on sign-out.
+  useEffect(() => {
+    if (!user) return
+    refresh()
+    refreshUsers()
+  }, [user, refresh, refreshUsers])
+
+  // Errors used to sit until someone clicked the banner's × — auto-clear so
+  // a stale message doesn't linger over whatever the admin does next.
+  useEffect(() => {
+    if (!error) return
+    const timer = setTimeout(() => setError(''), 4000)
+    return () => clearTimeout(timer)
+  }, [error])
+
+  // Success toasts are purely informational — always auto-clear, faster
+  // than errors since there's nothing the admin needs to read twice.
+  useEffect(() => {
+    if (!success) return
+    const timer = setTimeout(() => setSuccess(''), 3000)
+    return () => clearTimeout(timer)
+  }, [success])
+
+  // ── Auth ──────────────────────────────────────────────
+  const login = useCallback(async (email, password) => {
+    const res = await signIn(email, password)
+    if (res.ok) setUser(res.user)
+    return res
+  }, [])
+
+  const logout = useCallback(async () => {
+    await signOut()
+    setUser(null)
+    loadToken.current++
+    applyAll(EMPTY)
+    setTellUsRaw(null)
+    setCustomPages([])
+  }, [])
+
+  const allowed = useCallback(action => can(user, action), [user])
+
+  /**
+   * Optimistically apply `next`, persist it, and roll back to `prev` if the
+   * write fails — so the screen never shows a change the database rejected.
+   */
+  const commit = useCallback(async (prev, next, setList, persist) => {
+    setList(next)
+    setSaving(true)
+    try {
+      await persist(next)
+      setError('')
+      setSuccess('Changes saved.')
+      return true
+    } catch (e) {
+      setList(prev)
+      setError(e.message)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }, [])
+
+  /**
+   * Shared upsert for every keyed collection.
+   *
+   * Editing a record's own key (a slug rename, for Services/Doctors — the
+   * only two collections keyed by something the form lets you edit) used to
+   * be handled as delete-then-recreate, because the old Supabase-backed
+   * `persist` had no identity beyond that key. It doesn't need to be: every
+   * record fetched from the real API now carries its actual backend `id`
+   * (see doctorToRecord/treatmentToService), and `persistServices`/
+   * `persistDoctors` already prefer that id over a slug lookup when
+   * deciding PUT vs POST — so a renamed record with a real `id` is just a
+   * normal in-place update, same as any other field edit. Delete-first is
+   * now only the fallback for a record with no `id` yet (new/unsaved, or a
+   * collection — none currently — still running the old local-only
+   * contract), where the key really is the only identity there is.
+   */
+  const upsertInto = useCallback(async (
+    { list, setList, persist, remove, keyOf }, record, originalKey,
+  ) => {
+    const newKey = keyOf(record)
+    const exists = originalKey != null && list.some(r => keyOf(r) === originalKey)
+    const renamed = exists && originalKey !== newKey
+
+    if (renamed && !record.id) {
+      setSaving(true)
+      try {
+        await remove(originalKey)
+      } catch (e) {
+        setError(`Could not rename to "${newKey}" — the previous record could not be removed. ${e.message}`)
+        setSaving(false)
+        return false
+      }
+      setSaving(false)
+    }
+
+    const next = exists
+      ? list.map(r => (keyOf(r) === originalKey ? record : r))
+      : [record, ...list]
+
+    return commit(list, next, setList, persist)
+  }, [commit])
+
+  /** Shared delete for every keyed collection. */
+  const deleteFrom = useCallback(async (
+    { list, setList, remove, keyOf, reorder }, key,
+  ) => {
+    const prev = list
+    const next = list.filter(r => keyOf(r) !== key)
+    setList(next)
+    setSaving(true)
+    try {
+      await remove(key)
+      // Rewrite the remaining rows' `displayOrder` so it stays gap-free after
+      // a removal — only meaningful for collections with a backend
+      // displayOrder/reorder endpoint (Verticals, Reviews, Locations don't
+      // have one, see KA-38 for Reviews, so `reorder` is undefined for them).
+      // This calls the dedicated reorder-only endpoint, not a full resave of
+      // every untouched record — that used to re-PUT (and thus revalidate)
+      // every surviving record for no reason, so one record with an
+      // unrelated bad field could fail the whole delete and make the row
+      // reappear in the UI even though it had already been removed.
+      if (reorder) await reorder(next)
+      setError('')
+      setSuccess('Deleted.')
+      return true
+    } catch (e) {
+      setList(prev)
+      setError(e.message)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }, [])
+
+  // One descriptor per collection, rebuilt only when its list changes. Keeping
+  // them in a single memo means every CRUD callback below has exactly one
+  // dependency, instead of silently capturing a stale list.
+  const cols = useMemo(() => {
+    const bySlug = r => r.slug
+    const byId = r => r.id
+    return {
+      services: { list: services, setList: setServices, persist: persistServices, remove: removeService, keyOf: bySlug, reorder: reorderServices },
+      verticals: { list: verticals, setList: setVerticals, persist: persistVerticals, remove: removeVertical, keyOf: byId },
+      categories: { list: categories, setList: setCategories, persist: persistCategories, remove: removeCategory, keyOf: bySlug, reorder: reorderCategories },
+      doctors: { list: doctors, setList: setDoctors, persist: persistDoctors, remove: removeDoctor, keyOf: bySlug, reorder: reorderDoctors },
+      reviews: { list: reviews, setList: setReviews, persist: persistReviews, remove: removeReview, keyOf: byId },
+      vouchers: { list: vouchers, setList: setVouchers, persist: persistVouchers, remove: removeVoucher, keyOf: byId, reorder: reorderVouchers },
+      locations: { list: locations, setList: setLocations, persist: persistLocations, remove: removeLocation, keyOf: byId },
+      countryRecords: { list: countryRecords, setList: setCountryRecords, persist: persistCountries, remove: removeCountry, keyOf: byId },
+      contacts: { list: contacts, setList: setContacts, persist: persistContacts, remove: removeContact, keyOf: byId },
+      customPages: { list: customPages, setList: setCustomPages, persist: persistCustomPages, remove: removeCustomPage, keyOf: byId },
+    }
+  }, [services, verticals, categories, doctors, reviews, vouchers, locations, countryRecords, contacts, customPages])
+
+  // ── Collection CRUD ───────────────────────────────────
+  // Verticals and locations append (they render as ordered settings lists);
+  // everything else prepends so a newly created record is visible immediately.
+  const appendTo = useCallback((col, record) => (
+    commit(col.list, [...col.list, record], col.setList, col.persist)
+  ), [commit])
+
+  /**
+   * Move a record one place up or down.
+   *
+   * Display order is stored as the `sort` column, which is written from array
+   * position on every list save — so reordering is just swapping two entries
+   * and persisting the list.
+   */
+  const move = useCallback((name, key, direction) => {
+    const col = cols[name]
+    const from = col.list.findIndex(r => col.keyOf(r) === key)
+    const to = from + direction
+    if (from === -1 || to < 0 || to >= col.list.length) return
+
+    const next = [...col.list]
+    ;[next[from], next[to]] = [next[to], next[from]]
+    return commit(col.list, next, col.setList, col.persist)
+  }, [cols, commit])
+
+  const moveUp = useCallback((name, key) => move(name, key, -1), [move])
+  const moveDown = useCallback((name, key) => move(name, key, 1), [move])
+
+  const upsertService = useCallback((r, k) => upsertInto(cols.services, r, k), [cols, upsertInto])
+  const deleteService = useCallback(k => deleteFrom(cols.services, k), [cols, deleteFrom])
+
+  /** Fresh copy of one service for its Edit page; null (with an error toast) if it can't be loaded. */
+  const loadService = useCallback(async slug => {
+    try {
+      const fresh = await fetchService(slug)
+      setServices(list => list.map(s => (s.slug === slug ? fresh : s)))
+      return fresh
+    } catch (e) {
+      setError(`Could not load this service. ${e.message}`)
+      return null
+    }
+  }, [])
+
+  const upsertVertical = useCallback((record, originalId) => {
+    const exists = originalId != null && cols.verticals.list.some(v => v.id === originalId)
+    return exists
+      ? upsertInto(cols.verticals, record, originalId)
+      : appendTo(cols.verticals, record)
+  }, [cols, upsertInto, appendTo])
+  const deleteVertical = useCallback(k => deleteFrom(cols.verticals, k), [cols, deleteFrom])
+
+  const upsertCategory = useCallback((r, k) => upsertInto(cols.categories, r, k), [cols, upsertInto])
+  const deleteCategory = useCallback(k => deleteFrom(cols.categories, k), [cols, deleteFrom])
+
+  const upsertDoctor = useCallback((r, k) => upsertInto(cols.doctors, r, k), [cols, upsertInto])
+  const deleteDoctor = useCallback(k => deleteFrom(cols.doctors, k), [cols, deleteFrom])
+
+  const upsertReview = useCallback((r, k) => upsertInto(cols.reviews, r, k), [cols, upsertInto])
+  const deleteReview = useCallback(k => deleteFrom(cols.reviews, k), [cols, deleteFrom])
+
+  const upsertVoucher = useCallback((r, k) => upsertInto(cols.vouchers, r, k), [cols, upsertInto])
+  const deleteVoucher = useCallback(k => deleteFrom(cols.vouchers, k), [cols, deleteFrom])
+
+  /**
+   * Save one clinic. Unlike `commit`, this is not optimistic: the list only
+   * changes once the backend has accepted the clinic, so LocationForm can stay
+   * open (with the admin's input intact) when a save fails. Resolves true/false.
+   */
+  const saveLocation = useCallback(async (record, originalId) => {
+    setSaving(true)
+    try {
+      const saved = await persistLocation(record, originalId)
+      setLocations(list => (
+        originalId != null && list.some(l => l.id === originalId)
+          ? list.map(l => (l.id === originalId ? saved : l))
+          : [...list, saved]
+      ))
+      setError('')
+      setSuccess('Changes saved.')
+      return true
+    } catch (e) {
+      setError(e.message)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }, [])
+
+  /** Fresh copy of one clinic for its Edit page; null (with an error toast) if it can't be loaded. */
+  const loadLocation = useCallback(async id => {
+    try {
+      const fresh = await fetchLocation(id)
+      setLocations(list => list.map(l => (l.id === id ? fresh : l)))
+      return fresh
+    } catch (e) {
+      setError(`Could not load this clinic. ${e.message}`)
+      return null
+    }
+  }, [])
+  const deleteLocation = useCallback(k => deleteFrom(cols.locations, k), [cols, deleteFrom])
+
+  const upsertCountryRecord = useCallback((record, originalId) => {
+    const exists = originalId != null && cols.countryRecords.list.some(c => c.id === originalId)
+    return exists
+      ? upsertInto(cols.countryRecords, record, originalId)
+      : appendTo(cols.countryRecords, record)
+  }, [cols, upsertInto, appendTo])
+  const deleteCountryRecord = useCallback(k => deleteFrom(cols.countryRecords, k), [cols, deleteFrom])
+
+  /** Mirrors a saved Contact onto its country's embedded `contact` field, so the Countries screen never shows stale data after a Contacts-screen edit. */
+  const syncContactOntoCountry = useCallback((countryId, contactSummary) => {
+    setCountryRecords(list => list.map(c => (
+      c.id === countryId ? { ...c, contact: contactSummary } : c
+    )))
+  }, [])
+
+  const upsertContact = useCallback(async (record, originalId) => {
+    const exists = originalId != null && cols.contacts.list.some(c => c.id === originalId)
+    const ok = exists
+      ? await upsertInto(cols.contacts, record, originalId)
+      : await appendTo(cols.contacts, record)
+    if (ok) {
+      syncContactOntoCountry(record.countryId, {
+        id: record.id,
+        phoneNumber: record.phoneNumber,
+        secondaryPhoneNumber: record.secondaryPhoneNumber || null,
+        whatsappNumber: record.whatsappNumber || null,
+      })
+    }
+    return ok
+  }, [cols, upsertInto, appendTo, syncContactOntoCountry])
+
+  const deleteContact = useCallback(async k => {
+    const target = cols.contacts.list.find(c => c.id === k)
+    const ok = await deleteFrom(cols.contacts, k)
+    if (ok && target) syncContactOntoCountry(target.countryId, null)
+    return ok
+  }, [cols, deleteFrom, syncContactOntoCountry])
+
+  // ── Page builder ──────────────────────────────────────
+  const upsertCustomPage = useCallback((r, k) => upsertInto(cols.customPages, r, k), [cols, upsertInto])
+  const deleteCustomPage = useCallback(k => deleteFrom(cols.customPages, k), [cols, deleteFrom])
+
+  // ── Tell Us Everything ────────────────────────────────
+  // Normalised against the live verticals: areas keyed by pillar id, one per
+  // vertical, every shared question referenced.
+  const tellUs = useMemo(
+    () => (tellUsRaw ? normaliseTellUs(tellUsRaw, verticals) : null),
+    [tellUsRaw, verticals],
+  )
+
+  /** Saves the whole questionnaire; the backend's pruned copy becomes the saved state. */
+  const saveTellUs = useCallback(async doc => {
+    const prev = tellUsRaw
+    setTellUsRaw(doc)
+    setSaving(true)
+    try {
+      const saved = await persistTellUs(doc)
+      if (saved) setTellUsRaw(saved)
+      setError('')
+      setSuccess('Tell Us Everything saved.')
+      return true
+    } catch (e) {
+      setTellUsRaw(prev)
+      setError(e.message)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }, [tellUsRaw])
+
+  /** After "+ Add city" succeeds against the backend, reflect it in the shared country list every screen reads — no separate fetch. */
+  const addCityToCountry = useCallback((countryId, city) => {
+    setCountryRecords(list => list.map(c => (
+      c.id === countryId ? { ...c, cities: [...c.cities, city] } : c
+    )))
+  }, [])
+
+  /** Same, after a city is renamed / given an Arabic name. */
+  const replaceCityInCountry = useCallback((countryId, city) => {
+    setCountryRecords(list => list.map(c => (
+      c.id === countryId ? { ...c, cities: c.cities.map(x => (x.id === city.id ? city : x)) } : c
+    )))
+  }, [])
+
+  // ── Requests (consumer submissions) ───────────────────
+  // Staff don't create these — they arrive from the public site. Unlike every
+  // other collection above, this one is server-paginated/filtered (KA-23):
+  // RequestsView asks for exactly the page it needs instead of the whole
+  // inbox living in context, so all that's shared here is the status counts
+  // (for the sidebar badge and the screen's summary chips) and the two
+  // mutations, which both need to keep those counts in sync afterwards.
+  const refreshRequestStatusCounts = useCallback(async () => {
+    try {
+      setRequestStatusCounts(await fetchRequestStatusCounts())
+    } catch {
+      // the badge/chips simply don't update this time
+    }
+  }, [])
+
+  const loadRequestsPage = useCallback(filters => fetchRequestsPage(filters), [])
+  const loadRequestCountries = useCallback(() => fetchRequestCountries(), [])
+
+  const updateRequestStatus = useCallback(async (id, status) => {
+    setSaving(true)
+    try {
+      const updated = await persistRequestStatus(id, status)
+      setError('')
+      refreshRequestStatusCounts()
+      return updated
+    } catch (e) {
+      setError(e.message)
+      throw e
+    } finally {
+      setSaving(false)
+    }
+  }, [refreshRequestStatusCounts])
+
+  /** Its own endpoint (KA-31) — unlike updateRequestStatus, this never touches status/respondedBy/respondedAt, so it doesn't need to refresh the status counts. */
+  const updateRequestNotes = useCallback(async (id, notes) => {
+    setSaving(true)
+    try {
+      const updated = await persistRequestNotes(id, notes)
+      setError('')
+      return updated
+    } catch (e) {
+      setError(e.message)
+      throw e
+    } finally {
+      setSaving(false)
+    }
+  }, [])
+
+  const deleteRequestRecord = useCallback(async id => {
+    setSaving(true)
+    try {
+      await removeRequestRecord(id)
+      setError('')
+      refreshRequestStatusCounts()
+    } catch (e) {
+      setError(e.message)
+      throw e
+    } finally {
+      setSaving(false)
+    }
+  }, [refreshRequestStatusCounts])
+
+  // ── Website content ───────────────────────────────────
+  // Page copy is a fixed tree (page → section → field) rather than a list, so
+  // it's patched section by section instead of upserted by id. Each save writes
+  // exactly one row, so two editors on different sections never collide.
+  const updatePageSection = useCallback(async (pageId, sectionId, patch) => {
+    const prev = pages
+    const merged = { ...prev[pageId]?.[sectionId], ...patch }
+    setPages({ ...prev, [pageId]: { ...prev[pageId], [sectionId]: merged } })
+    setSaving(true)
+    try {
+      await persistPageSection(pageId, sectionId, merged)
+      setError('')
+    } catch (e) {
+      setPages(prev)
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }, [pages])
+
+  const updateSiteSection = useCallback(async (groupId, sectionId, patch) => {
+    const prev = site
+    const merged = { ...prev[groupId]?.[sectionId], ...patch }
+    setSite({ ...prev, [groupId]: { ...prev[groupId], [sectionId]: merged } })
+    setSaving(true)
+    try {
+      await persistSiteSection(groupId, sectionId, merged)
+      setError('')
+    } catch (e) {
+      setSite(prev)
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }, [site])
+
+  // ── Country-scoped content ────────────────────────────
+  // Views read these instead of `pages`/`site` directly, so switching country
+  // changes what every editor screen shows without each one knowing how
+  // overrides work.
+  // Memoised because the `|| {}` fallback would otherwise mint a fresh object
+  // every render, defeating the two memos below.
+  const countryOverrides = useMemo(
+    () => (activeCountry ? (overrides[activeCountry] || {}) : null),
+    [activeCountry, overrides],
+  )
+
+  const resolvedPages = useMemo(
+    () => (countryOverrides ? resolveContent(pages, countryOverrides) : pages),
+    [pages, countryOverrides],
+  )
+  const resolvedSite = useMemo(
+    () => (countryOverrides ? resolveContent(site, countryOverrides) : site),
+    [site, countryOverrides],
+  )
+
+  /**
+   * Save a section. With no country selected this edits the shared copy; with
+   * one selected it records an override for that country only, so shared copy
+   * stays editable in one place.
+   */
+  const saveSection = useCallback(async (scope, groupId, sectionId, patch) => {
+    const baseTree = scope === 'site' ? site : pages
+    const setTree = scope === 'site' ? setSite : setPages
+    const persistBase = scope === 'site' ? persistSiteSection : persistPageSection
+
+    if (!activeCountry) {
+      const prev = baseTree
+      const merged = { ...prev[groupId]?.[sectionId], ...patch }
+      setTree({ ...prev, [groupId]: { ...prev[groupId], [sectionId]: merged } })
+      setSaving(true)
+      try {
+        await persistBase(groupId, sectionId, merged)
+        setError('')
+      } catch (e) {
+        setTree(prev)
+        setError(e.message)
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+
+    const prev = overrides
+    let next = overrides[activeCountry] || {}
+    for (const [key, value] of Object.entries(patch)) {
+      next = setOverride(next, baseTree, groupId, sectionId, key, value)
+    }
+
+    const all = { ...prev }
+    if (Object.keys(next).length) all[activeCountry] = next
+    else delete all[activeCountry]
+
+    setOverrides(all)
+    setSaving(true)
+    try {
+      await persistOverrideSection(activeCountry, groupId, sectionId, next[groupId]?.[sectionId] || {})
+      setError('')
+    } catch (e) {
+      setOverrides(prev)
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }, [activeCountry, overrides, pages, site])
+
+  /** Drop a country's overrides for one section, back to the shared copy. */
+  const resetSectionToShared = useCallback(async (groupId, sectionId) => {
+    if (!activeCountry) return
+    const prev = overrides
+    const next = clearSectionOverride(overrides[activeCountry] || {}, groupId, sectionId)
+
+    const all = { ...prev }
+    if (Object.keys(next).length) all[activeCountry] = next
+    else delete all[activeCountry]
+
+    setOverrides(all)
+    setSaving(true)
+    try {
+      await persistOverrideSection(activeCountry, groupId, sectionId, {})
+      setError('')
+    } catch (e) {
+      setOverrides(prev)
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }, [activeCountry, overrides])
+
+  // ── Users + roles ─────────────────────────────────────
+  const setUserRole = useCallback(async (id, role) => {
+    const prev = users
+    setUsers(users.map(u => (u.id === id ? { ...u, role } : u)))
+    setSaving(true)
+    try {
+      await updateUserRole(id, role)
+      setError('')
+    } catch (e) {
+      setUsers(prev)
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }, [users])
+
+  /** Waits for the API (the country is looked up by id there), then updates the list. */
+  const setUserCountry = useCallback(async (id, country) => {
+    setSaving(true)
+    try {
+      const updated = await updateStaffCountry(id, country)
+      setUsers(list => list.map(u => (u.id === id ? { ...u, country: updated.country } : u)))
+      setError('')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }, [])
+
+  /** Preview only — restore every collection to its seed. */
+  const resetDemo = useCallback(async () => {
+    resetDemoData()
+    await refresh()
+    await refreshUsers()
+  }, [refresh, refreshUsers])
+
+  const value = {
+    ready, demoMode: isDemoMode,
+    loading, saving, error, dismissError: () => setError(''),
+    success, dismissSuccess: () => setSuccess(''),
+    refresh, resetDemo,
+    user, login, logout, allowed,
+    services, upsertService, deleteService, loadService,
+    verticals, upsertVertical, deleteVertical,
+    categories, upsertCategory, deleteCategory,
+    doctors, upsertDoctor, deleteDoctor,
+    reviews, upsertReview, deleteReview,
+    vouchers, upsertVoucher, deleteVoucher,
+    requestStatusCounts,
+    loadRequestsPage, loadRequestCountries,
+    updateRequestStatus, updateRequestNotes, deleteRequestRecord,
+    pages: resolvedPages, updatePageSection,
+    site: resolvedSite, updateSiteSection,
+    basePages: pages, baseSite: site,
+    activeCountry, setActiveCountry,
+    overrides: countryOverrides,
+    // The full map, so the switcher can show how much each market differs.
+    allOverrides: overrides,
+    saveSection, resetSectionToShared,
+    locations, saveLocation, loadLocation, deleteLocation,
+    countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry, replaceCityInCountry,
+    contacts, upsertContact, deleteContact,
+    tellUs, tellUsError, saveTellUs,
+    customPages, customPagesError, upsertCustomPage, deleteCustomPage,
+    dataVersion,
+    users, setUserRole, setUserCountry, refreshUsers,
+    moveUp, moveDown,
+  }
+
+  return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>
+}
