@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   fetchAll,
-  persistServices, removeService, reorderServices,
+  persistServices, removeService, reorderServices, fetchService,
   persistVerticals, removeVertical,
   persistCategories, removeCategory, reorderCategories,
   persistDoctors, removeDoctor, reorderDoctors,
@@ -384,6 +384,18 @@ export function AdminProvider({ children }) {
   const upsertService = useCallback((r, k) => upsertInto(cols.services, r, k), [cols, upsertInto])
   const deleteService = useCallback(k => deleteFrom(cols.services, k), [cols, deleteFrom])
 
+  /** Fresh copy of one service for its Edit page; null (with an error toast) if it can't be loaded. */
+  const loadService = useCallback(async slug => {
+    try {
+      const fresh = await fetchService(slug)
+      setServices(list => list.map(s => (s.slug === slug ? fresh : s)))
+      return fresh
+    } catch (e) {
+      setError(`Could not load this service. ${e.message}`)
+      return null
+    }
+  }, [])
+
   const upsertVertical = useCallback((record, originalId) => {
     const exists = originalId != null && cols.verticals.list.some(v => v.id === originalId)
     return exists
@@ -760,7 +772,7 @@ export function AdminProvider({ children }) {
     success, dismissSuccess: () => setSuccess(''),
     refresh, resetDemo,
     user, login, logout, allowed,
-    services, upsertService, deleteService,
+    services, upsertService, deleteService, loadService,
     verticals, upsertVertical, deleteVertical,
     categories, upsertCategory, deleteCategory,
     doctors, upsertDoctor, deleteDoctor,

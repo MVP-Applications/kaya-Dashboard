@@ -1513,6 +1513,15 @@
 .ad-pb-stage-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ad-pb-unsaved { margin-left: auto; font-size: 12px; font-weight: 600; color: #8A6317; background: #FDF3E0; border: 1px solid #F0DCB4; padding: 4px 10px; border-radius: var(--r-full); }
 
+/* Page settings take the full width (the preview only matters for blocks),
+   laid out like the other sectioned editor forms. */
+.ad-pb-layout.is-settings { grid-template-columns: minmax(0, 1fr); }
+.ad-pb-layout.is-settings .ad-pb-side { position: static; max-height: none; overflow: visible; width: 360px; max-width: 100%; }
+.ad-pb-settings-locale { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ad-pb-settings-locale .ad-toolbar { margin-bottom: 0; }
+.ad-pb-settings-locale .ad-field-hint { margin-top: 0; }
+.ad-pb-settings .ad-pb-visible { display: inline-flex; max-width: 560px; }
+
 /* ── Page preview (site-like rendering) ────────────────── */
 .ad-pp-frame { background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 14px 34px rgba(55,43,77,.08); margin: 0 auto; width: 100%; }
 .ad-pp-frame--mobile { max-width: 390px; }

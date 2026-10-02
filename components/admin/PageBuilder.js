@@ -171,8 +171,8 @@ export default function PageBuilder({ initial, isNew, onClose }) {
         </div>
       )}
 
-      <div className="ad-pb-layout">
-        {/* ── Left: outline / block settings / page settings ── */}
+      <div className={`ad-pb-layout${panel === 'settings' ? ' is-settings' : ''}`}>
+        {/* ── Left: Blocks / Page settings tabs, then the outline or a block's settings ── */}
         <aside className="ad-pb-side">
           <div className="ad-tu-seg ad-pb-panels" role="tablist">
             <button type="button" role="tab" aria-selected={panel === 'blocks'}
@@ -184,63 +184,6 @@ export default function PageBuilder({ initial, isNew, onClose }) {
               Page settings
             </button>
           </div>
-
-          {panel === 'settings' && (
-            <div className="ad-pb-card">
-              <LocaleToggle locale={locale} onChange={setLocale} />
-              <label className="ad-field">
-                <span className="ad-field-label">{locale === 'AR' ? 'Title (Arabic)' : 'Title *'}</span>
-                <input className="ad-input" dir={locale === 'AR' ? 'rtl' : undefined}
-                  value={locale === 'AR' ? page.titleAr : page.title}
-                  placeholder={locale === 'AR' ? page.title : 'e.g. Ramadan offers'}
-                  onChange={e => (locale === 'AR' ? set({ titleAr: e.target.value }) : setTitle(e.target.value))} />
-                <span className="ad-field-hint">Shown in the browser tab and when the page is shared.</span>
-              </label>
-              <label className="ad-field">
-                <span className="ad-field-label">Address *</span>
-                <span className="ad-pb-slug">
-                  <span>kaya.ae/</span>
-                  <input className="ad-input" value={page.slug}
-                    onChange={e => { setSlugTouched(true); set({ slug: e.target.value.toLowerCase() }) }}
-                    onBlur={e => set({ slug: slugify(e.target.value) })} placeholder="ramadan-offers" />
-                </span>
-                <span className="ad-field-hint">Addresses the website already uses, like /treatments, can’t be taken.</span>
-              </label>
-              <label className="ad-field">
-                <span className="ad-field-label">Position in the website menu *</span>
-                <select className="ad-input" value={page.navPosition || ''}
-                  onChange={e => set({ navPosition: e.target.value })}>
-                  <option value="" disabled>Choose left or right…</option>
-                  {NAV_POSITIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-                <span className="ad-field-hint">Which side of the website&apos;s header the page&apos;s link appears on, once the page is visible.</span>
-              </label>
-              <label className="ad-check ad-pb-visible">
-                <input type="checkbox" checked={page.visible} onChange={e => set({ visible: e.target.checked })} />
-                <span>
-                  <strong>Visible on the website</strong>
-                  <span className="ad-field-hint">Hidden pages can’t be opened by visitors and don’t appear in the website menu.</span>
-                </span>
-              </label>
-              <div className="ad-pb-seo">
-                <span className="ad-field-label">Search engines</span>
-                <label className="ad-field">
-                  <span className="ad-field-label ad-pb-sublabel">{locale === 'AR' ? 'SEO title (Arabic)' : 'SEO title'}</span>
-                  <input className="ad-input" dir={locale === 'AR' ? 'rtl' : undefined}
-                    value={locale === 'AR' ? page.seoTitleAr : page.seoTitle}
-                    placeholder={page.title ? `${page.title} | Kaya` : ''}
-                    onChange={e => set(locale === 'AR' ? { seoTitleAr: e.target.value } : { seoTitle: e.target.value })} />
-                </label>
-                <label className="ad-field">
-                  <span className="ad-field-label ad-pb-sublabel">{locale === 'AR' ? 'Description (Arabic)' : 'Description'}</span>
-                  <textarea className="ad-input ad-textarea" rows={3} dir={locale === 'AR' ? 'rtl' : undefined}
-                    value={locale === 'AR' ? page.seoDescriptionAr : page.seoDescription}
-                    onChange={e => set(locale === 'AR' ? { seoDescriptionAr: e.target.value } : { seoDescription: e.target.value })} />
-                  <span className="ad-field-hint">{(locale === 'AR' ? page.seoDescriptionAr : page.seoDescription).length} / 160 characters recommended</span>
-                </label>
-              </div>
-            </div>
-          )}
 
           {panel === 'blocks' && selected && (
             <div className="ad-pb-card">
@@ -307,30 +250,105 @@ export default function PageBuilder({ initial, isNew, onClose }) {
           )}
         </aside>
 
-        {/* ── Right: live preview ── */}
-        <div className="ad-pb-stage">
-          <div className="ad-pb-stage-bar">
-            <div className="ad-tu-seg" role="radiogroup" aria-label="Preview size">
-              {['desktop', 'mobile'].map(d => (
-                <button key={d} type="button" role="radio" aria-checked={device === d}
-                  className={`ad-tu-seg-btn${device === d ? ' active' : ''}`} onClick={() => setDevice(d)}>
-                  {d === 'desktop' ? '▭ Desktop' : '▯ Mobile'}
-                </button>
-              ))}
+        {/* ── Page settings: full width, sectioned like the other editor forms ── */}
+        {panel === 'settings' && (
+          <div className="ad-editor-body ad-form-sections ad-pb-settings">
+            <div className="ad-pb-settings-locale">
+              <LocaleToggle locale={locale} onChange={setLocale} />
+              <span className="ad-field-hint">Switches the title and search engine fields between English and Arabic.</span>
+              {dirty && <span className="ad-pb-unsaved">Unsaved changes</span>}
             </div>
-            <div className="ad-tu-seg" role="radiogroup" aria-label="Preview language">
-              {['EN', 'AR'].map(l => (
-                <button key={l} type="button" role="radio" aria-checked={locale === l}
-                  className={`ad-tu-seg-btn${locale === l ? ' active' : ''}`} onClick={() => setLocale(l)}>
-                  {l === 'EN' ? 'English' : 'العربية'}
-                </button>
-              ))}
+
+            <div className="ad-pair">
+              <fieldset className="ad-fieldset">
+                <legend>Page details</legend>
+                <label className="ad-field ad-w-lg">
+                  <span className="ad-field-label">{locale === 'AR' ? 'Title (Arabic)' : 'Title *'}</span>
+                  <input className="ad-input" dir={locale === 'AR' ? 'rtl' : undefined}
+                    value={locale === 'AR' ? page.titleAr : page.title}
+                    placeholder={locale === 'AR' ? page.title : 'e.g. Ramadan offers'}
+                    onChange={e => (locale === 'AR' ? set({ titleAr: e.target.value }) : setTitle(e.target.value))} />
+                  <span className="ad-field-hint">Shown in the browser tab and when the page is shared.</span>
+                </label>
+                <label className="ad-field ad-w-lg">
+                  <span className="ad-field-label">Address *</span>
+                  <span className="ad-pb-slug">
+                    <span>kaya.ae/</span>
+                    <input className="ad-input" value={page.slug}
+                      onChange={e => { setSlugTouched(true); set({ slug: e.target.value.toLowerCase() }) }}
+                      onBlur={e => set({ slug: slugify(e.target.value) })} placeholder="ramadan-offers" />
+                  </span>
+                  <span className="ad-field-hint">Addresses the website already uses, like /treatments, can’t be taken.</span>
+                </label>
+              </fieldset>
+
+              <fieldset className="ad-fieldset">
+                <legend>Menu &amp; visibility</legend>
+                <label className="ad-field ad-w-md">
+                  <span className="ad-field-label">Position in the website menu *</span>
+                  <select className="ad-input" value={page.navPosition || ''}
+                    onChange={e => set({ navPosition: e.target.value })}>
+                    <option value="" disabled>Choose left or right…</option>
+                    {NAV_POSITIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                  <span className="ad-field-hint">Which side of the website&apos;s header the page&apos;s link appears on, once the page is visible.</span>
+                </label>
+                <label className="ad-check ad-pb-visible">
+                  <input type="checkbox" checked={page.visible} onChange={e => set({ visible: e.target.checked })} />
+                  <span>
+                    <strong>Visible on the website</strong>
+                    <span className="ad-field-hint">Hidden pages can’t be opened by visitors and don’t appear in the website menu.</span>
+                  </span>
+                </label>
+              </fieldset>
             </div>
-            {dirty && <span className="ad-pb-unsaved">Unsaved changes</span>}
+
+            <fieldset className="ad-fieldset">
+              <legend>Search engines</legend>
+              <label className="ad-field ad-w-xl">
+                <span className="ad-field-label">{locale === 'AR' ? 'SEO title (Arabic)' : 'SEO title'}</span>
+                <input className="ad-input" dir={locale === 'AR' ? 'rtl' : undefined}
+                  value={locale === 'AR' ? page.seoTitleAr : page.seoTitle}
+                  placeholder={page.title ? `${page.title} | Kaya` : ''}
+                  onChange={e => set(locale === 'AR' ? { seoTitleAr: e.target.value } : { seoTitle: e.target.value })} />
+              </label>
+              <label className="ad-field ad-w-xl">
+                <span className="ad-field-label">{locale === 'AR' ? 'Description (Arabic)' : 'Description'}</span>
+                <textarea className="ad-input ad-textarea" rows={3} dir={locale === 'AR' ? 'rtl' : undefined}
+                  value={locale === 'AR' ? page.seoDescriptionAr : page.seoDescription}
+                  onChange={e => set(locale === 'AR' ? { seoDescriptionAr: e.target.value } : { seoDescription: e.target.value })} />
+                <span className="ad-field-hint">{(locale === 'AR' ? page.seoDescriptionAr : page.seoDescription).length} / 160 characters recommended</span>
+              </label>
+            </fieldset>
           </div>
-          <PagePreview page={page} locale={locale} device={device} selectedId={selectedId}
-            onSelect={id => { setPanel('blocks'); setSelectedId(id) }} services={services} doctors={doctors} />
-        </div>
+        )}
+
+        {/* ── Right: live preview (Blocks tab only) ── */}
+        {panel === 'blocks' && (
+          <div className="ad-pb-stage">
+            <div className="ad-pb-stage-bar">
+              <div className="ad-tu-seg" role="radiogroup" aria-label="Preview size">
+                {['desktop', 'mobile'].map(d => (
+                  <button key={d} type="button" role="radio" aria-checked={device === d}
+                    className={`ad-tu-seg-btn${device === d ? ' active' : ''}`} onClick={() => setDevice(d)}>
+                    {d === 'desktop' ? '▭ Desktop' : '▯ Mobile'}
+                  </button>
+                ))}
+              </div>
+              <div className="ad-tu-seg" role="radiogroup" aria-label="Preview language">
+                {['EN', 'AR'].map(l => (
+                  <button key={l} type="button" role="radio" aria-checked={locale === l}
+                    className={`ad-tu-seg-btn${locale === l ? ' active' : ''}`} onClick={() => setLocale(l)}>
+                    {l === 'EN' ? 'English' : 'العربية'}
+                  </button>
+                ))}
+              </div>
+              {dirty && <span className="ad-pb-unsaved">Unsaved changes</span>}
+            </div>
+            <PagePreview page={page} locale={locale} device={device} selectedId={selectedId}
+              onSelect={id => { setPanel('blocks'); setSelectedId(id) }} services={services} doctors={doctors} />
+          </div>
+        )}
       </div>
 
       {confirm && (
