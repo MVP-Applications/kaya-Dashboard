@@ -1627,3 +1627,21 @@
 /* Section headings used by Pages (from design1 Analytics styles). */
 .ad-an-section-title { font-size: 1.05rem; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
 .ad-an-section-sub { font-size: 12.5px; color: var(--slate); margin-top: 2px; }
+
+/* Navigation is rendered as real links (refresh-safe, "Open in new tab"),
+   some of which reuse button styles — keep them looking like buttons. */
+.ad-shell a.ad-nav-item,
+.ad-shell a.ad-ov-todo-item,
+.ad-shell a.ad-ov-stat,
+.ad-shell a.ad-ov-link,
+.ad-shell a.ad-btn,
+.ad-shell a.ad-back,
+.ad-shell a.ad-page-card,
+.ad-shell a.ad-cf-tab,
+.ad-shell a.ad-tu-tab,
+.ad-shell a.ad-tu-seg-btn,
+.ad-shell a.ad-pg-card-main { text-decoration: none; }
+.ad-shell a.ad-ov-todo-item,
+.ad-shell a.ad-ov-stat,
+.ad-shell a.ad-page-card,
+.ad-shell a.ad-pg-card-main { color: inherit; }

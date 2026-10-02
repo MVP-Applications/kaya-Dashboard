@@ -1,7 +1,9 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
+import { usePageParam, useQuery, useQueryParam, useQueryText } from './useUrlState'
 import { siteUrl } from '@/lib/site'
 import { downloadCsv, stampedName } from '@/lib/admin/csv'
 import { exportRequestsCsv } from '@/lib/admin/store'
@@ -106,16 +108,28 @@ export default function RequestsView() {
     updateRequestStatus, updateRequestNotes, deleteRequestRecord, allowed,
   } = useAdmin()
 
-  const [query, setQuery] = useState('')
-  const [debouncedQuery, setDebouncedQuery] = useState('')
-  const [status, setStatus] = useState('')
-  const [source, setSource] = useState('')
-  const [country, setCountry] = useState('')
-  const [city, setCity] = useState('')
-  const [range, setRange] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [page, setPage] = useState(1)
+  // Filters, the page and the open enquiry live in the URL (?q, ?status,
+  // ?source, ?country, ?city, ?range, ?from, ?to, ?page, ?open=<id>) so a
+  // refresh or a new tab reopens the same screen — and Overview can link
+  // straight to e.g. ?status=booked&range=7. Any filter change resets ?page:
+  // staying on page 6 of a filter that now has 2 pages would just show an
+  // empty screen.
+  const { get, set, href } = useQuery()
+  const resetPage = { resets: ['page'] }
+  // `debouncedQuery` is the committed URL value — every keystroke would be a
+  // real network request otherwise.
+  const [query, setQuery, debouncedQuery] = useQueryText('q', resetPage)
+  const [status, setStatus] = useQueryParam('status', '', resetPage)
+  const [source, setSource] = useQueryParam('source', '', resetPage)
+  // Country and range are set together with the params they invalidate
+  // (city; from/to) — see their onChange handlers.
+  const country = get('country')
+  const [city, setCity] = useQueryParam('city', '', resetPage)
+  const range = get('range')
+  const [from, setFrom] = useQueryParam('from', '', resetPage)
+  const [to, setTo] = useQueryParam('to', '', resetPage)
+  const [page, setPage] = usePageParam()
+  const openId = get('open')
 
   const [items, setItems] = useState([])
   const [total, setTotal] = useState(0)
@@ -123,7 +137,6 @@ export default function RequestsView() {
   const [loadError, setLoadError] = useState('')
 
   const [countries, setCountries] = useState([])
-  const [openId, setOpenId] = useState(null)
   const [noteDraft, setNoteDraft] = useState('')
   const [confirm, setConfirm] = useState(null)
   const [statusConfirm, setStatusConfirm] = useState(null) // { id, name, to } | null
@@ -133,19 +146,6 @@ export default function RequestsView() {
   const [exportError, setExportError] = useState('')
 
   const canDelete = allowed('delete')
-
-  // Debounce free-text search — every keystroke is now a real network
-  // request, unlike the old client-side filter.
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300)
-    return () => clearTimeout(t)
-  }, [query])
-
-  // Any filter change starts back at page 1 — staying on page 6 of a filter
-  // that now has 2 pages would just show an empty screen.
-  useEffect(() => {
-    setPage(1)
-  }, [debouncedQuery, status, source, country, city, range, from, to])
 
   const dateBounds = useMemo(() => {
     const preset = DATE_RANGES.find(d => d.id === range)
@@ -189,22 +189,27 @@ export default function RequestsView() {
     return () => { alive = false }
   }, [loadRequestsPage, filters, page])
 
+  // There's no single-enquiry GET to fetch by id, so ?open=<id> can only be
+  // shown when that enquiry is on the page of results currently loaded; if
+  // it isn't (another page, filtered out, deleted) the drawer stays closed.
   const open = openId ? items.find(r => r.id === openId) : null
+  const closeDrawer = () => set({ open: '' })
 
   // Seed the note draft from whichever record is opened, but only when the
-  // open record itself changes — not on every re-render, which would wipe
-  // out an in-progress edit each time `items` gets replaced by a poll/save.
+  // open record itself changes (or first arrives, on a fresh load of
+  // ?open=…) — not on every re-render, which would wipe out an in-progress
+  // edit each time `items` gets replaced by a poll/save.
   useEffect(() => {
     setNoteDraft(open?.notes || '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openId])
+  }, [open?.id])
 
   const isFiltered = Boolean(query.trim() || status || source || country || city || range || from || to)
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
+  // One write for everything; the search box follows the URL.
   function clearFilters() {
-    setQuery(''); setStatus(''); setSource('')
-    setCountry(''); setCity(''); setRange(''); setFrom(''); setTo('')
+    set({ q: '', status: '', source: '', country: '', city: '', range: '', from: '', to: '', page: '' })
   }
 
   /** Opens the confirmation prompt; the actual API call waits for confirmStatusChange. */
@@ -261,7 +266,7 @@ export default function RequestsView() {
     setTotal(t => Math.max(0, t - 1))
     try {
       await deleteRequestRecord(record.id)
-      if (openId === record.id) setOpenId(null)
+      if (openId === record.id) closeDrawer()
     } catch {
       setItems(prev)
       setTotal(t => t + 1)
@@ -341,7 +346,7 @@ export default function RequestsView() {
           className="ad-input ad-filter"
           value={country}
           // Changing country clears the city, which may not exist in the new one.
-          onChange={e => { setCountry(e.target.value); setCity('') }}
+          onChange={e => set({ country: e.target.value, city: '', page: '' })}
         >
           <option value="">All countries</option>
           {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -360,10 +365,9 @@ export default function RequestsView() {
           value={range}
           // Leaving the custom range clears its dates, so they can't keep
           // filtering invisibly from behind a preset.
-          onChange={e => {
-            setRange(e.target.value)
-            if (e.target.value !== 'custom') { setFrom(''); setTo('') }
-          }}
+          onChange={e => set(e.target.value === 'custom'
+            ? { range: 'custom', page: '' }
+            : { range: e.target.value, from: '', to: '', page: '' })}
         >
           {DATE_RANGES.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
         </select>
@@ -436,9 +440,9 @@ export default function RequestsView() {
                 </td>
                 <td><StatusPill status={r.status} /></td>
                 <td className="ad-td-actions">
-                  <button className="ad-btn ad-btn--soft ad-btn--sm" onClick={() => setOpenId(r.id)}>
+                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ open: r.id })} scroll={false}>
                     View
-                  </button>
+                  </Link>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm" onClick={() => setConfirm(r)}>
                       Delete
@@ -486,7 +490,7 @@ export default function RequestsView() {
 
       {/* Detail drawer */}
       {open && (
-        <div className="ad-drawer-scrim" onClick={() => setOpenId(null)}>
+        <div className="ad-drawer-scrim" onClick={closeDrawer}>
           <div className="ad-drawer ad-drawer--sm" onClick={e => e.stopPropagation()}>
             <div className="ad-drawer-head">
               <div>
@@ -495,7 +499,7 @@ export default function RequestsView() {
                   {REQUEST_SOURCE_LABELS[open.source]} · {formatDate(open.createdAt)}
                 </div>
               </div>
-              <button className="ad-icon-btn" onClick={() => setOpenId(null)} aria-label="Close">✕</button>
+              <button className="ad-icon-btn" onClick={closeDrawer} aria-label="Close">✕</button>
             </div>
 
             <div className="ad-drawer-body">
@@ -616,7 +620,7 @@ export default function RequestsView() {
                   </a>
                 )
                 : <span />}
-              <button className="ad-btn ad-btn--primary" onClick={() => setOpenId(null)}>Done</button>
+              <button className="ad-btn ad-btn--primary" onClick={closeDrawer}>Done</button>
             </div>
           </div>
         </div>

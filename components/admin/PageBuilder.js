@@ -12,6 +12,7 @@ import {
 import { PAGES } from '@/lib/admin/content'
 import { siteUrl } from '@/lib/site'
 import { slugInput } from '@/lib/admin/slug'
+import { useQuery } from './useUrlState'
 
 function cloneSafe(obj) {
   if (typeof structuredClone === 'function') return structuredClone(obj)
@@ -25,7 +26,7 @@ function blockSummary(block) {
   return plainText(d.heading || d.caption || firstItem || '') || BLOCK_TYPES[block.type]?.hint || ''
 }
 
-export default function PageBuilder({ initial, isNew, onClose }) {
+export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
   const { customPages, upsertCustomPage, services, doctors, allowed, saving } = useAdmin()
   const canEdit = allowed('edit')
 
@@ -33,10 +34,16 @@ export default function PageBuilder({ initial, isNew, onClose }) {
   const [saved, setSaved] = useState(() => (isNew ? null : JSON.stringify(initial)))
   const [originalId, setOriginalId] = useState(isNew ? null : initial.id)
   const [slugTouched, setSlugTouched] = useState(!isNew)
-  // New pages open on Page settings, so the title, address and menu position
-  // are asked first.
-  const [panel, setPanel] = useState(isNew ? 'settings' : 'blocks') // 'blocks' | 'settings'
-  const [selectedId, setSelectedId] = useState(null)
+  // The side panel (?panel=blocks|settings) and the selected block
+  // (?block=<id>) live in the URL; device, locale and the "add block"
+  // palette stay local. New pages open on Page settings, so the title,
+  // address and menu position are asked first.
+  const query = useQuery()
+  const defaultPanel = isNew ? 'settings' : 'blocks'
+  const panel = query.get('panel') === 'settings' || query.get('panel') === 'blocks' ? query.get('panel') : defaultPanel
+  const setPanel = next => query.set({ panel: next === defaultPanel ? '' : next })
+  const selectedId = query.get('block') || null
+  const setSelectedId = id => query.set({ block: id || '' })
   const [adding, setAdding] = useState(false)
   const [locale, setLocale] = useState('EN')
   const [device, setDevice] = useState('desktop')
@@ -113,6 +120,10 @@ export default function PageBuilder({ initial, isNew, onClose }) {
       setPage(record)
       setSaved(JSON.stringify(record))
       setOriginalId(record.id)
+      // A created page reopens as an existing one, whose default panel is
+      // Blocks — pin the current panel so it doesn't jump.
+      if (isNew) query.set({ panel })
+      onSaved?.(record)
     }
   }
 

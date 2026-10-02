@@ -1,14 +1,19 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import ContentEditor from './ContentEditor'
 import CountryNotice from './CountryNotice'
 import { SITE_GROUPS, seedSite } from '@/lib/admin/content'
+import { useQuery } from './useUrlState'
 
 /** Site-wide content: the footer, and the brand/contact details reused everywhere. */
 export default function SiteView() {
   const { site, saveSection, allowed, activeCountry } = useAdmin()
-  const [tab, setTab] = useState(SITE_GROUPS[0].id)
+  // The active tab is ?tab=<group id>; the first group is the default and is
+  // left out of the URL.
+  const { get, href } = useQuery()
+  const tab = get('tab', SITE_GROUPS[0].id)
 
   // Kept for the per-section "Revert" action, which restores the original copy.
   const seeded = useMemo(() => seedSite(), [])
@@ -26,11 +31,11 @@ export default function SiteView() {
 
       <div className="ad-cf-tabs">
         {SITE_GROUPS.map(g => (
-          <button key={g.id}
-            className={`ad-cf-tab${tab === g.id ? ' active' : ''}`}
-            onClick={() => setTab(g.id)}>
+          <Link key={g.id}
+            className={`ad-cf-tab${group.id === g.id ? ' active' : ''}`}
+            href={href({ tab: g.id === SITE_GROUPS[0].id ? '' : g.id })}>
             <span aria-hidden="true">{g.icon}</span> {g.label}
-          </button>
+          </Link>
         ))}
       </div>
 

@@ -1,5 +1,6 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
 import ReorderCell from './ReorderCell'
@@ -7,12 +8,23 @@ import LocaleToggle from './LocaleToggle'
 import { emptyCategory } from '@/lib/admin/seed'
 import SlugField from './SlugField'
 import { resolveSlug } from '@/lib/admin/slug'
+import MissingRecord from './MissingRecord'
+import { useQuery, useQueryText } from './useUrlState'
 
 export default function CategoriesView() {
-  const { categories, services, upsertCategory, deleteCategory, allowed } = useAdmin()
-  const [query, setQuery] = useState('')
-  const [editing, setEditing] = useState(null) // { initial, isNew }
+  const { categories, services, upsertCategory, deleteCategory, allowed, dataVersion } = useAdmin()
+  // Search and the open record live in the URL (?q, ?edit=<slug>, ?new=1)
+  // so a refresh or a new tab reopens the same screen.
+  const { get, set, href } = useQuery()
+  const [query, setQuery] = useQueryText('q')
+  const editSlug = get('edit')
+  const isNew = get('new') === '1'
+  const newCategory = useMemo(() => (isNew ? emptyCategory() : null), [isNew])
   const [confirm, setConfirm] = useState(null) // slug pending delete
+  // The record the open editor was started from. Saving a slug rename swaps
+  // it out of `categories` before ?edit is cleared, so keep the form on
+  // screen instead of flashing "not found" on the way out.
+  const held = useRef(null)
 
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
@@ -31,15 +43,26 @@ export default function CategoriesView() {
   const filtered = categories.filter(c => !q || `${c.name} ${c.slug}`.toLowerCase().includes(q))
   const isFiltered = Boolean(q)
 
-  if (editing) {
+  const closeEditor = () => set({ edit: '', new: '' })
+  const saveAndClose = (rec, orig) => { upsertCategory(rec, orig); closeEditor() }
+
+  if (isNew) {
     return (
-      <CategoryForm
-        initial={editing.initial}
-        isNew={editing.isNew}
-        existing={categories}
-        onSave={(rec, orig) => { upsertCategory(rec, orig); setEditing(null) }}
-        onClose={() => setEditing(null)}
-      />
+      <CategoryForm key="new" initial={newCategory} isNew existing={categories}
+        onSave={saveAndClose} onClose={closeEditor} />
+    )
+  }
+  if (editSlug) {
+    const found = categories.find(c => c.slug === editSlug)
+    if (found) held.current = found
+    else if (held.current?.slug !== editSlug) held.current = null
+    const record = found || held.current
+    if (!record) {
+      return <MissingRecord loading={dataVersion === 0} label="category" backHref={href({ edit: '' })} />
+    }
+    return (
+      <CategoryForm key={editSlug} initial={record} isNew={false} existing={categories}
+        onSave={saveAndClose} onClose={closeEditor} />
     )
   }
 
@@ -55,10 +78,9 @@ export default function CategoriesView() {
           </p>
         </div>
         {canCreate && (
-          <button className="ad-btn ad-btn--primary"
-            onClick={() => setEditing({ initial: emptyCategory(), isNew: true })}>
+          <Link className="ad-btn ad-btn--primary" href={href({ new: 1 })}>
             + New category
-          </button>
+          </Link>
         )}
       </div>
 
@@ -95,8 +117,7 @@ export default function CategoriesView() {
                 </td>
                 <td>{treatmentCount[c.id] || 0}</td>
                 <td className="ad-td-actions">
-                  <button className="ad-btn ad-btn--soft ad-btn--sm"
-                    onClick={() => setEditing({ initial: c, isNew: false })}>Edit</button>
+                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: c.slug })}>Edit</Link>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm"
                       onClick={() => setConfirm(c.slug)}>Delete</button>

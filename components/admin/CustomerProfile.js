@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
 import { ProviderBadges, relativeDate } from './CustomerBits'
@@ -12,6 +13,7 @@ import {
 } from '@/lib/admin/customers'
 import { REQUEST_STATUS_LABELS } from '@/lib/admin/seed'
 import { VOUCHER_STATUS, voucherStatusLabel } from '@/lib/admin/voucher-status'
+import { viewHref } from '@/lib/admin/routes'
 
 function fullDate(iso, withTime = false) {
   if (!iso) return '—'
@@ -271,7 +273,9 @@ export default function CustomerProfile({ id, onClose }) {
                     {history.requests.map(r => (
                       <div key={r.id} className="ad-cu-history-row">
                         <span>
-                          <strong>{r.treatment || r.treatmentArea || 'General enquiry'}</strong>
+                          <Link className="ad-req-link" href={viewHref('requests', { open: r.id })}>
+                            <strong>{r.treatment || r.treatmentArea || 'General enquiry'}</strong>
+                          </Link>
                           <span className="ad-cell-slug">{r.source === 'concern' ? 'Tell Us Everything' : 'Consultation'} · {fullDate(r.createdAt)}</span>
                         </span>
                         <span className={`ad-status ad-status--${r.status}`}><span className="ad-status-dot" />{REQUEST_STATUS_LABELS[r.status] || r.status}</span>
@@ -292,7 +296,9 @@ export default function CustomerProfile({ id, onClose }) {
                   {history.vouchers.map(v => (
                     <div key={v.id} className="ad-cu-history-row">
                       <span>
-                        <strong>{v.offerTitle}</strong>
+                        <Link className="ad-req-link" href={viewHref('voucher-requests', { open: v.id })}>
+                          <strong>{v.offerTitle}</strong>
+                        </Link>
                         <span className="ad-cell-slug">
                           {v.offerCurrency} {v.offerPrice} · {v.isGift ? 'Gift' : 'For themselves'} · {fullDate(v.submittedAt)}
                           {v.code && <> · <code className="ad-vcode">{v.code}</code></>}

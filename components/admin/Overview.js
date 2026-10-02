@@ -1,8 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import { fetchVoucherRequestsPage } from '@/lib/admin/store'
 import { VOUCHER_STATUS } from '@/lib/admin/voucher-status'
+import { viewHref } from '@/lib/admin/routes'
 
 function greeting() {
   const h = new Date().getHours()
@@ -48,7 +50,7 @@ function useOverviewCounts(loadRequestsPage, dataVersion) {
 
 const show = n => (n == null ? '—' : n)
 
-export default function Overview({ onNavigate }) {
+export default function Overview() {
   const { user, services, doctors, requestStatusCounts, loadRequestsPage, dataVersion } = useAdmin()
   const counts = useOverviewCounts(loadRequestsPage, dataVersion)
   const firstName = (user?.name || '').split(' ')[0]
@@ -59,18 +61,18 @@ export default function Overview({ onNavigate }) {
 
   // Only what needs someone to act — an empty list means all caught up.
   const attention = [
-    { n: requestStatusCounts.new, label: 'new enquiries waiting for a first reply', view: 'requests', tone: 'urgent' },
-    { n: counts.awaitingPayment, label: 'voucher requests waiting for payment', view: 'voucher-requests', tone: 'warn' },
-    { n: counts.toFulfil, label: 'paid vouchers to issue', view: 'voucher-requests', tone: 'warn' },
-    { n: unfiledTreatments, label: 'treatments not in any vertical', view: 'services', tone: 'info' },
-    { n: doctorsNoCountry, label: 'doctors without a country', view: 'doctors', tone: 'info' },
+    { n: requestStatusCounts.new, label: 'new enquiries waiting for a first reply', href: viewHref('requests', { status: 'new' }), tone: 'urgent' },
+    { n: counts.awaitingPayment, label: 'voucher requests waiting for payment', href: viewHref('voucher-requests'), tone: 'warn' },
+    { n: counts.toFulfil, label: 'paid vouchers to issue', href: viewHref('voucher-requests', { status: VOUCHER_STATUS.PAID }), tone: 'warn' },
+    { n: unfiledTreatments, label: 'treatments not in any vertical', href: viewHref('services'), tone: 'info' },
+    { n: doctorsNoCountry, label: 'doctors without a country', href: viewHref('doctors'), tone: 'info' },
   ].filter(a => a.n > 0)
 
   const stats = [
-    { label: 'Open enquiries', value: openRequests, hint: 'New or contacted', view: 'requests' },
-    { label: 'Booked this week', value: show(counts.bookedWeek), hint: 'From enquiries in the last 7 days', view: 'requests' },
-    { label: 'Awaiting payment', value: show(counts.awaitingPayment), hint: 'Voucher requests', view: 'voucher-requests' },
-    { label: 'Vouchers to issue', value: show(counts.toFulfil), hint: 'Paid, not yet issued', view: 'voucher-requests' },
+    { label: 'Open enquiries', value: openRequests, hint: 'New or contacted', href: viewHref('requests') },
+    { label: 'Booked this week', value: show(counts.bookedWeek), hint: 'From enquiries in the last 7 days', href: viewHref('requests', { status: 'booked', range: '7' }) },
+    { label: 'Awaiting payment', value: show(counts.awaitingPayment), hint: 'Voucher requests', href: viewHref('voucher-requests') },
+    { label: 'Vouchers to issue', value: show(counts.toFulfil), hint: 'Paid, not yet issued', href: viewHref('voucher-requests', { status: VOUCHER_STATUS.PAID }) },
   ]
 
   const links = [
@@ -94,11 +96,11 @@ export default function Overview({ onNavigate }) {
         {attention.length ? (
           <div className="ad-ov-todo">
             {attention.map(a => (
-              <button key={a.label} className={`ad-ov-todo-item ad-ov-todo-item--${a.tone}`} onClick={() => onNavigate(a.view)}>
+              <Link key={a.label} href={a.href} className={`ad-ov-todo-item ad-ov-todo-item--${a.tone}`}>
                 <span className="ad-ov-todo-n">{a.n}</span>
                 <span className="ad-ov-todo-lbl">{a.label}</span>
                 <span className="ad-ov-todo-go" aria-hidden="true">→</span>
-              </button>
+              </Link>
             ))}
           </div>
         ) : (
@@ -108,11 +110,11 @@ export default function Overview({ onNavigate }) {
 
       <div className="ad-ov-stats">
         {stats.map(s => (
-          <button key={s.label} className="ad-ov-stat" onClick={() => onNavigate(s.view)}>
+          <Link key={s.label} href={s.href} className="ad-ov-stat">
             <span className="ad-ov-stat-val">{s.value}</span>
             <span className="ad-ov-stat-lbl">{s.label}</span>
             <span className="ad-ov-stat-hint">{s.hint}</span>
-          </button>
+          </Link>
         ))}
       </div>
 
@@ -120,9 +122,9 @@ export default function Overview({ onNavigate }) {
         <div className="ad-panel-head"><h2 className="ad-panel-title">Quick links</h2></div>
         <div className="ad-ov-links">
           {links.map(l => (
-            <button key={l.view} className="ad-ov-link" onClick={() => onNavigate(l.view)}>
+            <Link key={l.view} href={viewHref(l.view)} className="ad-ov-link">
               <span aria-hidden="true">{l.icon}</span> {l.label}
-            </button>
+            </Link>
           ))}
         </div>
       </div>
