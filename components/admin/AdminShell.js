@@ -44,11 +44,12 @@ const NAV_GROUPS = [
     items: [
       { id: 'services', label: 'Treatments & Services', icon: '✦' },
       { id: 'verticals', label: 'Verticals', icon: '◈' },
-      { id: 'categories', label: 'Categories', icon: '▣' },
+      // `hidden` keeps the view wired up but out of the sidebar.
+      { id: 'categories', label: 'Categories', icon: '▣', hidden: true },
       { id: 'tell-us', label: 'Tell Us Everything', icon: '◎' },
       { id: 'doctors', label: 'Doctors', icon: '⚕' },
       { id: 'indulgence', label: 'Indulgence', icon: '🎁' },
-      { id: 'reviews', label: 'Reviews', icon: '★' },
+      { id: 'reviews', label: 'Reviews', icon: '★', hidden: true },
     ],
   },
   {
@@ -95,7 +96,7 @@ export default function AdminShell() {
           {NAV_GROUPS.map((group, gi) => (
             <div className="ad-nav-group" key={group.label || `g${gi}`}>
               {group.label && <div className="ad-nav-divider">{group.label}</div>}
-              {group.items.filter(n => !n.permission || allowed(n.permission)).map(n => (
+              {group.items.filter(n => !n.hidden && (!n.permission || allowed(n.permission))).map(n => (
                 <button
                   key={n.id}
                   className={`ad-nav-item${view === n.id ? ' active' : ''}`}

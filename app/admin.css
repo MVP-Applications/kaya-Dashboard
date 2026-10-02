@@ -1038,6 +1038,84 @@
   .ad-price-row { grid-template-columns: 48px 1fr 70px; gap: 6px; }
 }
 
+/* ── Sectioned editor forms (clinic, treatment, vertical) ────
+   Fields are sized to what they hold (a dropdown or a coordinate doesn't
+   need the full width) and wrap onto new lines as the screen narrows. */
+.ad-editor-body.ad-form-sections { gap: 20px; }
+/* Section titles sit above each card rather than cutting into its border
+   (a positioned legend no longer breaks the fieldset's top edge). */
+.ad-form-sections .ad-fieldset { position: relative; margin-top: 26px; }
+.ad-form-sections .ad-fieldset legend {
+  position: absolute; top: -26px; left: 2px;
+  font-size: 13px; letter-spacing: .07em; padding: 0; line-height: 18px;
+}
+.ad-frow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.ad-frow > .ad-field { margin-bottom: 0; }
+.ad-form-sections .ad-frow:not(:last-child) { margin-bottom: 14px; }
+.ad-fblock { margin-top: 14px; }
+.ad-fblock .ad-field-hint { display: block; margin-top: 6px; }
+.ad-fsub { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.ad-fsub > .ad-field-label { display: block; margin-bottom: 6px; }
+.ad-w-sm { flex: 1 1 140px; max-width: 200px; }
+.ad-w-md { flex: 1 1 220px; max-width: 300px; }
+.ad-w-lg { flex: 1 1 320px; max-width: 560px; }
+.ad-w-xl { flex: 1 1 100%; max-width: 720px; }
+/* An icon / emoji box, and a field that takes whatever room is left. */
+.ad-w-xs { flex: 0 0 88px; }
+.ad-w-grow { flex: 1 1 220px; min-width: 0; }
+.ad-frow-btn { flex-shrink: 0; }
+/* Checkbox pills size to their text instead of stretching a whole column. */
+.ad-form-sections .ad-check-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.ad-form-sections .ad-field > .ad-check { align-self: flex-start; }
+.ad-form-sections .ad-color { width: 64px; height: 40px; }
+/* A repeatable row (benefit, trust point…): its fields wrap, the ✕ stays put. */
+.ad-form-sections .ad-repeat-row > .ad-frow { flex: 1; min-width: 0; margin-bottom: 0; }
+.ad-form-sections .ad-repeat-row .ad-icon-btn { margin-top: 4px; }
+/* Two related sections share a row on wide screens; stacked below that. */
+.ad-pair { display: flex; flex-direction: column; gap: 20px; }
+/* Two columns inside one section on wide screens (e.g. image | text). */
+.ad-split { display: flex; flex-direction: column; gap: 0 24px; }
+@media (min-width: 1280px) {
+  /* Arabic city name sits beside Country / City instead of below it. */
+  .ad-loc-cityline { display: flex; align-items: flex-start; gap: 12px; }
+  .ad-loc-cityline > .ad-frow { flex: 1 1 0; max-width: 612px; }
+  .ad-loc-cityline > .ad-fblock { flex: 1 1 0; min-width: 0; margin-top: 0; }
+  .ad-loc-cityline > p.ad-fblock { padding-top: 30px; }
+  .ad-pair { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
+  .ad-pair .ad-fieldset { min-width: 0; }
+  .ad-split { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+  .ad-split > * { min-width: 0; }
+}
+
+.ad-hours { display: flex; flex-direction: column; gap: 8px; }
+.ad-hours-row {
+  display: grid; align-items: center; gap: 12px;
+  grid-template-columns: 56px 150px 150px auto;
+  grid-template-areas: "day open close toggle";
+  justify-content: start;
+}
+.ad-hours-day { grid-area: day; font-size: 13px; font-weight: 600; color: var(--ink); }
+.ad-hours-open { grid-area: open; }
+.ad-hours-close { grid-area: close; }
+.ad-hours-toggle { grid-area: toggle; padding: 7px 12px; }
+.ad-hours-closed-note { grid-column: open-start / close-end; font-size: 13px; color: var(--slate); font-style: italic; }
+.ad-hours-row.is-closed .ad-hours-day { color: var(--slate); }
+.ad-hours-cap { display: none; }
+.ad-hours-head .ad-field-label:first-child { grid-area: day; }
+
+@media (max-width: 560px) {
+  .ad-w-sm, .ad-w-md, .ad-w-lg, .ad-w-xl, .ad-w-grow { flex-basis: 100%; max-width: none; }
+  .ad-frow-btn { width: 100%; justify-content: center; }
+  .ad-hours { gap: 14px; }
+  .ad-hours-head { display: none; }
+  .ad-hours-row {
+    grid-template-columns: 1fr 1fr; gap: 6px 10px;
+    grid-template-areas: "day toggle" "open close";
+  }
+  .ad-hours-toggle { justify-self: end; }
+  .ad-hours-cap { display: block; font-size: 11px; font-weight: 600; color: var(--slate); margin-bottom: 3px; }
+}
+
 /* Which copy am I editing — shared, or one market's differences. */
 .ad-note--shared { border-left-color: var(--mid); }
 .ad-note--country {

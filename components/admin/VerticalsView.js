@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useAdmin } from './AdminContext'
 import LocaleToggle from './LocaleToggle'
 import ImagePicker from './ImagePicker'
+import MarketScopeFields from './MarketScopeFields'
 
 function slugify(str) {
   return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -21,6 +22,7 @@ const empty = {
   heroTrustPoints: [], heroStats: [],
   heroEyebrowAr: '', heroHeadlineAr: '', heroHeadlineEmAr: '', heroSubAr: '',
   heroTrustPointsAr: [], heroStatsAr: [],
+  countries: [], clinics: [],
 }
 
 export default function VerticalsView() {
@@ -194,6 +196,7 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
     e.preventDefault()
     const label = form.label.trim()
     if (!label) return setError('Label is required.')
+    if (!form.countries.length) return setError('Pick at least one country.')
     const id = (form.id.trim() || slugify(label))
     if (existing.some(v => v.id === id && v.id !== originalId)) {
       return setError(`The slug "${id}" is already in use.`)
@@ -219,6 +222,7 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
       heroHeadlineEmAr: form.heroHeadlineEmAr.trim(), heroSubAr: form.heroSubAr.trim(),
       heroTrustPointsAr: cleanTrustPoints(form.heroTrustPointsAr),
       heroStatsAr: cleanStats(form.heroStatsAr),
+      countries: form.countries, clinics: form.clinics,
     }, originalId)
   }
 
@@ -242,41 +246,39 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
 
       {error && <div className="ad-form-error ad-editor-error">{error}</div>}
 
-      <div className="ad-editor-body">
-        <fieldset className="ad-fieldset">
-          <legend>Basics</legend>
-          <label className="ad-field">
-            <span className="ad-field-label">Slug</span>
-            <input className="ad-input" value={form.id}
-              placeholder={slugify(form.label) || 'auto'}
-              onChange={e => set('id', e.target.value)} />
-          </label>
-          <label className="ad-field">
-            <span className="ad-field-label">Color</span>
-            <input className="ad-input" type="color" value={form.color}
-              onChange={e => set('color', e.target.value)} />
-          </label>
-        </fieldset>
-
+      <div className="ad-editor-body ad-form-sections">
         <fieldset className="ad-fieldset">
           <legend>Label</legend>
           <p className="ad-fieldset-hint">
             English is required. Fill in the Arabic label and hint text to add a translation.
           </p>
           <LocaleToggle locale={locale} onChange={setLocale} />
-          {locale === 'EN' ? (
-            <label className="ad-field">
-              <span className="ad-field-label">Label *</span>
-              <input className="ad-input" value={form.label} onChange={e => set('label', e.target.value)} />
+          <div className="ad-frow">
+            {locale === 'EN' ? (
+              <label className="ad-field ad-w-md">
+                <span className="ad-field-label">Label *</span>
+                <input className="ad-input" value={form.label} onChange={e => set('label', e.target.value)} />
+              </label>
+            ) : (
+              <label className="ad-field ad-w-md">
+                <span className="ad-field-label">التسمية (Label)</span>
+                <input className="ad-input" dir="rtl" value={form.labelAr}
+                  onChange={e => set('labelAr', e.target.value)} />
+              </label>
+            )}
+            <label className="ad-field ad-w-md">
+              <span className="ad-field-label">Slug</span>
+              <input className="ad-input" value={form.id}
+                placeholder={slugify(form.label) || 'auto'}
+                onChange={e => set('id', e.target.value)} />
             </label>
-          ) : (
             <label className="ad-field">
-              <span className="ad-field-label">التسمية (Label)</span>
-              <input className="ad-input" dir="rtl" value={form.labelAr}
-                onChange={e => set('labelAr', e.target.value)} />
+              <span className="ad-field-label">Color</span>
+              <input className="ad-color" type="color" value={form.color}
+                onChange={e => set('color', e.target.value)} />
             </label>
-          )}
-          <label className="ad-field">
+          </div>
+          <label className="ad-field ad-w-xl">
             <span className="ad-field-label">{isAr ? 'نص التلميح (Hint text)' : 'Hint text'}</span>
             <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[hintKey]}
               placeholder="Short helper text shown with this vertical"
@@ -289,80 +291,85 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
           <p className="ad-fieldset-hint">
             Shown at the top of this vertical&apos;s public page. Leave blank to fall back to a plain title.
           </p>
-          <div className="ad-field">
-            <span className="ad-field-label">Hero image</span>
-            <p className="ad-fieldset-hint">
-              A wide, landscape photo - about 1920×1000px (roughly 2:1).
-            </p>
-            <ImagePicker value={form.heroImage} onChange={setHeroImage} />
-            {heroImageWarning && <div className="ad-field-warning">{heroImageWarning}</div>}
+          <div className="ad-split">
+            <div className="ad-field">
+              <span className="ad-field-label">Hero image</span>
+              <p className="ad-fieldset-hint">
+                A wide, landscape photo - about 1920×1000px (roughly 2:1).
+              </p>
+              <ImagePicker value={form.heroImage} onChange={setHeroImage} />
+              {heroImageWarning && <div className="ad-field-warning">{heroImageWarning}</div>}
+            </div>
+            <div>
+              <label className="ad-field">
+                <span className="ad-field-label">{isAr ? 'الشعار (Eyebrow)' : 'Eyebrow'}</span>
+                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[eyebrowKey]}
+                  placeholder="e.g. Men's Treatments"
+                  onChange={e => set(eyebrowKey, e.target.value)} />
+              </label>
+              <div className="ad-frow">
+                <label className="ad-field ad-w-grow">
+                  <span className="ad-field-label">{isAr ? 'العنوان (Headline)' : 'Headline'}</span>
+                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[headlineKey]}
+                    placeholder="e.g. Built for men."
+                    onChange={e => set(headlineKey, e.target.value)} />
+                </label>
+                <label className="ad-field ad-w-grow">
+                  <span className="ad-field-label">{isAr ? 'تتمة العنوان (Headline emphasis)' : 'Headline emphasis'}</span>
+                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[headlineEmKey]}
+                    placeholder="e.g. Backed by medicine."
+                    onChange={e => set(headlineEmKey, e.target.value)} />
+                </label>
+              </div>
+              <label className="ad-field">
+                <span className="ad-field-label">{isAr ? 'النص الفرعي (Sub text)' : 'Sub text'}</span>
+                <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={3}
+                  value={form[subKey]} onChange={e => set(subKey, e.target.value)} />
+              </label>
+            </div>
           </div>
-          <label className="ad-field">
-            <span className="ad-field-label">{isAr ? 'الشعار (Eyebrow)' : 'Eyebrow'}</span>
-            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[eyebrowKey]}
-              placeholder="e.g. Men's Treatments"
-              onChange={e => set(eyebrowKey, e.target.value)} />
-          </label>
-          <div className="ad-grid2">
-            <label className="ad-field">
-              <span className="ad-field-label">{isAr ? 'العنوان (Headline)' : 'Headline'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[headlineKey]}
-                placeholder="e.g. Built for men."
-                onChange={e => set(headlineKey, e.target.value)} />
-            </label>
-            <label className="ad-field">
-              <span className="ad-field-label">{isAr ? 'تتمة العنوان (Headline emphasis)' : 'Headline emphasis'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[headlineEmKey]}
-                placeholder="e.g. Backed by medicine."
-                onChange={e => set(headlineEmKey, e.target.value)} />
-            </label>
-          </div>
-          <label className="ad-field">
-            <span className="ad-field-label">{isAr ? 'النص الفرعي (Sub text)' : 'Sub text'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={2}
-              value={form[subKey]} onChange={e => set(subKey, e.target.value)} />
-          </label>
         </fieldset>
 
-        <fieldset className="ad-fieldset">
-          <legend>Trust points {isAr ? '(العربية)' : ''}</legend>
-          {form[trustPointsKey].map((p, i) => (
-            <div key={i} className="ad-repeat-row">
-              <div className="ad-repeat-main">
-                <div className="ad-grid2">
-                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={p.icon || ''} placeholder="Icon (e.g. 🩺)"
-                    onChange={e => updateTrustPoint(i, 'icon', e.target.value)} />
-                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={p.label || ''} placeholder="Label"
-                    onChange={e => updateTrustPoint(i, 'label', e.target.value)} />
+        <div className="ad-pair">
+          <fieldset className="ad-fieldset">
+            <legend>Trust points {isAr ? '(العربية)' : ''}</legend>
+            {form[trustPointsKey].map((p, i) => (
+              <div key={i} className="ad-repeat-row">
+                <div className="ad-frow">
+                  <input className="ad-input ad-w-xs" dir={isAr ? 'rtl' : undefined} value={p.icon || ''} placeholder="Icon (e.g. 🩺)"
+                    aria-label="Icon" onChange={e => updateTrustPoint(i, 'icon', e.target.value)} />
+                  <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={p.label || ''} placeholder="Label"
+                    aria-label="Label" onChange={e => updateTrustPoint(i, 'label', e.target.value)} />
+                  <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={p.hint || ''} placeholder="Hint"
+                    aria-label="Hint" onChange={e => updateTrustPoint(i, 'hint', e.target.value)} />
                 </div>
-                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={p.hint || ''} placeholder="Hint"
-                  onChange={e => updateTrustPoint(i, 'hint', e.target.value)} />
+                <button type="button" className="ad-icon-btn" onClick={() => removeTrustPoint(i)}
+                  aria-label="Remove trust point">✕</button>
               </div>
-              <button type="button" className="ad-icon-btn" onClick={() => removeTrustPoint(i)}
-                aria-label="Remove trust point">✕</button>
-            </div>
-          ))}
-          <button type="button" className="ad-btn ad-btn--soft" onClick={addTrustPoint}>+ Add trust point</button>
-        </fieldset>
+            ))}
+            <button type="button" className="ad-btn ad-btn--soft" onClick={addTrustPoint}>+ Add trust point</button>
+          </fieldset>
 
-        <fieldset className="ad-fieldset">
-          <legend>Stats {isAr ? '(العربية)' : ''}</legend>
-          {form[statsKey].map((s, i) => (
-            <div key={i} className="ad-repeat-row">
-              <div className="ad-repeat-main">
-                <div className="ad-grid2">
-                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={s.value || ''} placeholder="Value (e.g. 23)"
-                    onChange={e => updateStat(i, 'value', e.target.value)} />
-                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={s.label || ''} placeholder="Label"
-                    onChange={e => updateStat(i, 'label', e.target.value)} />
+          <fieldset className="ad-fieldset">
+            <legend>Stats {isAr ? '(العربية)' : ''}</legend>
+            {form[statsKey].map((s, i) => (
+              <div key={i} className="ad-repeat-row">
+                <div className="ad-frow">
+                  <input className="ad-input ad-w-sm" dir={isAr ? 'rtl' : undefined} value={s.value || ''} placeholder="Value (e.g. 23)"
+                    aria-label="Value" onChange={e => updateStat(i, 'value', e.target.value)} />
+                  <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={s.label || ''} placeholder="Label"
+                    aria-label="Label" onChange={e => updateStat(i, 'label', e.target.value)} />
                 </div>
+                <button type="button" className="ad-icon-btn" onClick={() => removeStat(i)}
+                  aria-label="Remove stat">✕</button>
               </div>
-              <button type="button" className="ad-icon-btn" onClick={() => removeStat(i)}
-                aria-label="Remove stat">✕</button>
-            </div>
-          ))}
-          <button type="button" className="ad-btn ad-btn--soft" onClick={addStat}>+ Add stat</button>
-        </fieldset>
+            ))}
+            <button type="button" className="ad-btn ad-btn--soft" onClick={addStat}>+ Add stat</button>
+          </fieldset>
+        </div>
+
+        <MarketScopeFields countries={form.countries} clinics={form.clinics}
+          onChange={scope => setForm(f => ({ ...f, ...scope }))} />
       </div>
     </form>
   )
