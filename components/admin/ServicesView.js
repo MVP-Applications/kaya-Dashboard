@@ -6,11 +6,34 @@ import ReorderCell from './ReorderCell'
 import { emptyService } from '@/lib/admin/seed'
 import ServiceForm from './ServiceForm'
 
+function ServiceFormSkeleton({ onClose }) {
+  return (
+    <div className="ad-editor" role="status" aria-live="polite">
+      <div className="ad-editor-head">
+        <button type="button" className="ad-back" onClick={onClose}>← Back</button>
+        <div className="ad-editor-titles">
+          <h1 className="ad-view-title">Edit service</h1>
+          <p className="ad-view-sub">Loading service details…</p>
+        </div>
+      </div>
+      <div className="ad-editor-body">
+        {[0, 1, 2].map(i => (
+          <div key={i} className="ad-fieldset" aria-hidden="true">
+            <div className="ad-skeleton-block" style={{ width: '30%' }} />
+            <div className="ad-skeleton-block ad-skeleton-block--sm" style={{ width: '90%' }} />
+            <div className="ad-skeleton-block ad-skeleton-block--sm" style={{ width: '70%' }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function ServicesView() {
-  const { services, verticals, deleteService, allowed } = useAdmin()
+  const { services, verticals, deleteService, loadService, allowed } = useAdmin()
   const [query, setQuery] = useState('')
   const [vertical, setVertical] = useState('')
-  const [editing, setEditing] = useState(null)   // { initial, isNew } | null
+  const [editing, setEditing] = useState(null)   // { initial, isNew, loading? } | null
   const [confirm, setConfirm] = useState(null)    // slug pending delete
 
   const verticalMeta = useMemo(() => {
@@ -31,6 +54,22 @@ export default function ServicesView() {
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
   const isFiltered = Boolean(query.trim() || vertical)
+
+  // Edit always starts from the backend's latest copy, not the list's
+  // possibly-stale one. Ignore the result if the admin has since gone Back
+  // or opened another service.
+  async function openEdit(s) {
+    setEditing({ initial: s, isNew: false, loading: true })
+    const fresh = await loadService(s.slug)
+    setEditing(e => {
+      if (!e || !e.loading || e.initial.slug !== s.slug) return e
+      return fresh ? { initial: fresh, isNew: false } : null
+    })
+  }
+
+  if (editing?.loading) {
+    return <ServiceFormSkeleton onClose={() => setEditing(null)} />
+  }
 
   // The create/edit form is a full page within the dashboard.
   if (editing) {
@@ -113,7 +152,7 @@ export default function ServicesView() {
                 <td>{s.badge ? <span className="ad-badge">{s.badge}</span> : <span className="ad-muted">—</span>}</td>
                 <td className="ad-td-actions">
                   <button className="ad-btn ad-btn--soft ad-btn--sm"
-                    onClick={() => setEditing({ initial: s, isNew: false })}>Edit</button>
+                    onClick={() => openEdit(s)}>Edit</button>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm"
                       onClick={() => setConfirm(s.slug)}>Delete</button>
