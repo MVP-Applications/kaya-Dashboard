@@ -1,9 +1,11 @@
 'use client'
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import { ROLE_LABELS, PERMISSIONS } from '@/lib/admin/auth'
 import { inviteStaffUser } from '@/lib/admin/store'
 import { sortCountries } from '@/lib/admin/content'
+import { useQuery, useQueryText } from './useUrlState'
 
 const ROLES = ['admin', 'editor']
 
@@ -102,11 +104,13 @@ export default function UsersView() {
   const { users, setUserRole, setUserCountry, user, allowed, loading, demoMode, refreshUsers, countryRecords } = useAdmin()
   const countries = sortCountries(countryRecords)
   const countryName = code => countries.find(c => c.code === code)?.name || code
-  const [query, setQuery] = useState('')
-  const [inviting, setInviting] = useState(false)
+  // Search (?q) and the open invite dialog (?invite=1) live in the URL.
+  const { get, set, href } = useQuery()
+  const [query, setQuery] = useQueryText('q')
   const [invited, setInvited] = useState('')
 
   const canManage = allowed('manageUsers')
+  const inviting = canManage && get('invite') === '1'
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -125,9 +129,9 @@ export default function UsersView() {
           </p>
         </div>
         {canManage && (
-          <button className="ad-btn ad-btn--primary" onClick={() => setInviting(true)}>
+          <Link className="ad-btn ad-btn--primary" href={href({ invite: 1 })} scroll={false}>
             + Invite staff member
-          </button>
+          </Link>
         )}
       </div>
 
@@ -264,9 +268,9 @@ export default function UsersView() {
       {inviting && (
         <InviteForm
           countries={countries}
-          onClose={() => setInviting(false)}
+          onClose={() => set({ invite: '' })}
           onInvited={async email => {
-            setInviting(false)
+            set({ invite: '' })
             setInvited(email)
             await refreshUsers()
           }}

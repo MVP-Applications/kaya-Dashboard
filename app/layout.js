@@ -1,4 +1,5 @@
 import './globals.css'
+import AdminApp from '@/components/admin/AdminApp'
 
 export const metadata = {
   title: 'Kaya CMS — Content Dashboard',
@@ -180,7 +181,7 @@ export default function RootLayout({ children }) {
       */}
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: DIAGNOSTIC }} />
-        {children}
+        <AdminApp>{children}</AdminApp>
       </body>
     </html>
   )

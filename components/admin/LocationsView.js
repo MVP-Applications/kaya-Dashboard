@@ -1,9 +1,12 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import { emptyLocation, sortCountries } from '@/lib/admin/content'
 import { createCity, updateCity } from '@/lib/admin/store'
 import LocaleToggle from './LocaleToggle'
+import MissingRecord from './MissingRecord'
+import { useQuery, useQueryParam, useQueryText } from './useUrlState'
 
 const DAYS = [
   ['sun', 'Sun'], ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'],
@@ -52,11 +55,21 @@ function LocationFormSkeleton({ onClose }) {
 }
 
 export default function LocationsView() {
-  const { locations, saveLocation, loadLocation, deleteLocation, countryRecords, addCityToCountry, replaceCityInCountry, allowed, loading } = useAdmin()
-  const [editing, setEditing] = useState(null) // { initial, isNew, loading? }
+  const { locations, saveLocation, loadLocation, deleteLocation, countryRecords, addCityToCountry, replaceCityInCountry, allowed, loading, dataVersion } = useAdmin()
+  // Filters and the open record live in the URL (?q, ?country — 'all' is
+  // the default and left out — ?edit=<id>, ?new=1) so a refresh or a new tab
+  // reopens the same screen.
+  const { get, set, href } = useQuery()
+  const [query, setQuery] = useQueryText('q')
+  const [country, setCountry] = useQueryParam('country', 'all')
+  const editId = get('edit')
+  const isNew = get('new') === '1'
+  const firstCountry = sortCountries(countryRecords)[0]?.code
+  const newLocation = useMemo(() => (isNew ? emptyLocation(firstCountry) : null), [isNew, firstCountry])
+  // The backend's latest copy of the clinic in ?edit: { id, record } once
+  // fetched (record null if it couldn't be loaded); null while loading.
+  const [fresh, setFresh] = useState(null)
   const [confirm, setConfirm] = useState(null)
-  const [country, setCountry] = useState('all')
-  const [query, setQuery] = useState('')
 
   const canCreate = allowed('create')
   const canDelete = allowed('delete')
@@ -64,34 +77,44 @@ export default function LocationsView() {
   // Edit always starts from the backend's latest copy, not the list's
   // possibly-stale one. Ignore the result if the admin has since gone Back
   // or opened another clinic.
-  async function openEdit(l) {
-    setEditing({ initial: l, isNew: false, loading: true })
-    const fresh = await loadLocation(l.id)
-    setEditing(e => {
-      if (!e || !e.loading || e.initial.id !== l.id) return e
-      return fresh ? { initial: fresh, isNew: false } : null
+  useEffect(() => {
+    setFresh(null)
+    if (!editId) return
+    let current = true
+    loadLocation(editId).then(record => {
+      if (current) setFresh({ id: editId, record })
     })
+    return () => { current = false }
+  }, [editId, loadLocation])
+
+  const closeEditor = () => set({ edit: '', new: '' })
+
+  if (editId && fresh?.id !== editId) {
+    return <LocationFormSkeleton onClose={closeEditor} />
   }
 
-  if (editing?.loading) {
-    return <LocationFormSkeleton onClose={() => setEditing(null)} />
+  // A fresh page load on ?new=1 waits for the countries, so the new clinic
+  // defaults to the first one like it does from the list.
+  if ((isNew && dataVersion === 0) || (editId && !fresh.record)) {
+    return <MissingRecord loading={!editId} label="clinic" backHref={href({ edit: '', new: '' })} />
   }
 
-  if (editing) {
+  if (isNew || editId) {
     return (
       <LocationForm
-        initial={editing.initial}
-        isNew={editing.isNew}
+        key={isNew ? 'new' : editId}
+        initial={isNew ? newLocation : fresh.record}
+        isNew={isNew}
         countryOptions={countryRecords}
         onCityAdded={addCityToCountry}
         onCityUpdated={replaceCityInCountry}
         canManageCities={allowed('manageCountries')}
         onSave={async (rec, orig) => {
           const ok = await saveLocation(rec, orig)
-          if (ok) setEditing(null)
+          if (ok) closeEditor()
           return ok
         }}
-        onClose={() => setEditing(null)}
+        onClose={closeEditor}
       />
     )
   }
@@ -120,12 +143,14 @@ export default function LocationsView() {
             Clinic records behind the Find a Clinic page — addresses, phone numbers, and opening hours.
           </p>
         </div>
-        {canCreate && (
-          <button className="ad-btn ad-btn--primary" disabled={loading}
-            onClick={() => setEditing({ initial: emptyLocation(sortCountries(countryRecords)[0]?.code), isNew: true })}>
+        {/* A link can't be disabled, so it stays a button while the list loads. */}
+        {canCreate && (loading ? (
+          <button className="ad-btn ad-btn--primary" disabled>+ New clinic</button>
+        ) : (
+          <Link className="ad-btn ad-btn--primary" href={href({ new: 1 })}>
             + New clinic
-          </button>
-        )}
+          </Link>
+        ))}
       </div>
 
       <div className="ad-stat-grid ad-loc-totals">
@@ -190,8 +215,7 @@ export default function LocationsView() {
                 <td>{l.city}</td>
                 <td>{l.tel || '—'}</td>
                 <td className="ad-td-actions">
-                  <button className="ad-btn ad-btn--soft ad-btn--sm"
-                    onClick={() => openEdit(l)}>Edit</button>
+                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: l.id })}>Edit</Link>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm"
                       onClick={() => setConfirm(l.id)}>Delete</button>

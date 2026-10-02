@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import CustomerProfile from './CustomerProfile'
 import { ProviderBadges, relativeDate } from './CustomerBits'
@@ -9,6 +10,7 @@ import {
   completeness, countryFromPhone, formatPhone, displayName, initials, dialCodesFrom,
 } from '@/lib/admin/customers'
 import { downloadCsv, stampedName } from '@/lib/admin/csv'
+import { useQuery, useQueryParam, useQueryText, usePageParam } from './useUrlState'
 
 const PAGE_SIZE = 20
 
@@ -17,29 +19,27 @@ export default function CustomersView() {
   const canView = allowed('viewCustomers')
   const dialCodes = useMemo(() => dialCodesFrom(countryRecords), [countryRecords])
 
-  const [query, setQuery] = useState('')
-  const [search, setSearch] = useState('')
-  const [provider, setProvider] = useState('')
-  const [country, setCountry] = useState('')
-  const [comp, setComp] = useState('')
-  const [consent, setConsent] = useState('')
-  const [status, setStatus] = useState('')
-  const [page, setPage] = useState(1)
+  // Search, filters, page and the open profile live in the URL (?q, ?provider,
+  // ?country, ?comp, ?consent, ?status, ?page, ?open=<customerId>) so a
+  // refresh or a new tab lands on the same screen. Filter changes reset ?page.
+  const { get, set, href } = useQuery()
+  const resets = ['page']
+  const [query, setQuery, search] = useQueryText('q', { resets })
+  const [provider, setProvider] = useQueryParam('provider', '', { resets })
+  const [country, setCountry] = useQueryParam('country', '', { resets })
+  const [comp, setComp] = useQueryParam('comp', '', { resets })
+  const [consent, setConsent] = useQueryParam('consent', '', { resets })
+  const [status, setStatus] = useQueryParam('status', '', { resets })
+  const [page, setPage] = usePageParam()
+  const openId = get('open')
 
   const [items, setItems] = useState([])
   const [total, setTotal] = useState(0)
   const [counts, setCounts] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [openId, setOpenId] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [reload, setReload] = useState(0)
-
-  useEffect(() => {
-    const t = setTimeout(() => setSearch(query.trim()), 300)
-    return () => clearTimeout(t)
-  }, [query])
-  useEffect(() => { setPage(1) }, [search, provider, country, comp, consent, status])
 
   const filters = useMemo(() => ({
     search, provider, country, completeness: comp, consent, status,
@@ -69,7 +69,7 @@ export default function CustomersView() {
   }
 
   if (openId) {
-    return <CustomerProfile id={openId} onClose={() => { setOpenId(null); setReload(r => r + 1) }} />
+    return <CustomerProfile id={openId} onClose={() => { set({ open: '' }); setReload(r => r + 1) }} />
   }
 
   const isFiltered = Boolean(search || provider || country || comp || consent || status)
@@ -87,7 +87,8 @@ export default function CustomersView() {
   }
 
   function clear() {
-    setQuery(''); setProvider(''); setCountry(''); setComp(''); setConsent(''); setStatus('')
+    setQuery('')
+    set({ q: '', provider: '', country: '', comp: '', consent: '', status: '', page: '' })
   }
 
   const chips = counts && [
@@ -199,7 +200,7 @@ export default function CustomersView() {
                   <td>{c.hasHealthConsent ? <span className="ad-badge">Given</span> : <span className="ad-muted">Not given</span>}</td>
                   <td>{relativeDate(c.createdAt)}</td>
                   <td className="ad-td-actions">
-                    <button type="button" className="ad-btn ad-btn--soft ad-btn--sm" onClick={() => setOpenId(c.id)}>View</button>
+                    <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ open: c.id })}>View</Link>
                   </td>
                 </tr>
               )

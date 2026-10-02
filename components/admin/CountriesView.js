@@ -1,28 +1,43 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import { emptyCountry, sortCountries } from '@/lib/admin/content'
 import CountryForm from './CountryForm'
+import MissingRecord from './MissingRecord'
+import { useQuery, useQueryText } from './useUrlState'
 
 export default function CountriesView() {
-  const { countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry, replaceCityInCountry, allowed } = useAdmin()
-  const [editing, setEditing] = useState(null) // { initial, isNew }
+  const { countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry, replaceCityInCountry, allowed, dataVersion } = useAdmin()
+  // Search and the open record live in the URL (?q, ?edit=<id>, ?new=1) so a
+  // refresh or a new tab reopens the same screen.
+  const { get, set, href } = useQuery()
+  const [query, setQuery] = useQueryText('q')
+  const editId = get('edit')
+  const isNew = get('new') === '1'
+  const newCountry = useMemo(() => (isNew ? emptyCountry() : null), [isNew])
   const [confirm, setConfirm] = useState(null)
-  const [query, setQuery] = useState('')
 
   // Countries and cities are ADMIN-only on the backend.
   const canCreate = allowed('manageCountries')
   const canDelete = allowed('delete')
 
-  if (editing) {
+  const closeEditor = () => set({ edit: '', new: '' })
+
+  if (isNew || editId) {
+    const record = isNew ? newCountry : countryRecords.find(c => String(c.id) === editId)
+    if (!record) {
+      return <MissingRecord loading={dataVersion === 0} label="country" backHref={href({ edit: '' })} />
+    }
     return (
       <CountryForm
-        initial={editing.initial}
-        isNew={editing.isNew}
+        key={isNew ? 'new' : editId}
+        initial={record}
+        isNew={isNew}
         existing={countryRecords}
         canEdit={allowed('manageCountries')}
-        onSave={(rec, orig) => { upsertCountryRecord(rec, orig); setEditing(null) }}
-        onClose={() => setEditing(null)}
+        onSave={(rec, orig) => { upsertCountryRecord(rec, orig); closeEditor() }}
+        onClose={closeEditor}
         onCityAdded={addCityToCountry}
         onCityUpdated={replaceCityInCountry}
       />
@@ -46,10 +61,9 @@ export default function CountriesView() {
           </p>
         </div>
         {canCreate && (
-          <button className="ad-btn ad-btn--primary"
-            onClick={() => setEditing({ initial: emptyCountry(), isNew: true })}>
+          <Link className="ad-btn ad-btn--primary" href={href({ new: 1 })}>
             + New country
-          </button>
+          </Link>
         )}
       </div>
 
@@ -93,10 +107,9 @@ export default function CountriesView() {
                 <td>{c.contact ? c.contact.phoneNumber : <span className="ad-cell-slug">Not added</span>}</td>
                 <td>{c.preferredLanguage}</td>
                 <td className="ad-td-actions">
-                  <button className="ad-btn ad-btn--soft ad-btn--sm"
-                    onClick={() => setEditing({ initial: c, isNew: false })}>
+                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: c.id })}>
                     {allowed('manageCountries') ? 'Edit' : 'View'}
-                  </button>
+                  </Link>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm"
                       onClick={() => setConfirm(c.id)}>Delete</button>

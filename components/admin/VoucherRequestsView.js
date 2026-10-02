@@ -1,9 +1,11 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
+import { usePageParam, useQuery, useQueryParam, useQueryText } from './useUrlState'
 import {
-  fetchVoucherRequestsPage, fetchVoucherStatuses, findVoucherByCode, persistVoucherRequestStatus,
+  fetchVoucherRequestsPage, fetchVoucherRequest, fetchVoucherStatuses, findVoucherByCode, persistVoucherRequestStatus,
   redeemVoucher, removeVoucherRequestRecord,
 } from '@/lib/admin/store'
 import { VOUCHER_STATUS, VOUCHER_STATUS_CONSEQUENCES, voucherStatusLabel } from '@/lib/admin/voucher-status'
@@ -29,11 +31,16 @@ function voucherDates(v) {
 
 export default function VoucherRequestsView() {
   const { allowed, dataVersion } = useAdmin()
+  // Search, status, page and the open request live in the URL (?q, ?status,
+  // ?page, ?open=<id>) so a refresh or a new tab reopens the same screen —
+  // Overview links here with ?status=PAID. Changing a filter resets ?page.
+  const { get, set, href } = useQuery()
+  const [search, setSearch, committedSearch] = useQueryText('q', { resets: ['page'] })
+  const [status, setStatus] = useQueryParam('status', '', { resets: ['page'] })
+  const [page, setPage] = usePageParam()
+  const openId = get('open')
   const [items, setItems] = useState([])
   const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [status, setStatus] = useState('')
-  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [flow, setFlow] = useState([]) // [{ status, next[], final }] from the backend
@@ -42,7 +49,6 @@ export default function VoucherRequestsView() {
   const [redeemConfirm, setRedeemConfirm] = useState(null) // voucher
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState('')
-  const [openId, setOpenId] = useState(null)
   // The last record the backend returned after an action — lets the Redeem
   // panel pick up a change made from the table without trusting older rows.
   const [latestChange, setLatestChange] = useState(null)
@@ -57,7 +63,7 @@ export default function VoucherRequestsView() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const result = await fetchVoucherRequestsPage({ page, pageSize: PAGE_SIZE, status: status || undefined, search: search || undefined })
+      const result = await fetchVoucherRequestsPage({ page, pageSize: PAGE_SIZE, status: status || undefined, search: committedSearch || undefined })
       setItems(result.items)
       setTotal(result.total)
       setError('')
@@ -68,13 +74,25 @@ export default function VoucherRequestsView() {
     }
     // dataVersion: refetch after Refresh content / Reset sample data.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, status, search, dataVersion])
+  }, [page, status, committedSearch, dataVersion])
 
   useEffect(() => { load() }, [load])
+
+  // The open request isn't on the loaded page — fetch it by id instead.
+  const [fetched, setFetched] = useState(null)
+  useEffect(() => {
+    if (!openId || loading || items.some(v => v.id === openId) || fetched?.id === openId) return
+    let alive = true
+    fetchVoucherRequest(openId)
+      .then(v => { if (alive) setFetched(v) })
+      .catch(() => { if (alive) setFetched(null) })
+    return () => { alive = false }
+  }, [openId, loading, items]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Put the backend's updated record into the list (and the open lookup, if any). */
   function applyUpdate(updated) {
     setItems(list => list.map(v => (v.id === updated.id ? updated : v)))
+    setFetched(f => (f?.id === updated.id ? updated : f))
     setLatestChange(updated)
   }
 
@@ -123,6 +141,7 @@ export default function VoucherRequestsView() {
     try {
       await removeVoucherRequestRecord(id)
       setTotal(t => t - 1)
+      if (openId === id) closeDrawer()
     } catch (e) {
       setItems(prev)
       setError(e.message)
@@ -131,7 +150,10 @@ export default function VoucherRequestsView() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const deleteTarget = confirmDelete ? items.find(v => v.id === confirmDelete) : null
-  const open = openId ? items.find(v => v.id === openId) : null
+  // ?open=<id> usually points at a row on this page; when it doesn't (a
+  // shared link, a different filter) the record is fetched on its own.
+  const open = openId ? (items.find(v => v.id === openId) || (fetched?.id === openId ? fetched : null)) : null
+  const closeDrawer = useCallback(() => set({ open: '' }), [set])
 
   return (
     <div className="ad-view">
@@ -151,8 +173,8 @@ export default function VoucherRequestsView() {
 
       <div className="ad-toolbar">
         <input className="ad-input ad-search" placeholder="Search by name, email, phone or voucher code…"
-          value={search} onChange={e => { setPage(1); setSearch(e.target.value) }} />
-        <select className="ad-input ad-filter" value={status} onChange={e => { setPage(1); setStatus(e.target.value) }}>
+          value={search} onChange={e => setSearch(e.target.value)} />
+        <select className="ad-input ad-filter" value={status} onChange={e => setStatus(e.target.value)}>
           <option value="">All statuses</option>
           {flow.map(f => <option key={f.status} value={f.status}>{voucherStatusLabel(f.status)}</option>)}
         </select>
@@ -205,7 +227,7 @@ export default function VoucherRequestsView() {
                 </td>
                 <td>{formatDate(v.submittedAt)}</td>
                 <td className="ad-td-actions">
-                  <button className="ad-btn ad-btn--soft ad-btn--sm" onClick={() => setOpenId(v.id)}>View</button>
+                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ open: v.id })} scroll={false}>View</Link>
                   {canEdit && v.status === VOUCHER_STATUS.FULFILLED && (
                     <button className="ad-btn ad-btn--primary ad-btn--sm" onClick={() => setRedeemConfirm(v)}>Redeem</button>
                   )}
@@ -230,7 +252,7 @@ export default function VoucherRequestsView() {
         </div>
       )}
 
-      {open && <VoucherDrawer voucher={open} onClose={() => setOpenId(null)} />}
+      {open && <VoucherDrawer voucher={open} onClose={closeDrawer} />}
 
       {statusConfirm && (
         <ConfirmDialog

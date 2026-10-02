@@ -1,10 +1,13 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import ContentEditor from './ContentEditor'
 import CountryNotice from './CountryNotice'
 import ConfirmDialog from './ConfirmDialog'
 import PageBuilder from './PageBuilder'
+import MissingRecord from './MissingRecord'
+import { useQuery } from './useUrlState'
 import { PAGES, seedPages } from '@/lib/admin/content'
 import {
   PAGE_TEMPLATES, TEMPLATE_LABELS, NAV_POSITION_LABELS, newCustomPage, newId, slugify,
@@ -65,13 +68,32 @@ function VisibilitySwitch({ visible, onChange, disabled, label }) {
   )
 }
 
+/** A hidden copy of `p` with a free "-copy" address and fresh block ids. */
+function duplicateOf(p, customPages) {
+  const taken = new Set(customPages.map(x => x.slug))
+  let slug = slugify(`${p.slug}-copy`)
+  for (let n = 2; taken.has(slug); n++) slug = slugify(`${p.slug}-copy-${n}`)
+  return {
+    ...cloneSafe(p), id: '', slug, title: `${p.title} (copy)`, visible: false, updatedAt: '',
+    blocks: p.blocks.map(b => ({ ...cloneSafe(b), id: newId('blk') })),
+  }
+}
+
 export default function PagesView() {
   const {
     pages, saveSection, allowed, activeCountry,
-    customPages, customPagesError, upsertCustomPage, deleteCustomPage,
+    customPages, customPagesError, upsertCustomPage, deleteCustomPage, dataVersion,
   } = useAdmin()
-  const [openId, setOpenId] = useState(null)
-  const [building, setBuilding] = useState(null) // { initial, isNew }
+  // The open built-in page (?open=<id>) and the page builder live in the URL:
+  //   ?build=<customPageId>                 edit a custom page
+  //   ?build=new&template=<templateId>      new page from a template
+  //   ?build=new&from=<customPageId>        new page duplicated from another
+  // The template picker and confirm dialog stay local.
+  const { get, set, href } = useQuery()
+  const openId = get('open')
+  const build = get('build')
+  const template = get('template')
+  const from = get('from')
   const [picking, setPicking] = useState(false)
   const [confirm, setConfirm] = useState(null)
 
@@ -84,15 +106,39 @@ export default function PagesView() {
 
   const page = PAGES.find(p => p.id === openId)
 
-  if (building) {
-    return <PageBuilder initial={building.initial} isNew={building.isNew} onClose={() => setBuilding(null)} />
+  const source = build === 'new' ? (from ? customPages.find(p => p.id === from) : null) : customPages.find(p => p.id === build)
+  // The builder copies `initial` on mount, so it only has to be stable per URL.
+  const building = useMemo(() => {
+    if (!build) return null
+    if (build !== 'new') return source ? { initial: source, isNew: false } : null
+    if (from) return source ? { initial: duplicateOf(source, customPages), isNew: true } : null
+    return { initial: newCustomPage(template || undefined), isNew: true }
+  }, [build, template, from, Boolean(source)]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (build) {
+    if (!building) {
+      return <MissingRecord loading={dataVersion === 0} label="page" backHref={href({ build: '', template: '', from: '' })} backLabel="← All pages" />
+    }
+    return (
+      <PageBuilder
+        key={`${build}|${template}|${from}`}
+        initial={building.initial}
+        isNew={building.isNew}
+        onClose={() => set({ build: '', template: '', from: '', panel: '', block: '' })}
+        // A new page, once created, is addressed by its id so a refresh reopens it.
+        onSaved={record => { if (build !== record.id) set({ build: record.id, template: '', from: '' }) }}
+      />
+    )
   }
 
-  if (page) {
+  if (openId) {
+    if (!page) {
+      return <MissingRecord label="page" backHref={href({ open: '' })} backLabel="← All pages" />
+    }
     return (
       <div className="ad-view">
         <div className="ad-editor-head">
-          <button type="button" className="ad-back" onClick={() => setOpenId(null)}>← All pages</button>
+          <Link className="ad-back" href={href({ open: '' })}>← All pages</Link>
           <div className="ad-editor-titles">
             <h1 className="ad-view-title">{page.label}</h1>
             <p className="ad-view-sub">{page.hint}</p>
@@ -119,17 +165,6 @@ export default function PagesView() {
         </ContentEditor>
       </div>
     )
-  }
-
-  function duplicate(p) {
-    const taken = new Set(customPages.map(x => x.slug))
-    let slug = slugify(`${p.slug}-copy`)
-    for (let n = 2; taken.has(slug); n++) slug = slugify(`${p.slug}-copy-${n}`)
-    const copy = {
-      ...cloneSafe(p), id: '', slug, title: `${p.title} (copy)`, visible: false, updatedAt: '',
-      blocks: p.blocks.map(b => ({ ...cloneSafe(b), id: newId('blk') })),
-    }
-    setBuilding({ initial: copy, isNew: true })
   }
 
   const sortedCustom = [...customPages].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
@@ -168,7 +203,7 @@ export default function PagesView() {
           <div className="ad-page-grid">
             {sortedCustom.map(p => (
               <div key={p.id} className={`ad-page-card ad-pg-card${p.visible ? '' : ' ad-pg-card--hidden'}`}>
-                <button type="button" className="ad-pg-card-main" onClick={() => setBuilding({ initial: p, isNew: false })}>
+                <Link className="ad-pg-card-main" href={href({ build: p.id })}>
                   <span className="ad-page-icon" aria-hidden="true">{PAGE_TEMPLATES.find(t => t.id === p.template)?.icon || '□'}</span>
                   <span className="ad-page-body">
                     <span className="ad-page-label">{p.title || 'Untitled page'}</span>
@@ -180,14 +215,14 @@ export default function PagesView() {
                       )}
                     </span>
                   </span>
-                </button>
+                </Link>
                 <div className="ad-pg-card-foot">
                   <VisibilitySwitch visible={p.visible} disabled={!canEdit}
                     onChange={v => upsertCustomPage({ ...p, visible: v, updatedAt: new Date().toISOString() }, p.id)}
                     label={`${p.title} visible on the website`} />
                   <span className="ad-pg-card-actions">
-                    <button type="button" className="ad-btn ad-btn--soft ad-btn--sm" onClick={() => setBuilding({ initial: p, isNew: false })}>Edit</button>
-                    {canCreate && <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => duplicate(p)}>Duplicate</button>}
+                    <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ build: p.id })}>Edit</Link>
+                    {canCreate && <Link className="ad-btn ad-btn--ghost ad-btn--sm" href={href({ build: 'new', from: p.id })}>Duplicate</Link>}
                     {canDelete && (
                       <button type="button" className="ad-btn ad-btn--danger ad-btn--sm" onClick={() => setConfirm(p)}>Delete</button>
                     )}
@@ -206,7 +241,7 @@ export default function PagesView() {
         </div>
         <div className="ad-page-grid">
           {PAGES.map(p => (
-            <button key={p.id} className="ad-page-card" onClick={() => setOpenId(p.id)}>
+            <Link key={p.id} className="ad-page-card" href={href({ open: p.id })}>
               <span className="ad-page-icon" aria-hidden="true">{p.icon}</span>
               <span className="ad-page-body">
                 <span className="ad-page-label">{p.label}</span>
@@ -217,7 +252,7 @@ export default function PagesView() {
                 </span>
               </span>
               <span className="ad-page-arrow" aria-hidden="true">→</span>
-            </button>
+            </Link>
           ))}
         </div>
       </section>
@@ -225,7 +260,7 @@ export default function PagesView() {
       {picking && (
         <TemplatePicker
           onCancel={() => setPicking(false)}
-          onPick={id => { setPicking(false); setBuilding({ initial: newCustomPage(id), isNew: true }) }}
+          onPick={id => { setPicking(false); set({ build: 'new', template: id }, { push: true }) }}
         />
       )}
 

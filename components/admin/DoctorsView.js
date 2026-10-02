@@ -1,17 +1,25 @@
 'use client'
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
 import ReorderCell from './ReorderCell'
 import { emptyDoctor } from '@/lib/admin/seed'
 import DoctorForm from './DoctorForm'
+import MissingRecord from './MissingRecord'
+import { useQuery, useQueryParam, useQueryText } from './useUrlState'
 
 export default function DoctorsView() {
-  const { doctors, verticals, countryRecords, deleteDoctor, allowed } = useAdmin()
-  const [query, setQuery] = useState('')
-  const [vertical, setVertical] = useState('')
-  const [country, setCountry] = useState('')
-  const [editing, setEditing] = useState(null)
+  const { doctors, verticals, countryRecords, deleteDoctor, allowed, dataVersion } = useAdmin()
+  // Filters and the open record live in the URL (?q, ?vertical, ?country,
+  // ?edit=<slug>, ?new=1) so a refresh or a new tab reopens the same screen.
+  const { get, set, href } = useQuery()
+  const [query, setQuery] = useQueryText('q')
+  const [vertical, setVertical] = useQueryParam('vertical')
+  const [country, setCountry] = useQueryParam('country')
+  const editSlug = get('edit')
+  const isNew = get('new') === '1'
+  const newDoctor = useMemo(() => (isNew ? emptyDoctor() : null), [isNew])
   const [confirm, setConfirm] = useState(null)
 
   const verticalMeta = useMemo(() => {
@@ -34,14 +42,17 @@ export default function DoctorsView() {
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
 
-  if (editing) {
-    return (
-      <DoctorForm
-        initial={editing.initial}
-        isNew={editing.isNew}
-        onClose={() => setEditing(null)}
-      />
-    )
+  const closeEditor = () => set({ edit: '', new: '' })
+
+  if (isNew) {
+    return <DoctorForm key="new" initial={newDoctor} isNew onClose={closeEditor} />
+  }
+  if (editSlug) {
+    const record = doctors.find(d => d.slug === editSlug)
+    if (!record) {
+      return <MissingRecord loading={dataVersion === 0} label="doctor" backHref={href({ edit: '' })} />
+    }
+    return <DoctorForm key={editSlug} initial={record} isNew={false} onClose={closeEditor} />
   }
 
   return (
@@ -52,10 +63,9 @@ export default function DoctorsView() {
           <p className="ad-view-sub">{doctors.length} doctors · showing {filtered.length}</p>
         </div>
         {canCreate && (
-          <button className="ad-btn ad-btn--primary"
-            onClick={() => setEditing({ initial: emptyDoctor(), isNew: true })}>
+          <Link className="ad-btn ad-btn--primary" href={href({ new: 1 })}>
             + New doctor
-          </button>
+          </Link>
         )}
       </div>
 
@@ -124,8 +134,7 @@ export default function DoctorsView() {
                 <td>{(d.countries || []).join(', ') || <span className="ad-muted">—</span>}</td>
                 <td>{d.yearsExp !== '' && d.yearsExp != null ? `${d.yearsExp} yrs` : <span className="ad-muted">—</span>}</td>
                 <td className="ad-td-actions">
-                  <button className="ad-btn ad-btn--soft ad-btn--sm"
-                    onClick={() => setEditing({ initial: d, isNew: false })}>Edit</button>
+                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: d.slug })}>Edit</Link>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm"
                       onClick={() => setConfirm(d.slug)}>Delete</button>

@@ -1,16 +1,24 @@
 'use client'
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
 import ReorderCell from './ReorderCell'
 import { VOUCHER_TYPE_OPTIONS, emptyVoucher } from '@/lib/admin/seed'
 import VoucherForm from './VoucherForm'
+import MissingRecord from './MissingRecord'
+import { useQuery, useQueryParam, useQueryText } from './useUrlState'
 
 export default function IndulgenceView() {
-  const { vouchers, deleteVoucher, allowed } = useAdmin()
-  const [query, setQuery] = useState('')
-  const [type, setType] = useState('')
-  const [editing, setEditing] = useState(null)
+  const { vouchers, deleteVoucher, allowed, dataVersion } = useAdmin()
+  // Filters and the open record live in the URL (?q, ?type, ?edit=<id>,
+  // ?new=1) so a refresh or a new tab reopens the same screen.
+  const { get, set, href } = useQuery()
+  const [query, setQuery] = useQueryText('q')
+  const [type, setType] = useQueryParam('type')
+  const editId = get('edit')
+  const isNew = get('new') === '1'
+  const newVoucher = useMemo(() => (isNew ? emptyVoucher() : null), [isNew])
   const [confirm, setConfirm] = useState(null)
 
   const filtered = useMemo(() => {
@@ -26,10 +34,17 @@ export default function IndulgenceView() {
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
 
-  if (editing) {
-    return (
-      <VoucherForm initial={editing.initial} isNew={editing.isNew} onClose={() => setEditing(null)} />
-    )
+  const closeEditor = () => set({ edit: '', new: '' })
+
+  if (isNew) {
+    return <VoucherForm key="new" initial={newVoucher} isNew onClose={closeEditor} />
+  }
+  if (editId) {
+    const record = vouchers.find(v => String(v.id) === editId)
+    if (!record) {
+      return <MissingRecord loading={dataVersion === 0} label="voucher" backHref={href({ edit: '' })} />
+    }
+    return <VoucherForm key={editId} initial={record} isNew={false} onClose={closeEditor} />
   }
 
   return (
@@ -40,10 +55,9 @@ export default function IndulgenceView() {
           <p className="ad-view-sub">{vouchers.length} vouchers · showing {filtered.length}</p>
         </div>
         {canCreate && (
-          <button className="ad-btn ad-btn--primary"
-            onClick={() => setEditing({ initial: emptyVoucher(), isNew: true })}>
+          <Link className="ad-btn ad-btn--primary" href={href({ new: 1 })}>
             + New voucher
-          </button>
+          </Link>
         )}
       </div>
 
@@ -86,8 +100,7 @@ export default function IndulgenceView() {
                 total={vouchers.length}
                 disabled={isFiltered}
               />
-              <button className="ad-btn ad-btn--soft ad-btn--sm"
-                onClick={() => setEditing({ initial: v, isNew: false })}>Edit</button>
+              <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: v.id })}>Edit</Link>
               {canDelete && (
                 <button className="ad-btn ad-btn--danger ad-btn--sm"
                   onClick={() => setConfirm(v.id)}>Delete</button>

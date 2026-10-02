@@ -1,14 +1,22 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import { emptyContact } from '@/lib/admin/content'
 import ContactForm from './ContactForm'
+import MissingRecord from './MissingRecord'
+import { useQuery, useQueryText } from './useUrlState'
 
 export default function ContactsView() {
-  const { contacts, countryRecords, upsertContact, deleteContact, allowed } = useAdmin()
-  const [editing, setEditing] = useState(null) // { initial, isNew }
+  const { contacts, countryRecords, upsertContact, deleteContact, allowed, dataVersion } = useAdmin()
+  // Search and the open record live in the URL (?q, ?edit=<id>, ?new=1) so a
+  // refresh or a new tab reopens the same screen.
+  const { get, set, href } = useQuery()
+  const [query, setQuery] = useQueryText('q')
+  const editId = get('edit')
+  const isNew = get('new') === '1'
+  const newContact = useMemo(() => (isNew ? emptyContact() : null), [isNew])
   const [confirm, setConfirm] = useState(null)
-  const [query, setQuery] = useState('')
 
   const canCreate = allowed('create')
   const canDelete = allowed('delete')
@@ -16,14 +24,21 @@ export default function ContactsView() {
   // Countries without a contact yet — the only ones offered when creating a new one.
   const availableCountries = countryRecords.filter(c => !contacts.some(k => k.countryId === c.id))
 
-  if (editing) {
+  const closeEditor = () => set({ edit: '', new: '' })
+
+  if (isNew || editId) {
+    const record = isNew ? newContact : contacts.find(c => String(c.id) === editId)
+    if (!record) {
+      return <MissingRecord loading={dataVersion === 0} label="contact" backHref={href({ edit: '' })} />
+    }
     return (
       <ContactForm
-        initial={editing.initial}
-        isNew={editing.isNew}
+        key={isNew ? 'new' : editId}
+        initial={record}
+        isNew={isNew}
         availableCountries={availableCountries}
-        onSave={(rec, orig) => { upsertContact(rec, orig); setEditing(null) }}
-        onClose={() => setEditing(null)}
+        onSave={(rec, orig) => { upsertContact(rec, orig); closeEditor() }}
+        onClose={closeEditor}
       />
     )
   }
@@ -44,14 +59,16 @@ export default function ContactsView() {
             Phone and WhatsApp numbers the website shows per country — one contact per country.
           </p>
         </div>
-        {canCreate && (
-          <button className="ad-btn ad-btn--primary"
-            disabled={availableCountries.length === 0}
-            title={availableCountries.length === 0 ? 'Every country already has a contact.' : undefined}
-            onClick={() => setEditing({ initial: emptyContact(), isNew: true })}>
+        {/* A link can't be disabled, so the "every country is taken" state stays a button. */}
+        {canCreate && (availableCountries.length === 0 ? (
+          <button className="ad-btn ad-btn--primary" disabled title="Every country already has a contact.">
             + New contact
           </button>
-        )}
+        ) : (
+          <Link className="ad-btn ad-btn--primary" href={href({ new: 1 })}>
+            + New contact
+          </Link>
+        ))}
       </div>
 
       <div className="ad-toolbar">
@@ -85,8 +102,7 @@ export default function ContactsView() {
                 <td>{c.secondaryPhoneNumber || '—'}</td>
                 <td>{c.whatsappNumber || '—'}</td>
                 <td className="ad-td-actions">
-                  <button className="ad-btn ad-btn--soft ad-btn--sm"
-                    onClick={() => setEditing({ initial: c, isNew: false })}>Edit</button>
+                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: c.id })}>Edit</Link>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm"
                       onClick={() => setConfirm(c.id)}>Delete</button>

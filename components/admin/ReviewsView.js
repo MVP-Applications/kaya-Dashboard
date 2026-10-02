@@ -1,14 +1,22 @@
 'use client'
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
 import { emptyReview } from '@/lib/admin/seed'
 import ReviewForm from './ReviewForm'
+import MissingRecord from './MissingRecord'
+import { useQuery, useQueryText } from './useUrlState'
 
 export default function ReviewsView() {
-  const { reviews, services, deleteReview, allowed } = useAdmin()
-  const [query, setQuery] = useState('')
-  const [editing, setEditing] = useState(null)
+  const { reviews, services, deleteReview, allowed, dataVersion } = useAdmin()
+  // Search and the open record live in the URL (?q, ?edit=<id>, ?new=1) so a
+  // refresh or a new tab reopens the same screen.
+  const { get, set, href } = useQuery()
+  const [query, setQuery] = useQueryText('q')
+  const editId = get('edit')
+  const isNew = get('new') === '1'
+  const newReview = useMemo(() => (isNew ? emptyReview() : null), [isNew])
   const [confirm, setConfirm] = useState(null)
 
   // `r.treatment` holds the linked Treatment's slug (KA-44) — resolve it to
@@ -30,10 +38,17 @@ export default function ReviewsView() {
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
 
-  if (editing) {
-    return (
-      <ReviewForm initial={editing.initial} isNew={editing.isNew} onClose={() => setEditing(null)} />
-    )
+  const closeEditor = () => set({ edit: '', new: '' })
+
+  if (isNew) {
+    return <ReviewForm key="new" initial={newReview} isNew onClose={closeEditor} />
+  }
+  if (editId) {
+    const record = reviews.find(r => String(r.id) === editId)
+    if (!record) {
+      return <MissingRecord loading={dataVersion === 0} label="review" backHref={href({ edit: '' })} />
+    }
+    return <ReviewForm key={editId} initial={record} isNew={false} onClose={closeEditor} />
   }
 
   return (
@@ -44,10 +59,9 @@ export default function ReviewsView() {
           <p className="ad-view-sub">{reviews.length} testimonials · showing {filtered.length}</p>
         </div>
         {canCreate && (
-          <button className="ad-btn ad-btn--primary"
-            onClick={() => setEditing({ initial: emptyReview(), isNew: true })}>
+          <Link className="ad-btn ad-btn--primary" href={href({ new: 1 })}>
             + New review
-          </button>
+          </Link>
         )}
       </div>
 
@@ -88,8 +102,7 @@ export default function ReviewsView() {
                     : <span className="ad-muted">quote only</span>}
                 </td>
                 <td className="ad-td-actions">
-                  <button className="ad-btn ad-btn--soft ad-btn--sm"
-                    onClick={() => setEditing({ initial: r, isNew: false })}>Edit</button>
+                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: r.id })}>Edit</Link>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm"
                       onClick={() => setConfirm(r.id)}>Delete</button>

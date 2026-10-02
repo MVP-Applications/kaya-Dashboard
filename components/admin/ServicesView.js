@@ -1,10 +1,13 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
 import ReorderCell from './ReorderCell'
 import { emptyService } from '@/lib/admin/seed'
 import ServiceForm from './ServiceForm'
+import MissingRecord from './MissingRecord'
+import { useQuery, useQueryParam, useQueryText } from './useUrlState'
 
 function ServiceFormSkeleton({ onClose }) {
   return (
@@ -30,11 +33,18 @@ function ServiceFormSkeleton({ onClose }) {
 }
 
 export default function ServicesView() {
-  const { services, verticals, deleteService, loadService, allowed } = useAdmin()
-  const [query, setQuery] = useState('')
-  const [vertical, setVertical] = useState('')
-  const [editing, setEditing] = useState(null)   // { initial, isNew, loading? } | null
+  const { services, verticals, deleteService, loadService, allowed, dataVersion } = useAdmin()
+  // Filters and the open record live in the URL (?q, ?vertical,
+  // ?edit=<slug>, ?new=1) so a refresh or a new tab reopens the same screen.
+  const { get, set, href } = useQuery()
+  const [query, setQuery] = useQueryText('q')
+  const [vertical, setVertical] = useQueryParam('vertical')
+  const editSlug = get('edit')
+  const isNew = get('new') === '1'
+  const newService = useMemo(() => (isNew ? emptyService() : null), [isNew])
+  const [loaded, setLoaded] = useState(null)     // { slug, record } — record undefined while loading, null if not found
   const [confirm, setConfirm] = useState(null)    // slug pending delete
+  const ready = dataVersion > 0
 
   const verticalMeta = useMemo(() => {
     const map = {}
@@ -56,30 +66,34 @@ export default function ServicesView() {
   const isFiltered = Boolean(query.trim() || vertical)
 
   // Edit always starts from the backend's latest copy, not the list's
-  // possibly-stale one. Ignore the result if the admin has since gone Back
-  // or opened another service.
-  async function openEdit(s) {
-    setEditing({ initial: s, isNew: false, loading: true })
-    const fresh = await loadService(s.slug)
-    setEditing(e => {
-      if (!e || !e.loading || e.initial.slug !== s.slug) return e
-      return fresh ? { initial: fresh, isNew: false } : null
+  // possibly-stale one. Waits for the first data load (the API looks the
+  // slug up in the list), and ignores the result if the admin has since gone
+  // Back or opened another service.
+  useEffect(() => {
+    if (!editSlug || !ready) { setLoaded(null); return }
+    let cancelled = false
+    setLoaded({ slug: editSlug, record: undefined })
+    loadService(editSlug).then(fresh => {
+      if (!cancelled) setLoaded({ slug: editSlug, record: fresh || null })
     })
-  }
+    return () => { cancelled = true }
+  }, [editSlug, ready, loadService])
 
-  if (editing?.loading) {
-    return <ServiceFormSkeleton onClose={() => setEditing(null)} />
-  }
+  const closeEditor = () => set({ edit: '', new: '' })
 
   // The create/edit form is a full page within the dashboard.
-  if (editing) {
-    return (
-      <ServiceForm
-        initial={editing.initial}
-        isNew={editing.isNew}
-        onClose={() => setEditing(null)}
-      />
-    )
+  if (isNew) {
+    return <ServiceForm key="new" initial={newService} isNew onClose={closeEditor} />
+  }
+  if (editSlug) {
+    const current = loaded?.slug === editSlug ? loaded.record : undefined
+    if (current === undefined) {
+      return <ServiceFormSkeleton onClose={closeEditor} />
+    }
+    if (!current) {
+      return <MissingRecord label="service" backHref={href({ edit: '' })} />
+    }
+    return <ServiceForm key={editSlug} initial={current} isNew={false} onClose={closeEditor} />
   }
 
   return (
@@ -90,10 +104,9 @@ export default function ServicesView() {
           <p className="ad-view-sub">{services.length} services · showing {filtered.length}</p>
         </div>
         {canCreate && (
-          <button className="ad-btn ad-btn--primary"
-            onClick={() => setEditing({ initial: emptyService(), isNew: true })}>
+          <Link className="ad-btn ad-btn--primary" href={href({ new: 1 })}>
             + New service
-          </button>
+          </Link>
         )}
       </div>
 
@@ -151,8 +164,7 @@ export default function ServicesView() {
                 </td>
                 <td>{s.badge ? <span className="ad-badge">{s.badge}</span> : <span className="ad-muted">—</span>}</td>
                 <td className="ad-td-actions">
-                  <button className="ad-btn ad-btn--soft ad-btn--sm"
-                    onClick={() => openEdit(s)}>Edit</button>
+                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: s.slug })}>Edit</Link>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm"
                       onClick={() => setConfirm(s.slug)}>Delete</button>

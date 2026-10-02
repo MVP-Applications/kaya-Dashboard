@@ -1,27 +1,13 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useAdmin } from './AdminContext'
 import { ROLE_LABELS } from '@/lib/admin/auth'
-import Overview from './Overview'
-import ServicesView from './ServicesView'
-import VerticalsView from './VerticalsView'
-import CategoriesView from './CategoriesView'
-import DoctorsView from './DoctorsView'
-import IndulgenceView from './IndulgenceView'
-import TellUsView from './TellUsView'
-import VoucherRequestsView from './VoucherRequestsView'
-import ReviewsView from './ReviewsView'
-import CustomersView from './CustomersView'
-import RequestsView from './RequestsView'
-import PagesView from './PagesView'
-import LocationsView from './LocationsView'
-import CountriesView from './CountriesView'
-import ContactsView from './ContactsView'
-import SiteView from './SiteView'
-import UsersView from './UsersView'
 import PublishButton from './PublishButton'
 import CountrySwitcher from './CountrySwitcher'
 import { SITE_URL } from '@/lib/site'
+import { viewFromPath, viewHref } from '@/lib/admin/routes'
 
 // Nav is grouped so the catalogue (records) and the website (page copy) read as
 // distinct jobs. A group with no label renders its items without a heading.
@@ -68,20 +54,16 @@ const NAV_GROUPS = [
   },
 ]
 
-export default function AdminShell() {
+export default function AdminShell({ children }) {
   const {
     user, logout, requestStatusCounts, refresh, resetDemo, allowed,
     loading, saving, error, dismissError, success, dismissSuccess, demoMode,
   } = useAdmin()
-  const [view, setView] = useState('overview')
+  // The section is the URL, so a refresh or a new tab lands on the same screen.
+  const view = viewFromPath(usePathname())
   const [menuOpen, setMenuOpen] = useState(false)
 
   const newRequests = requestStatusCounts.new
-
-  function go(v) {
-    setView(v)
-    setMenuOpen(false)
-  }
 
   return (
     <div className={`ad-shell${menuOpen ? ' ad-shell--menu' : ''}`}>
@@ -97,17 +79,19 @@ export default function AdminShell() {
             <div className="ad-nav-group" key={group.label || `g${gi}`}>
               {group.label && <div className="ad-nav-divider">{group.label}</div>}
               {group.items.filter(n => !n.hidden && (!n.permission || allowed(n.permission))).map(n => (
-                <button
+                <Link
                   key={n.id}
+                  href={viewHref(n.id)}
                   className={`ad-nav-item${view === n.id ? ' active' : ''}`}
-                  onClick={() => go(n.id)}
+                  aria-current={view === n.id ? 'page' : undefined}
+                  onClick={() => setMenuOpen(false)}
                 >
                   <span className="ad-nav-icon" aria-hidden="true">{n.icon}</span>
                   {n.label}
                   {n.id === 'requests' && newRequests > 0 && (
                     <span className="ad-nav-badge">{newRequests}</span>
                   )}
-                </button>
+                </Link>
               ))}
             </div>
           ))}
@@ -163,23 +147,7 @@ export default function AdminShell() {
         </header>
 
         <main className="ad-content">
-          {view === 'overview' && <Overview onNavigate={setView} />}
-          {view === 'requests' && <RequestsView />}
-          {view === 'services' && <ServicesView />}
-          {view === 'verticals' && <VerticalsView />}
-          {view === 'categories' && <CategoriesView />}
-          {view === 'tell-us' && <TellUsView />}
-          {view === 'doctors' && <DoctorsView />}
-          {view === 'indulgence' && <IndulgenceView />}
-          {view === 'voucher-requests' && <VoucherRequestsView />}
-          {view === 'customers' && <CustomersView />}
-          {view === 'reviews' && <ReviewsView />}
-          {view === 'pages' && <PagesView />}
-          {view === 'locations' && <LocationsView />}
-          {view === 'countries' && <CountriesView />}
-          {view === 'contacts' && <ContactsView />}
-          {view === 'site' && <SiteView />}
-          {view === 'users' && <UsersView />}
+          {children}
         </main>
       </div>
 

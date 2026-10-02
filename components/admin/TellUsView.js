@@ -1,7 +1,10 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import ConfirmDialog from './ConfirmDialog'
+import MissingRecord from './MissingRecord'
+import { useQuery } from './useUrlState'
 import TellUsQuestionEditor from './TellUsQuestionEditor'
 import {
   emptyQuestion, newId, flowFor, suggestTreatments, plainHeading, sharedUsage, validateTellUs, NOT_SURE, areaKey,
@@ -97,12 +100,19 @@ function TryIt({ doc, areaId, areaLabel, areaTreatments }) {
 // ── Screen ───────────────────────────────────────────────────
 
 export default function TellUsView() {
-  const { tellUs, tellUsError, saveTellUs, verticals, services, allowed, saving } = useAdmin()
+  const { tellUs, tellUsError, saveTellUs, verticals, services, allowed, saving, dataVersion } = useAdmin()
   const canDelete = allowed('delete')
 
+  // The tab (?tab=<area>, 'shared' is the default and left out) and the
+  // expanded question (?item=<question or step id>) live in the URL. The
+  // draft, validation problems and confirm dialog stay local.
+  const { get, set, href } = useQuery()
+  const tab = get('tab', 'shared')
+  const openId = get('item') || null
+  const setOpenId = id => set({ item: id || '' })
+  const tabHref = id => href({ tab: id === 'shared' ? '' : id, item: '' })
+
   const [draft, setDraft] = useState(null)
-  const [tab, setTab] = useState('shared')
-  const [openId, setOpenId] = useState(null)
   const [problems, setProblems] = useState([])
   const [confirm, setConfirm] = useState(null) // { title, body, run }
 
@@ -144,6 +154,9 @@ export default function TellUsView() {
   }
   if (!draft) {
     return <div className="ad-view"><div className="ad-panel ad-an-loading">Loading…</div></div>
+  }
+  if (tab !== 'shared' && !areaIds.includes(tab)) {
+    return <MissingRecord loading={dataVersion === 0} label="main treatment" backHref={tabHref('shared')} backLabel="← Shared questions" />
   }
 
   const setShared = (i, q) => setDraft(d => ({ ...d, shared: d.shared.map((x, j) => (j === i ? q : x)) }))
@@ -210,16 +223,16 @@ export default function TellUsView() {
       )}
 
       <div className="ad-tu-tabs" role="tablist">
-        <button type="button" role="tab" aria-selected={tab === 'shared'}
-          className={`ad-tu-tab${tab === 'shared' ? ' active' : ''}`} onClick={() => { setTab('shared'); setOpenId(null) }}>
+        <Link role="tab" aria-selected={tab === 'shared'}
+          className={`ad-tu-tab${tab === 'shared' ? ' active' : ''}`} href={tabHref('shared')}>
           Shared questions
-        </button>
+        </Link>
         {areaIds.map(id => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id}
-            className={`ad-tu-tab${tab === id ? ' active' : ''}`} onClick={() => { setTab(id); setOpenId(null) }}>
+          <Link key={id} role="tab" aria-selected={tab === id}
+            className={`ad-tu-tab${tab === id ? ' active' : ''}`} href={tabHref(id)}>
             {areaLabel(id)}
             <span className="ad-tu-tab-n">{flowFor(draft, id).length}</span>
-          </button>
+          </Link>
         ))}
       </div>
 
@@ -303,10 +316,9 @@ export default function TellUsView() {
                           {s.enabled ? 'Asked' : 'Skipped'}
                         </label>
                         {s.shared ? (
-                          <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
-                            onClick={() => { setTab('shared'); setOpenId(s.shared) }}>
+                          <Link className="ad-btn ad-btn--ghost ad-btn--sm" href={href({ tab: '', item: s.shared })}>
                             Edit wording
-                          </button>
+                          </Link>
                         ) : (
                           <button type="button" className="ad-btn ad-btn--soft ad-btn--sm" onClick={() => setOpenId(open ? null : s.id)}>
                             {open ? 'Close' : 'Edit'}

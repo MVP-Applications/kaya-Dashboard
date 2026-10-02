@@ -1,11 +1,14 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useAdmin } from './AdminContext'
 import LocaleToggle from './LocaleToggle'
 import ImagePicker from './ImagePicker'
 import MarketScopeFields from './MarketScopeFields'
 import SlugField from './SlugField'
 import { resolveSlug } from '@/lib/admin/slug'
+import MissingRecord from './MissingRecord'
+import { useQuery } from './useUrlState'
 
 // The vertical page hero renders full-bleed at ~2:1 (see vp-hero in the
 // website's globals.css) — anything far off that gets cropped hard by
@@ -24,9 +27,18 @@ const empty = {
 }
 
 export default function VerticalsView() {
-  const { verticals, services, upsertVertical, deleteVertical, allowed, saving } = useAdmin()
-  const [editing, setEditing] = useState(null) // { initial, isNew }
+  const { verticals, services, upsertVertical, deleteVertical, allowed, saving, dataVersion } = useAdmin()
+  // The open record lives in the URL (?edit=<id>, ?new=1) so a refresh or a
+  // new tab reopens the same screen.
+  const { get, set, href } = useQuery()
+  const editId = get('edit')
+  const isNew = get('new') === '1'
+  const newVertical = useMemo(() => (isNew ? { ...empty } : null), [isNew])
   const [confirm, setConfirm] = useState(null)
+  // The record the open editor was started from. Saving an id rename swaps
+  // it out of `verticals` (optimistically) before ?edit catches up, so keep
+  // the form on screen instead of flashing "not found" mid-save.
+  const held = useRef(null)
 
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
@@ -35,11 +47,22 @@ export default function VerticalsView() {
     return services.filter(s => (s.verticals || []).includes(id)).length
   }
 
-  if (editing) {
+  const closeEditor = () => set({ edit: '', new: '' })
+
+  const found = editId ? verticals.find(v => v.id === editId) : null
+  if (found) held.current = found
+  else if (held.current?.id !== editId) held.current = null
+  const editRecord = found || held.current
+  if (editId && !isNew && !editRecord) {
+    return <MissingRecord loading={dataVersion === 0} label="vertical" backHref={href({ edit: '' })} />
+  }
+
+  if (isNew || editRecord) {
     return (
       <VerticalForm
-        initial={editing.initial}
-        isNew={editing.isNew}
+        key={isNew ? 'new' : editId}
+        initial={isNew ? newVertical : editRecord}
+        isNew={isNew}
         existing={verticals}
         saving={saving}
         onSave={async (rec, orig) => {
@@ -48,9 +71,9 @@ export default function VerticalsView() {
           // toast appeared back on the list, with no sign of which edit had
           // failed or that it was still in flight.
           const ok = await upsertVertical(rec, orig)
-          if (ok) setEditing(null)
+          if (ok) closeEditor()
         }}
-        onClose={() => setEditing(null)}
+        onClose={closeEditor}
       />
     )
   }
@@ -63,10 +86,9 @@ export default function VerticalsView() {
           <p className="ad-view-sub">Top-level treatment groups used across the site.</p>
         </div>
         {canCreate && (
-          <button className="ad-btn ad-btn--primary"
-            onClick={() => setEditing({ initial: { ...empty }, isNew: true })}>
+          <Link className="ad-btn ad-btn--primary" href={href({ new: 1 })}>
             + New vertical
-          </button>
+          </Link>
         )}
       </div>
 
@@ -83,8 +105,7 @@ export default function VerticalsView() {
               </div>
             </div>
             <div className="ad-vert-actions">
-              <button className="ad-btn ad-btn--soft ad-btn--sm"
-                onClick={() => setEditing({ initial: v, isNew: false })}>Edit</button>
+              <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: v.id })}>Edit</Link>
               {canDelete && (
                 <button className="ad-btn ad-btn--danger ad-btn--sm"
                   onClick={() => setConfirm(v.id)}>Delete</button>
