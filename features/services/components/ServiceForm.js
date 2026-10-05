@@ -1,10 +1,11 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAdmin } from '@/shared/context/AdminContext'
 import { emptyService } from '@/shared/lib/seed'
 import { sortCountries } from '@/shared/lib/content'
 import { resolveSlug } from '@/shared/lib/slug'
 import { useQueryParam } from '@/shared/hooks/useUrlState'
+import ConfirmDialog from '@/shared/components/ConfirmDialog'
 import CountryTabs from '@/features/services/components/CountryTabs'
 import TreatmentFields from '@/features/services/components/TreatmentFields'
 
@@ -29,16 +30,23 @@ const cleanBenefits = list => list
 /**
  * Create / edit one treatment. Each country the user can access is a tab
  * with the full form for that country's own version — its own name, slug,
- * copy, images, verticals and clinics. A tab that is switched on is offered
- * in that country; switching an existing one off removes it there on save.
- * Countries the user can't access aren't shown and are never changed.
+ * copy, images, verticals and clinics. Adding a country takes effect on
+ * save; deleting a saved country's version happens straight away (after a
+ * confirmation). Countries the user can't access aren't shown and are never
+ * changed.
  */
 export default function ServiceForm({ groupId, initialVersions, onClose }) {
-  const { services, verticals, saveTreatment, saving, accessibleCountries, activeCountry, allowed } = useAdmin()
+  const {
+    services, verticals, saveTreatment, removeTreatmentFromCountry, saving,
+    accessibleCountries, activeCountry, allowed,
+  } = useAdmin()
   const countries = useMemo(() => sortCountries(accessibleCountries), [accessibleCountries])
   const isNew = !groupId
 
-  const initiallyOffered = useMemo(() => new Set(initialVersions.map(v => v.country)), [initialVersions])
+  // Countries with a saved version on the backend (shrinks when one is deleted).
+  const [savedCountries, setSavedCountries] = useState(() => new Set(initialVersions.map(v => v.country)))
+  const [confirmRemove, setConfirmRemove] = useState(false)
+  const [removing, setRemoving] = useState(false)
   const [drafts, setDrafts] = useState(() => {
     const byCountry = {}
     countries.forEach(c => {
@@ -46,11 +54,26 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
     })
     return byCountry
   })
+  // Drafts are seeded from the countries known when the form opened. A tab
+  // for a country that arrived later (the country list still loading, or a
+  // country added since) has no draft yet — build it on demand from its
+  // saved version, so editing and "Copy content" work on every tab.
+  const savedDraft = code => draftFrom(initialVersions.find(v => v.country === code), code)
+  const draftOf = code => drafts[code] || savedDraft(code)
+
   const [offered, setOffered] = useState(() => {
-    if (initialVersions.length) return new Set(initiallyOffered)
+    if (initialVersions.length) return new Set(initialVersions.map(v => v.country))
     const first = activeCountry || countries[0]?.code
     return new Set(first ? [first] : [])
   })
+  // A new treatment starts with the switcher's country (or the first) turned
+  // on — also when the country list only arrives after the form opened.
+  const firstCountry = (activeCountry && countries.some(c => c.code === activeCountry) && activeCountry)
+    || countries[0]?.code || ''
+  useEffect(() => {
+    if (isNew && firstCountry) setOffered(prev => (prev.size ? prev : new Set([firstCountry])))
+  }, [isNew, firstCountry])
+
   const [error, setError] = useState('')
   const [invalidTab, setInvalidTab] = useState('')
 
@@ -60,13 +83,14 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
     || [...offered][0] || countries[0]?.code || ''
   const tab = countries.some(c => c.code === tabParam) ? tabParam : fallbackTab
   const tabCountry = countries.find(c => c.code === tab)
-  const form = drafts[tab] || draftFrom(null, tab)
+  const form = draftOf(tab)
   const isOn = offered.has(tab)
+  const isSaved = savedCountries.has(tab)
   const canRemoveCountry = allowed('delete')
-  const title = [...offered].map(code => drafts[code]?.name).find(Boolean) || initialVersions[0]?.name || ''
+  const title = [...offered].map(code => draftOf(code).name).find(Boolean) || initialVersions[0]?.name || ''
 
   function patchDraft(code, patch) {
-    setDrafts(d => ({ ...d, [code]: { ...(d[code] || draftFrom(null, code)), ...patch } }))
+    setDrafts(d => ({ ...d, [code]: { ...(d[code] || savedDraft(code)), ...patch } }))
   }
 
   function setOn(code, on) {
@@ -79,12 +103,30 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
   }
 
   /**
+   * Delete this country's saved version. The dialog stays open (busy) until
+   * the API answers; success and failure are both reported as a toast.
+   */
+  async function removeSavedCountry() {
+    setRemoving(true)
+    const ok = await removeTreatmentFromCountry(groupId, tab, tabCountry?.name)
+    setRemoving(false)
+    setConfirmRemove(false)
+    if (!ok) return
+    const left = [...savedCountries].filter(code => code !== tab)
+    // The last country gone means the treatment itself is gone.
+    if (!left.length) return onClose()
+    setSavedCountries(new Set(left))
+    setOn(tab, false)
+    setDrafts(d => ({ ...d, [tab]: draftFrom(null, tab) }))
+  }
+
+  /**
    * Start a country's tab from another country's content — not its clinics
    * (those are per country) or verticals this country doesn't offer.
    */
   function copyFrom(fromCode) {
-    const src = drafts[fromCode]
-    const here = drafts[tab]
+    const src = draftOf(fromCode)
+    const here = draftOf(tab)
     const offeredHere = new Set(verticals.filter(v => (v.countries || []).includes(tab)).map(v => v.id))
     patchDraft(tab, {
       ...src,
@@ -99,7 +141,7 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
 
   /** One country's draft -> the record the store saves, or an error message. */
   function toVersion(code) {
-    const f = drafts[code] || draftFrom(null, code)
+    const f = draftOf(code)
     const name = f.name.trim()
     if (!name) return { error: 'Name is required.' }
     const what = f.what.trim()
@@ -161,7 +203,7 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
     if (!codes.length) {
       return setError(isNew
         ? 'Turn on at least one country.'
-        : 'Turn on at least one country. To remove this treatment everywhere, delete it from the list.')
+        : 'Add at least one country.')
     }
 
     const versions = []
@@ -174,9 +216,7 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
       }
       versions.push(version)
     }
-    const removedCountries = [...initiallyOffered].filter(code => !offered.has(code))
-
-    const saved = await saveTreatment({ groupId, versions, removedCountries })
+    const saved = await saveTreatment({ groupId, versions })
     // On failure the error toast is shown and the draft stays open.
     if (saved) onClose()
   }
@@ -193,7 +233,6 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
   }
 
   const otherOffered = countries.filter(c => c.code !== tab && offered.has(c.code))
-  const removingExisting = !isOn && initiallyOffered.has(tab)
 
   return (
     <form className="ad-editor" onSubmit={submit}>
@@ -219,40 +258,39 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
         <CountryTabs countries={countries} active={tab} offered={offered} invalid={invalidTab}
           onSelect={code => { setTab(code); setInvalidTab('') }} />
 
-        <div className="ad-note ad-country-offer">
-          <label className="ad-check">
-            <input
-              type="checkbox"
-              checked={isOn}
-              disabled={isOn && initiallyOffered.has(tab) && !canRemoveCountry}
-              onChange={e => setOn(tab, e.target.checked)}
-            />
-            Offer this treatment in {tabCountry?.name}
-          </label>
-          {isOn && initiallyOffered.has(tab) && !canRemoveCountry && (
-            <span className="ad-muted">Only an admin can stop offering it in a country.</span>
-          )}
-          {removingExisting && (
-            <span className="ad-form-error">
-              Saving will remove this treatment from {tabCountry?.name}. Its content there is deleted.
-            </span>
-          )}
-        </div>
+        {isOn && (
+          <div className="ad-note ad-country-offer">
+            {isSaved ? (
+              <>
+                <span>Offered in <strong>{tabCountry?.name}</strong>.</span>
+                {canRemoveCountry && (
+                  <button type="button" className="ad-btn ad-btn--danger ad-btn--sm"
+                    onClick={() => setConfirmRemove(true)} disabled={saving}>
+                    Delete from {tabCountry?.name}
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <span>New for <strong>{tabCountry?.name}</strong> — it&apos;s added when you save.</span>
+                <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => setOn(tab, false)}>
+                  Discard
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {isOn ? (
           <TreatmentFields key={tab} country={tab} form={form} onChange={patch => patchDraft(tab, patch)} />
         ) : (
           <div className="ad-fieldset ad-country-off">
-            <p>
-              {removingExisting
-                ? `Turn it back on to keep ${tabCountry?.name}'s version.`
-                : `Not offered in ${tabCountry?.name}. Turn it on to add content for ${tabCountry?.name}.`}
-            </p>
+            <p>Not offered in {tabCountry?.name}. Add it to give {tabCountry?.name} its own content.</p>
             <div className="ad-country-off-actions">
               <button type="button" className="ad-btn ad-btn--primary" onClick={() => setOn(tab, true)}>
-                {removingExisting ? 'Keep this country' : `Start empty`}
+                Add {tabCountry?.name} — start empty
               </button>
-              {!removingExisting && otherOffered.map(c => (
+              {otherOffered.map(c => (
                 <button key={c.code} type="button" className="ad-btn ad-btn--soft" onClick={() => copyFrom(c.code)}>
                   Copy content from {c.name}
                 </button>
@@ -261,6 +299,19 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
           </div>
         )}
       </div>
+
+      {confirmRemove && (
+        <ConfirmDialog
+          title={`Delete from ${tabCountry?.name}?`}
+          busy={removing}
+          onCancel={() => setConfirmRemove(false)}
+          onConfirm={removeSavedCountry}
+        >
+          {savedCountries.size > 1
+            ? <>This removes <strong>{title}</strong> from the {tabCountry?.name} website and deletes its {tabCountry?.name} content. Other countries are not affected, and unsaved changes in other tabs are kept.</>
+            : <>{tabCountry?.name} is the only country this treatment is saved in, so this deletes <strong>{title}</strong> entirely.</>}
+        </ConfirmDialog>
+      )}
     </form>
   )
 }

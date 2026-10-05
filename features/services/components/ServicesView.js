@@ -51,6 +51,7 @@ export default function ServicesView() {
   const isNew = get('new') === '1'
   const [loaded, setLoaded] = useState(null)     // { id, versions } — undefined while loading, null if not found
   const [confirm, setConfirm] = useState(null)    // { groupId, name } pending delete
+  const [deleting, setDeleting] = useState(false)
   const ready = dataVersion > 0
 
   const verticalMeta = useMemo(() => {
@@ -235,8 +236,15 @@ export default function ServicesView() {
       {confirm && (
         <ConfirmDialog
           title="Delete treatment?"
+          busy={deleting}
           onCancel={() => setConfirm(null)}
-          onConfirm={() => { deleteService(confirm.groupId); setConfirm(null) }}
+          onConfirm={async () => {
+            // Stays open until the API answers; the result shows as a toast.
+            setDeleting(true)
+            await deleteService(confirm.groupId)
+            setDeleting(false)
+            setConfirm(null)
+          }}
         >
           This will remove <strong>{confirm.name}</strong> in every country it&apos;s offered in
           and take it off every page it appears on. To stop offering it in one country only,

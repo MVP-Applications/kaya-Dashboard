@@ -438,20 +438,37 @@ export function AdminProvider({ children }) {
     }
   }, [replaceGroup])
 
+  /**
+   * Stop offering a treatment in one country — deletes that country's
+   * version right away. Resolves true/false; the outcome is shown as a toast.
+   * No global "Saving…" overlay: the confirm dialog shows its own busy state.
+   */
+  const removeTreatmentFromCountry = useCallback(async (groupId, countryCode, countryName) => {
+    try {
+      await removeTreatmentCountry(groupId, countryCode)
+      setServices(list => list.filter(s => !(s.groupId === groupId && s.country === countryCode)))
+      setError('')
+      setSuccess(`Removed from ${countryName || countryCode}.`)
+      return true
+    } catch (e) {
+      setSuccess('')
+      setError(`Could not remove it from ${countryName || countryCode}. ${e.message}`)
+      return false
+    }
+  }, [])
+
   /** Delete a whole treatment (every country version). */
   const deleteService = useCallback(async groupId => {
-    setSaving(true)
     try {
       await removeService(groupId)
       setServices(list => list.filter(s => s.groupId !== groupId))
       setError('')
-      setSuccess('Deleted.')
+      setSuccess('Treatment deleted.')
       return true
     } catch (e) {
-      setError(e.message)
+      setSuccess('')
+      setError(`Could not delete this treatment. ${e.message}`)
       return false
-    } finally {
-      setSaving(false)
     }
   }, [])
 
@@ -871,7 +888,7 @@ export function AdminProvider({ children }) {
     success, dismissSuccess: () => setSuccess(''),
     refresh, resetDemo,
     user, login, logout, allowed,
-    services, saveTreatment, deleteService, loadService,
+    services, saveTreatment, deleteService, loadService, removeTreatmentFromCountry,
     verticals, upsertVertical, deleteVertical,
     categories, upsertCategory, deleteCategory,
     doctors, upsertDoctor, deleteDoctor,
