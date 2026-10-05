@@ -32,14 +32,28 @@ function normalisePricing(stored, countryRecords) {
  * "everywhere". That way a newly created service is live in all markets rather
  * than silently invisible until someone remembers to tick three boxes — the
  * safer default for a catalogue that is mostly shared.
+ *
+ * Only countries the user can access are offered. A country they can't
+ * access that the record is already limited to (another team's market) stays
+ * in the value and is shown ticked but read-only, with its price untouched.
  */
 export default function CountryFields({ countries, pricing, onChange, showPricing = true, pricingHint }) {
-  const { countryRecords } = useAdmin()
+  const { countryRecords, accessibleCountries } = useAdmin()
   const selected = Array.isArray(countries) ? countries : []
+  // Pricing is normalised over every country so other teams' prices survive a save.
   const prices = normalisePricing(pricing, countryRecords)
   const everywhere = selected.length === 0
+  const accessible = new Set(accessibleCountries.map(c => c.code))
+  const locked = selected.filter(code => !accessible.has(code))
+  const shown = [
+    ...accessibleCountries,
+    ...locked.map(code => countryRecords.find(c => c.code === code) || { code, name: code }),
+  ]
+  // Prices may be missing for a locked code that isn't a known country record.
+  const priceOf = code => prices[code] || { price: '', currency: DEFAULT_CURRENCY[code] || '' }
 
   function toggle(code) {
+    if (!accessible.has(code)) return
     const next = selected.includes(code)
       ? selected.filter(c => c !== code)
       : [...selected, code]
@@ -49,7 +63,7 @@ export default function CountryFields({ countries, pricing, onChange, showPricin
   function setPrice(code, field, value) {
     onChange({
       countries: selected,
-      pricing: { ...prices, [code]: { ...prices[code], [field]: value } },
+      pricing: { ...prices, [code]: { ...priceOf(code), [field]: value } },
     })
   }
 
@@ -58,21 +72,27 @@ export default function CountryFields({ countries, pricing, onChange, showPricin
       <label className="ad-field">
         <span className="ad-field-label">Available in</span>
         <div className="ad-check-row">
-          {countryRecords.map(c => (
-            <label key={c.code} className="ad-check">
-              <input
-                type="checkbox"
-                checked={everywhere || selected.includes(c.code)}
-                onChange={() => toggle(c.code)}
-              />
-              {c.code}
-            </label>
-          ))}
+          {shown.map(c => {
+            const isLocked = !accessible.has(c.code)
+            return (
+              <label key={c.code} className="ad-check"
+                title={isLocked ? 'Managed by another country team' : undefined}>
+                <input
+                  type="checkbox"
+                  checked={everywhere || selected.includes(c.code)}
+                  disabled={isLocked}
+                  onChange={() => toggle(c.code)}
+                />
+                {c.code}
+              </label>
+            )
+          })}
         </div>
         <span className="ad-field-hint">
           {everywhere
             ? 'Available in every country. Tick specific countries to limit it.'
             : `Shown only in ${selected.join(', ')}.`}
+          {locked.length > 0 && ` ${locked.join(', ')} ${locked.length === 1 ? 'is' : 'are'} managed by another country team.`}
         </span>
       </label>
 
@@ -80,8 +100,8 @@ export default function CountryFields({ countries, pricing, onChange, showPricin
         <div className="ad-field">
           <span className="ad-field-label">Price per country</span>
           <div className="ad-price-grid">
-            {countryRecords.map(c => {
-              const off = !everywhere && !selected.includes(c.code)
+            {shown.map(c => {
+              const off = !accessible.has(c.code) || (!everywhere && !selected.includes(c.code))
               return (
                 <div key={c.code} className={`ad-price-row${off ? ' is-off' : ''}`}>
                   <span className="ad-price-country">{c.code}</span>
@@ -90,14 +110,14 @@ export default function CountryFields({ countries, pricing, onChange, showPricin
                     type="text"
                     inputMode="decimal"
                     placeholder="—"
-                    value={prices[c.code].price}
+                    value={priceOf(c.code).price}
                     onChange={e => setPrice(c.code, 'price', e.target.value)}
                     disabled={off}
                   />
                   <input
                     className="ad-input ad-price-cur"
                     type="text"
-                    value={prices[c.code].currency}
+                    value={priceOf(c.code).currency}
                     onChange={e => setPrice(c.code, 'currency', e.target.value)}
                     disabled={off}
                     aria-label={`${c.code} currency`}

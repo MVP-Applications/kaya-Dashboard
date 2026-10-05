@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useAdmin } from '@/shared/context/AdminContext'
 import { demoUsers } from '@/shared/lib/store'
+import { ROLE_LABELS } from '@/shared/lib/auth'
 
 export default function LoginScreen() {
   const { login, demoMode } = useAdmin()
@@ -90,7 +91,7 @@ export default function LoginScreen() {
                   <span className="ad-login-demo-name">{u.name}</span>
                   <span className="ad-login-demo-role">{u.title} · {u.email}</span>
                 </span>
-                <span className={`ad-role-pill ad-role-pill--${u.role}`}>{u.role}</span>
+                <span className={`ad-role-pill ad-role-pill--${u.role}`}>{ROLE_LABELS[u.role] || u.role}</span>
               </button>
             ))}
             <p className="ad-login-hint">

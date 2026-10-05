@@ -97,9 +97,11 @@ export default function PagesView() {
   const [picking, setPicking] = useState(false)
   const [confirm, setConfirm] = useState(null)
 
-  const canCreate = allowed('create')
-  const canEdit = allowed('edit')
-  const canDelete = allowed('delete')
+  // Pages are global settings — only a super admin changes them.
+  const canManage = allowed('manageSettings')
+  const canCreate = canManage
+  const canEdit = canManage
+  const canDelete = canManage
 
   // Kept for the per-section "Revert" action, which restores the original copy.
   const seeded = useMemo(() => seedPages(), [])
@@ -116,7 +118,7 @@ export default function PagesView() {
   }, [build, template, from, Boolean(source)]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (build) {
-    if (!building) {
+    if (!building || (building.isNew && !canCreate)) {
       return <MissingRecord loading={dataVersion === 0} label="page" backHref={href({ build: '', template: '', from: '' })} backLabel="← All pages" />
     }
     return (
@@ -149,13 +151,14 @@ export default function PagesView() {
         </div>
 
         <CountryNotice />
+        {!canManage && <div className="ad-note">Only a super admin can change these settings.</div>}
 
         <ContentEditor
           scopeKey={activeCountry}
           group={page}
           values={pages[page.id]}
           seed={seeded[page.id]}
-          canEdit={allowed('edit')}
+          canEdit={canEdit}
           onSave={(sectionId, sectionValues) => saveSection('page', page.id, sectionId, sectionValues)}
         >
           <span className="ad-cf-path">{page.path}</span>
@@ -183,6 +186,8 @@ export default function PagesView() {
           <button type="button" className="ad-btn ad-btn--primary" onClick={() => setPicking(true)}>+ New page</button>
         )}
       </div>
+
+      {!canManage && <div className="ad-note">Only a super admin can change these settings.</div>}
 
       <section className="ad-pg-section">
         <div className="ad-pg-section-head">
@@ -221,7 +226,7 @@ export default function PagesView() {
                     onChange={v => upsertCustomPage({ ...p, visible: v, updatedAt: new Date().toISOString() }, p.id)}
                     label={`${p.title} visible on the website`} />
                   <span className="ad-pg-card-actions">
-                    <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ build: p.id })}>Edit</Link>
+                    <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ build: p.id })}>{canEdit ? 'Edit' : 'View'}</Link>
                     {canCreate && <Link className="ad-btn ad-btn--ghost ad-btn--sm" href={href({ build: 'new', from: p.id })}>Duplicate</Link>}
                     {canDelete && (
                       <button type="button" className="ad-btn ad-btn--danger ad-btn--sm" onClick={() => setConfirm(p)}>Delete</button>

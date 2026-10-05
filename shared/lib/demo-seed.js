@@ -281,7 +281,8 @@ export function seedCustomers() {
 /** Demo staff accounts, so User management is populated in preview mode. */
 export function seedUsers() {
   return [
-    { id: 'demo-admin', email: 'admin@kaya.ae', name: 'Aisha Rahman', title: 'Administrator', role: 'admin' },
-    { id: 'demo-editor', email: 'editor@kaya.ae', name: 'Omar Haddad', title: 'Content Editor', role: 'editor' },
+    { id: 'demo-super', email: 'super@kaya.ae', name: 'Layla Nasser', title: 'Super admin', role: 'super_admin', countries: [], clinics: [] },
+    { id: 'demo-admin', email: 'admin@kaya.ae', name: 'Aisha Rahman', title: 'Admin', role: 'admin', countries: ['UAE'], clinics: [] },
+    { id: 'demo-editor', email: 'staff@kaya.ae', name: 'Omar Haddad', title: 'Staff', role: 'staff', countries: ['UAE'], clinics: [] },
   ]
 }

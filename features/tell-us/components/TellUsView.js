@@ -99,9 +99,14 @@ function TryIt({ doc, areaId, areaLabel, areaTreatments }) {
 
 // ── Screen ───────────────────────────────────────────────────
 
+// `services` holds one version per country, so names repeat — show the country.
+const treatmentOption = s => ({ id: s.id, name: s.country ? `${s.name} · ${s.country}` : s.name })
+
 export default function TellUsView() {
   const { tellUs, tellUsError, saveTellUs, verticals, services, allowed, saving, dataVersion } = useAdmin()
-  const canDelete = allowed('delete')
+  // Tell Us is a global setting — only a super admin changes it.
+  const canManage = allowed('manageSettings')
+  const canDelete = canManage
 
   // The tab (?tab=<area>, 'shared' is the default and left out) and the
   // expanded question (?item=<question or step id>) live in the URL. The
@@ -126,11 +131,12 @@ export default function TellUsView() {
 
   // Leaving the page with unsaved edits asks first.
   useEffect(() => {
-    if (!dirty) return
+    // Read-only viewers can't save, so there's nothing to lose.
+    if (!dirty || !canManage) return
     const warn = e => { e.preventDefault(); e.returnValue = '' }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  }, [dirty, canManage])
 
   // Areas are keyed by the pillar's backend id (areaKey); services link to
   // verticals by `v.id` (the slug against the live API), so resolve the
@@ -140,9 +146,9 @@ export default function TellUsView() {
   const areaIds = draft ? verticals.map(areaKey).filter(key => draft.areas[key]) : []
   const treatmentsIn = key => {
     const v = verticalFor(key)
-    return v ? services.filter(s => (s.verticals || []).includes(v.id)).map(s => ({ id: s.id, name: s.name })) : []
+    return v ? services.filter(s => (s.verticals || []).includes(v.id)).map(treatmentOption) : []
   }
-  const allTreatments = services.map(s => ({ id: s.id, name: s.name }))
+  const allTreatments = services.map(treatmentOption)
 
   if (tellUsError) {
     return (
@@ -208,13 +214,14 @@ export default function TellUsView() {
             onClick={() => { setDraft(null); setProblems([]); setOpenId(null) }}>
             Discard changes
           </button>
-          <button type="button" className="ad-btn ad-btn--primary" disabled={!dirty || saving} onClick={save}>
+          <button type="button" className="ad-btn ad-btn--primary" disabled={!canManage || !dirty || saving} onClick={save}>
             {saving ? 'Saving…' : 'Save changes'}
           </button>
         </div>
       </div>
 
-      {dirty && <div className="ad-tu-dirty" role="status">You have unsaved changes. They apply to the website once saved.</div>}
+      {!canManage && <div className="ad-note">Only a super admin can change these settings.</div>}
+      {canManage && dirty && <div className="ad-tu-dirty" role="status">You have unsaved changes. They apply to the website once saved.</div>}
       {problems.length > 0 && (
         <div className="ad-form-error ad-tu-problems" role="alert">
           <strong>Fix these before saving:</strong>
@@ -277,7 +284,7 @@ export default function TellUsView() {
               )
             })}
           </div>
-          <button type="button" className="ad-btn ad-btn--soft" onClick={addShared}>+ Add shared question</button>
+          {canManage && <button type="button" className="ad-btn ad-btn--soft" onClick={addShared}>+ Add shared question</button>}
         </div>
       ) : (
         <div className="ad-tu-cols">
@@ -349,9 +356,11 @@ export default function TellUsView() {
                 )
               })}
             </div>
-            <button type="button" className="ad-btn ad-btn--soft" onClick={() => addOwn(tab)}>
-              + Add a question for {areaLabel(tab)}
-            </button>
+            {canManage && (
+              <button type="button" className="ad-btn ad-btn--soft" onClick={() => addOwn(tab)}>
+                + Add a question for {areaLabel(tab)}
+              </button>
+            )}
           </div>
           <TryIt doc={draft} areaId={tab} areaLabel={areaLabel(tab)} areaTreatments={treatmentsIn(tab)} />
         </div>

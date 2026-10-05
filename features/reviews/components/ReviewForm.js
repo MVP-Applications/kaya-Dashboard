@@ -19,7 +19,7 @@ function cloneSafe(obj) {
 }
 
 export default function ReviewForm({ initial, isNew, onClose }) {
-  const { services, reviews, upsertReview, countryRecords } = useAdmin()
+  const { services, reviews, upsertReview, countryRecords, accessibleCountries } = useAdmin()
   const [form, setForm] = useState(() => cloneSafe(initial))
   const [error, setError] = useState('')
   const [locale, setLocale] = useState('EN')
@@ -32,13 +32,34 @@ export default function ReviewForm({ initial, isNew, onClose }) {
 
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
 
+  // A review linked to a country this user can't access stays linked — it's
+  // shown read-only rather than silently re-pointed.
+  const lockedCountry = form.country && !accessibleCountries.some(c => c.code === form.country)
+    ? (countryRecords.find(c => c.code === form.country) || { code: form.country, name: form.country })
+    : null
+
+  // Treatments are per-country versions; offer the review's country only
+  // (every version when it has none), keeping the current link visible.
+  const treatmentOptions = services.filter(s => (
+    !form.country || s.country === form.country || s.id === form.treatment
+  ))
+
+  function setCountry(code) {
+    setForm(f => {
+      const linked = services.find(s => s.id === f.treatment)
+      const keepTreatment = !code || !linked || linked.country === code
+      return { ...f, country: code, treatment: keepTreatment ? f.treatment : '' }
+    })
+  }
+
   function submit(e) {
     e.preventDefault()
     const name = form.name.trim()
     if (!name) return setError('Name is required.')
     if (!form.quote.trim()) return setError('Quote is required.')
 
-    const id = form.id.trim() || slugify(`${name}-${form.treatment}`) || slugify(name)
+    const treatmentSlug = services.find(s => s.id === form.treatment)?.slug || ''
+    const id = form.id.trim() || slugify(`${name}-${treatmentSlug}`) || slugify(name)
     const clash = reviews.some(r => r.id === id && r.id !== originalId)
     if (clash) return setError(`The id "${id}" is already in use.`)
 
@@ -89,12 +110,16 @@ export default function ReviewForm({ initial, isNew, onClose }) {
           <legend>Country</legend>
           <label className="ad-field">
             <span className="ad-field-label">Client&apos;s country</span>
-            <select className="ad-input" value={form.country || ''} onChange={e => set('country', e.target.value)}>
+            <select className="ad-input" value={form.country || ''} disabled={!!lockedCountry}
+              onChange={e => setCountry(e.target.value)}>
               <option value="">— none —</option>
-              {sortCountries(countryRecords).map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+              {lockedCountry && <option value={lockedCountry.code}>{lockedCountry.name}</option>}
+              {sortCountries(accessibleCountries).map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
             </select>
             <span className="ad-field-hint">
-              Shown on the website when the review has no location — in Arabic too.
+              {lockedCountry
+                ? `${lockedCountry.name} is managed by another country team.`
+                : 'Shown on the website when the review has no location — in Arabic too.'}
             </span>
           </label>
         </fieldset>
@@ -106,7 +131,7 @@ export default function ReviewForm({ initial, isNew, onClose }) {
             <select className="ad-input" value={form.treatment}
               onChange={e => set('treatment', e.target.value)}>
               <option value="">— none —</option>
-              {services.map(s => <option key={s.slug} value={s.slug}>{s.name}</option>)}
+              {treatmentOptions.map(s => <option key={s.id} value={s.id}>{`${s.name} · ${s.country}`}</option>)}
             </select>
           </label>
         </fieldset>

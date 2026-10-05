@@ -19,6 +19,8 @@ export default function SiteView() {
   const seeded = useMemo(() => seedSite(), [])
 
   const group = SITE_GROUPS.find(g => g.id === tab) || SITE_GROUPS[0]
+  // Footer & Global are global settings — only a super admin changes them.
+  const canManage = allowed('manageSettings')
 
   return (
     <div className="ad-view">
@@ -28,6 +30,8 @@ export default function SiteView() {
           <p className="ad-view-sub">Content that appears on every page of the site.</p>
         </div>
       </div>
+
+      {!canManage && <div className="ad-note">Only a super admin can change these settings.</div>}
 
       <div className="ad-cf-tabs">
         {SITE_GROUPS.map(g => (
@@ -43,7 +47,7 @@ export default function SiteView() {
         group={group}
         values={site[group.id]}
         seed={seeded[group.id]}
-        canEdit={allowed('edit')}
+        canEdit={canManage}
         onSave={(sectionId, sectionValues) => saveSection('site', group.id, sectionId, sectionValues)}
       >
         <span className="ad-cf-count">{group.hint}</span>

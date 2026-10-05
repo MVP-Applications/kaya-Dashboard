@@ -56,7 +56,11 @@ export default function Overview() {
   const firstName = (user?.name || '').split(' ')[0]
 
   const openRequests = requestStatusCounts.new + requestStatusCounts.contacted
-  const unfiledTreatments = services.filter(s => !(s.verticals || []).length).length
+  // `services` holds one version per country — count each treatment
+  // (groupId) once.
+  const unfiledTreatments = new Set(
+    services.filter(s => !(s.verticals || []).length).map(s => s.groupId ?? s.id),
+  ).size
   const doctorsNoCountry = doctors.filter(d => !(d.countries || []).length).length
 
   // Only what needs someone to act — an empty list means all caught up.

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useAdmin } from '@/shared/context/AdminContext'
 import ConfirmDialog from '@/shared/components/ConfirmDialog'
 import { usePageParam, useQuery, useQueryParam, useQueryText } from '@/shared/hooks/useUrlState'
+import { useCountryFilter } from '@/shared/hooks/useCountryFilter'
 import {
   fetchVoucherRequestsPage, fetchVoucherRequest, fetchVoucherStatuses, findVoucherByCode, persistVoucherRequestStatus,
   redeemVoucher, removeVoucherRequestRecord,
@@ -38,6 +39,9 @@ export default function VoucherRequestsView() {
   const [search, setSearch, committedSearch] = useQueryText('q', { resets: ['page'] })
   const [status, setStatus] = useQueryParam('status', '', { resets: ['page'] })
   const [page, setPage] = usePageParam()
+  // ?country is shared with the top-bar switcher; empty falls back to it.
+  // Filtered by the API (always within the user's own countries).
+  const [country, setCountry, countryOptions] = useCountryFilter({ resets: ['page'] })
   const openId = get('open')
   const [items, setItems] = useState([])
   const [total, setTotal] = useState(0)
@@ -63,7 +67,7 @@ export default function VoucherRequestsView() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const result = await fetchVoucherRequestsPage({ page, pageSize: PAGE_SIZE, status: status || undefined, search: committedSearch || undefined })
+      const result = await fetchVoucherRequestsPage({ page, pageSize: PAGE_SIZE, status: status || undefined, search: committedSearch || undefined, country: country || undefined })
       setItems(result.items)
       setTotal(result.total)
       setError('')
@@ -74,7 +78,7 @@ export default function VoucherRequestsView() {
     }
     // dataVersion: refetch after Refresh content / Reset sample data.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, status, committedSearch, dataVersion])
+  }, [page, status, committedSearch, country, dataVersion])
 
   useEffect(() => { load() }, [load])
 
@@ -149,6 +153,7 @@ export default function VoucherRequestsView() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const rows = items
   const deleteTarget = confirmDelete ? items.find(v => v.id === confirmDelete) : null
   // ?open=<id> usually points at a row on this page; when it doesn't (a
   // shared link, a different filter) the record is fetched on its own.
@@ -178,6 +183,10 @@ export default function VoucherRequestsView() {
           <option value="">All statuses</option>
           {flow.map(f => <option key={f.status} value={f.status}>{voucherStatusLabel(f.status)}</option>)}
         </select>
+        <select className="ad-input ad-filter" value={country} onChange={e => setCountry(e.target.value)}>
+          <option value="">All countries</option>
+          {countryOptions.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+        </select>
       </div>
 
       <div className="ad-table-wrap">
@@ -194,7 +203,7 @@ export default function VoucherRequestsView() {
             </tr>
           </thead>
           <tbody>
-            {items.map(v => (
+            {rows.map(v => (
               <tr key={v.id}>
                 <td>
                   <div className="ad-cell-name">{v.offerTitle}</div>
@@ -237,7 +246,7 @@ export default function VoucherRequestsView() {
                 </td>
               </tr>
             ))}
-            {!loading && items.length === 0 && (
+            {!loading && rows.length === 0 && (
               <tr><td colSpan={7} className="ad-empty">No voucher requests match this filter.</td></tr>
             )}
           </tbody>

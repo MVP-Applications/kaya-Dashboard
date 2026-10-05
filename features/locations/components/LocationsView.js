@@ -6,7 +6,8 @@ import { emptyLocation, sortCountries } from '@/shared/lib/content'
 import { createCity, updateCity } from '@/shared/lib/store'
 import LocaleToggle from '@/shared/components/LocaleToggle'
 import MissingRecord from '@/shared/components/MissingRecord'
-import { useQuery, useQueryParam, useQueryText } from '@/shared/hooks/useUrlState'
+import { useQuery, useQueryText } from '@/shared/hooks/useUrlState'
+import { useCountryFilter } from '@/shared/hooks/useCountryFilter'
 
 const DAYS = [
   ['sun', 'Sun'], ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'],
@@ -54,17 +55,30 @@ function LocationFormSkeleton({ onClose }) {
   )
 }
 
+/**
+ * Countries a clinic can be placed in: the ones this user can access, plus
+ * the record's own country if it's another team's (so the select still shows
+ * it rather than an empty value).
+ */
+function formCountryOptions(accessible, all, record) {
+  if (!record?.country || accessible.some(c => c.code === record.country)) return accessible
+  const own = all.find(c => c.code === record.country)
+  return own ? [...accessible, own] : accessible
+}
+
 export default function LocationsView() {
   const { locations, saveLocation, loadLocation, deleteLocation, countryRecords, addCityToCountry, replaceCityInCountry, allowed, loading, dataVersion } = useAdmin()
-  // Filters and the open record live in the URL (?q, ?country — 'all' is
-  // the default and left out — ?edit=<id>, ?new=1) so a refresh or a new tab
-  // reopens the same screen.
+  // Filters and the open record live in the URL (?q, ?country — empty is
+  // all of the user's countries — ?edit=<id>, ?new=1) so a refresh or a new
+  // tab reopens the same screen. ?country is shared with the top-bar
+  // switcher; empty falls back to it.
   const { get, set, href } = useQuery()
   const [query, setQuery] = useQueryText('q')
-  const [country, setCountry] = useQueryParam('country', 'all')
+  const [country, setCountry, accessibleCountries] = useCountryFilter()
   const editId = get('edit')
   const isNew = get('new') === '1'
-  const firstCountry = sortCountries(countryRecords)[0]?.code
+  // New clinics default to the switcher's country, else the first one the user can access.
+  const firstCountry = country || sortCountries(accessibleCountries)[0]?.code
   const newLocation = useMemo(() => (isNew ? emptyLocation(firstCountry) : null), [isNew, firstCountry])
   // The backend's latest copy of the clinic in ?edit: { id, record } once
   // fetched (record null if it couldn't be loaded); null while loading.
@@ -105,7 +119,7 @@ export default function LocationsView() {
         key={isNew ? 'new' : editId}
         initial={isNew ? newLocation : fresh.record}
         isNew={isNew}
-        countryOptions={countryRecords}
+        countryOptions={formCountryOptions(accessibleCountries, countryRecords, isNew ? null : fresh.record)}
         onCityAdded={addCityToCountry}
         onCityUpdated={replaceCityInCountry}
         canManageCities={allowed('manageCountries')}
@@ -122,7 +136,7 @@ export default function LocationsView() {
   const q = query.trim().toLowerCase()
 
   const filtered = locations.filter(l => {
-    if (country !== 'all' && l.country !== country) return false
+    if (country && l.country !== country) return false
     if (!q) return true
     return `${l.name} ${l.city} ${l.address}`.toLowerCase().includes(q)
   })
@@ -130,7 +144,7 @@ export default function LocationsView() {
   const target = confirm ? locations.find(l => l.id === confirm) : null
 
   // The same totals the website's About page counts (clinics per country, in display order).
-  const countryTotals = sortCountries(countryRecords).map(c => ({
+  const countryTotals = sortCountries(accessibleCountries).map(c => ({
     ...c, clinics: locations.filter(l => l.country === c.code).length,
   }))
 
@@ -154,8 +168,8 @@ export default function LocationsView() {
       </div>
 
       <div className="ad-stat-grid ad-loc-totals">
-        <button type="button" className={`ad-stat-card${country === 'all' ? ' active' : ''}`}
-          onClick={() => setCountry('all')}>
+        <button type="button" className={`ad-stat-card${!country ? ' active' : ''}`}
+          onClick={() => setCountry('')}>
           <div className="ad-stat-value">{loading ? '—' : locations.length}</div>
           <div className="ad-stat-label">{locations.length === 1 ? 'Clinic' : 'Clinics'} in total</div>
           <div className="ad-stat-hint">
@@ -164,7 +178,7 @@ export default function LocationsView() {
         </button>
         {countryTotals.map(c => (
           <button key={c.code} type="button" className={`ad-stat-card${country === c.code ? ' active' : ''}`}
-            onClick={() => setCountry(country === c.code ? 'all' : c.code)}>
+            onClick={() => setCountry(country === c.code ? '' : c.code)}>
             <div className="ad-stat-value">{loading ? '—' : c.clinics}</div>
             <div className="ad-stat-label">
               {c.flagUrl && <img src={c.flagUrl} alt="" className="ad-loc-flag" />}
@@ -183,8 +197,8 @@ export default function LocationsView() {
           onChange={e => setQuery(e.target.value)}
         />
         <select className="ad-input ad-filter" value={country} onChange={e => setCountry(e.target.value)}>
-          <option value="all">All countries ({locations.length})</option>
-          {sortCountries(countryRecords).map(c => (
+          <option value="">All countries ({locations.length})</option>
+          {sortCountries(accessibleCountries).map(c => (
             <option key={c.code} value={c.code}>
               {c.code} ({locations.filter(l => l.country === c.code).length})
             </option>

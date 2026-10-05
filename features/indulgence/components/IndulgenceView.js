@@ -8,6 +8,7 @@ import { VOUCHER_TYPE_OPTIONS, emptyVoucher } from '@/shared/lib/seed'
 import VoucherForm from '@/features/indulgence/components/VoucherForm'
 import MissingRecord from '@/shared/components/MissingRecord'
 import { useQuery, useQueryParam, useQueryText } from '@/shared/hooks/useUrlState'
+import { useCountryFilter } from '@/shared/hooks/useCountryFilter'
 
 export default function IndulgenceView() {
   const { vouchers, deleteVoucher, allowed, dataVersion } = useAdmin()
@@ -16,6 +17,8 @@ export default function IndulgenceView() {
   const { get, set, href } = useQuery()
   const [query, setQuery] = useQueryText('q')
   const [type, setType] = useQueryParam('type')
+  // ?country is shared with the top-bar switcher; empty falls back to it.
+  const [country, setCountry, countryOptions] = useCountryFilter()
   const editId = get('edit')
   const isNew = get('new') === '1'
   const newVoucher = useMemo(() => (isNew ? emptyVoucher() : null), [isNew])
@@ -25,12 +28,14 @@ export default function IndulgenceView() {
     const q = query.trim().toLowerCase()
     return vouchers.filter(v => {
       if (type && v.type !== type) return false
+      // No regions = offered in every country, so it always matches.
+      if (country && (v.regions || []).length && !v.regions.includes(country)) return false
       if (q && !(`${v.title} ${v.subtitle}`.toLowerCase().includes(q))) return false
       return true
     })
-  }, [vouchers, query, type])
+  }, [vouchers, query, type, country])
 
-  const isFiltered = Boolean(query.trim() || type)
+  const isFiltered = Boolean(query.trim() || type || country)
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
 
@@ -67,6 +72,10 @@ export default function IndulgenceView() {
         <select className="ad-input ad-filter" value={type} onChange={e => setType(e.target.value)}>
           <option value="">All types</option>
           {VOUCHER_TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select className="ad-input ad-filter" value={country} onChange={e => setCountry(e.target.value)}>
+          <option value="">All countries</option>
+          {countryOptions.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
         </select>
       </div>
 

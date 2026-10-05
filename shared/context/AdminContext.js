@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   fetchAll,
-  persistServices, removeService, reorderServices, fetchService,
+  persistTreatment, removeTreatmentCountry, removeService, reorderServices, fetchService,
   persistVerticals, removeVertical,
   persistCategories, removeCategory, reorderCategories,
   persistDoctors, removeDoctor, reorderDoctors,
@@ -14,14 +14,14 @@ import {
   persistPageSection, persistSiteSection,
   fetchRequestsPage, fetchRequestStatusCounts, fetchRequestCountries,
   persistRequestStatus, persistRequestNotes, removeRequestRecord,
-  fetchUsers, updateUserRole, updateStaffCountry,
+  fetchUsers, updateStaffUser, removeStaffUser, fetchStaffInvites, revokeStaffInvite,
   fetchOverrides, persistOverrideSection,
   fetchTellUs, persistTellUs,
   fetchCustomPages, persistCustomPages, removeCustomPage,
   isDemoMode, resetDemo as resetDemoData,
 } from '@/shared/lib/store'
 import { resolveContent, setOverride, clearSectionOverride } from '@/shared/lib/country-content'
-import { signIn, signOut, getCurrentUser, onAuthChange, can } from '@/shared/lib/auth'
+import { signIn, signOut, getCurrentUser, onAuthChange, can, isSuperAdmin } from '@/shared/lib/auth'
 import { normaliseTellUs } from '@/shared/lib/tell-us'
 
 const AdminContext = createContext(null)
@@ -71,8 +71,11 @@ export function AdminProvider({ children }) {
   // — refetch too.
   const [dataVersion, setDataVersion] = useState(0)
   const [users, setUsers] = useState([])
-  // '' means "all countries" — editing the shared copy every market inherits.
-  const [activeCountry, setActiveCountry] = useState('')
+  const [invites, setInvites] = useState([])
+  // Country.code the editor is working on; '' = all the countries they can
+  // access. Mirrors the URL's ?country= (see CountrySwitcher), so a refresh
+  // or a shared link lands on the same country.
+  const [activeCountry, setActiveCountryState] = useState('')
   const [overrides, setOverrides] = useState({})
 
   // Guards against a slow load from a previous session overwriting fresh state
@@ -161,15 +164,13 @@ export function AdminProvider({ children }) {
     }
   }, [])
 
-  /** Staff list, loaded alongside the content. */
+  /** Staff list + pending invites, loaded alongside the content. */
   const refreshUsers = useCallback(async () => {
-    try {
-      setUsers(await fetchUsers())
-    } catch {
-      // A non-admin can only read their own profile; an empty list is the
-      // correct outcome there, not an error worth interrupting them with.
-      setUsers([])
-    }
+    // Staff can't read either list (the API refuses them); an empty list is
+    // the correct outcome there, not an error worth interrupting them with.
+    const [staff, pending] = await Promise.allSettled([fetchUsers(), fetchStaffInvites()])
+    setUsers(staff.status === 'fulfilled' ? staff.value : [])
+    setInvites(pending.status === 'fulfilled' ? pending.value : [])
   }, [])
 
   // ── Session ───────────────────────────────────────────
@@ -239,6 +240,24 @@ export function AdminProvider({ children }) {
   const allowed = useCallback(action => can(user, action), [user])
 
   /**
+   * Countries this user can work on: every country for a super admin,
+   * otherwise their assigned ones. The backend enforces the same scope on
+   * every request — this only shapes the switcher, country tabs and pickers.
+   */
+  const accessibleCountries = useMemo(() => {
+    if (!user) return []
+    if (isSuperAdmin(user)) return countryRecords
+    const mine = new Set(user.countries || [])
+    return countryRecords.filter(c => mine.has(c.code))
+  }, [user, countryRecords])
+
+  /** Only accepts a country the user can access ('' = all of theirs). */
+  const setActiveCountry = useCallback(code => {
+    const wanted = String(code || '').toUpperCase()
+    setActiveCountryState(accessibleCountries.some(c => c.code === wanted) ? wanted : '')
+  }, [accessibleCountries])
+
+  /**
    * Optimistically apply `next`, persist it, and roll back to `prev` if the
    * write fails — so the screen never shows a change the database rejected.
    */
@@ -267,8 +286,7 @@ export function AdminProvider({ children }) {
    * be handled as delete-then-recreate, because the old Supabase-backed
    * `persist` had no identity beyond that key. It doesn't need to be: every
    * record fetched from the real API now carries its actual backend `id`
-   * (see doctorToRecord/treatmentToService), and `persistServices`/
-   * `persistDoctors` already prefer that id over a slug lookup when
+   * (see doctorToRecord), and `persistDoctors` already prefers that id over a slug lookup when
    * deciding PUT vs POST — so a renamed record with a real `id` is just a
    * normal in-place update, same as any other field edit. Delete-first is
    * now only the fallback for a record with no `id` yet (new/unsaved, or a
@@ -340,7 +358,6 @@ export function AdminProvider({ children }) {
     const bySlug = r => r.slug
     const byId = r => r.id
     return {
-      services: { list: services, setList: setServices, persist: persistServices, remove: removeService, keyOf: bySlug, reorder: reorderServices },
       verticals: { list: verticals, setList: setVerticals, persist: persistVerticals, remove: removeVertical, keyOf: byId },
       categories: { list: categories, setList: setCategories, persist: persistCategories, remove: removeCategory, keyOf: bySlug, reorder: reorderCategories },
       doctors: { list: doctors, setList: setDoctors, persist: persistDoctors, remove: removeDoctor, keyOf: bySlug, reorder: reorderDoctors },
@@ -351,7 +368,7 @@ export function AdminProvider({ children }) {
       contacts: { list: contacts, setList: setContacts, persist: persistContacts, remove: removeContact, keyOf: byId },
       customPages: { list: customPages, setList: setCustomPages, persist: persistCustomPages, remove: removeCustomPage, keyOf: byId },
     }
-  }, [services, verticals, categories, doctors, reviews, vouchers, locations, countryRecords, contacts, customPages])
+  }, [verticals, categories, doctors, reviews, vouchers, locations, countryRecords, contacts, customPages])
 
   // ── Collection CRUD ───────────────────────────────────
   // Verticals and locations append (they render as ordered settings lists);
@@ -378,23 +395,99 @@ export function AdminProvider({ children }) {
     return commit(col.list, next, col.setList, col.persist)
   }, [cols, commit])
 
-  const moveUp = useCallback((name, key) => move(name, key, -1), [move])
-  const moveDown = useCallback((name, key) => move(name, key, 1), [move])
 
-  const upsertService = useCallback((r, k) => upsertInto(cols.services, r, k), [cols, upsertInto])
-  const deleteService = useCallback(k => deleteFrom(cols.services, k), [cols, deleteFrom])
+  // ── Treatments ────────────────────────────────────────
+  // `services` is every treatment version the user can see, one record per
+  // country; versions of one treatment share `groupId` and are edited
+  // together as country tabs. Saves aren't optimistic — the form waits for
+  // the backend so a rejected save keeps the admin's draft open.
 
-  /** Fresh copy of one service for its Edit page; null (with an error toast) if it can't be loaded. */
-  const loadService = useCallback(async slug => {
+  /** Replace one treatment's versions in the list (in place, keeping order). */
+  const replaceGroup = useCallback((groupId, versions) => {
+    setServices(list => {
+      // Rows before the group's first row aren't in it, so `at` is the same
+      // position in `rest`.
+      const at = list.findIndex(s => s.groupId === groupId)
+      const rest = list.filter(s => s.groupId !== groupId)
+      if (at === -1) return [...versions, ...rest]
+      return [...rest.slice(0, at), ...versions, ...rest.slice(at)]
+    })
+  }, [])
+
+  /**
+   * Save a treatment: `versions` are the offered country tabs (upserted),
+   * `removedCountries` the tabs switched off (their versions are deleted).
+   * Resolves to the saved group id, or null on failure (error toast shown).
+   */
+  const saveTreatment = useCallback(async ({ groupId, versions, removedCountries = [] }) => {
+    setSaving(true)
     try {
-      const fresh = await fetchService(slug)
-      setServices(list => list.map(s => (s.slug === slug ? fresh : s)))
-      return fresh
+      let saved = versions.length ? await persistTreatment({ groupId, versions }) : []
+      const id = groupId || saved[0]?.groupId
+      for (const code of removedCountries) await removeTreatmentCountry(id, code)
+      if (removedCountries.length) saved = saved.filter(v => !removedCountries.includes(v.country))
+      replaceGroup(id, saved)
+      setError('')
+      setSuccess('Changes saved.')
+      return id
     } catch (e) {
-      setError(`Could not load this service. ${e.message}`)
+      setError(e.message)
       return null
+    } finally {
+      setSaving(false)
+    }
+  }, [replaceGroup])
+
+  /** Delete a whole treatment (every country version). */
+  const deleteService = useCallback(async groupId => {
+    setSaving(true)
+    try {
+      await removeService(groupId)
+      setServices(list => list.filter(s => s.groupId !== groupId))
+      setError('')
+      setSuccess('Deleted.')
+      return true
+    } catch (e) {
+      setError(e.message)
+      return false
+    } finally {
+      setSaving(false)
     }
   }, [])
+
+  /** Fresh copy of one treatment's versions for its Edit page; null (with an error toast) if it can't be loaded. */
+  const loadService = useCallback(async groupId => {
+    try {
+      const fresh = await fetchService(groupId)
+      replaceGroup(groupId, fresh)
+      return fresh
+    } catch (e) {
+      setError(`Could not load this treatment. ${e.message}`)
+      return null
+    }
+  }, [replaceGroup])
+
+  /** Move a version one place within its own country's order. */
+  const moveService = useCallback(async (id, direction) => {
+    const version = services.find(s => s.id === id)
+    if (!version) return
+    const sameCountry = services.filter(s => s.country === version.country)
+    const from = sameCountry.findIndex(s => s.id === id)
+    const to = from + direction
+    if (to < 0 || to >= sameCountry.length) return
+    const ordered = [...sameCountry]
+    ;[ordered[from], ordered[to]] = [ordered[to], ordered[from]]
+    const prev = services
+    // Swap the two rows' positions in the full list too, so it renders in order.
+    const a = services.indexOf(sameCountry[from])
+    const b = services.indexOf(sameCountry[to])
+    const next = [...services]
+    ;[next[a], next[b]] = [next[b], next[a]]
+    return commit(prev, next, setServices, () => reorderServices(ordered))
+  }, [services, commit])
+
+  const moveUp = useCallback((name, key) => (name === 'services' ? moveService(key, -1) : move(name, key, -1)), [move, moveService])
+  const moveDown = useCallback((name, key) => (name === 'services' ? moveService(key, 1) : move(name, key, 1)), [move, moveService])
 
   const upsertVertical = useCallback((record, originalId) => {
     const exists = originalId != null && cols.verticals.list.some(v => v.id === originalId)
@@ -730,30 +823,36 @@ export function AdminProvider({ children }) {
   }, [activeCountry, overrides])
 
   // ── Users + roles ─────────────────────────────────────
-  const setUserRole = useCallback(async (id, role) => {
-    const prev = users
-    setUsers(users.map(u => (u.id === id ? { ...u, role } : u)))
+  // These throw on failure (rather than setting the global error) so the
+  // edit drawer / confirm dialog can show it inline and let the admin retry.
+
+  /** Save a staff member's role / countries / clinics; updates the list with what the API returned. */
+  const saveUser = useCallback(async (id, patch) => {
     setSaving(true)
     try {
-      await updateUserRole(id, role)
-      setError('')
-    } catch (e) {
-      setUsers(prev)
-      setError(e.message)
+      const updated = await updateStaffUser(id, patch)
+      setUsers(list => list.map(u => (u.id === id ? updated : u)))
+      return updated
     } finally {
       setSaving(false)
     }
-  }, [users])
+  }, [])
 
-  /** Waits for the API (the country is looked up by id there), then updates the list. */
-  const setUserCountry = useCallback(async (id, country) => {
+  const deleteUser = useCallback(async id => {
     setSaving(true)
     try {
-      const updated = await updateStaffCountry(id, country)
-      setUsers(list => list.map(u => (u.id === id ? { ...u, country: updated.country } : u)))
-      setError('')
-    } catch (e) {
-      setError(e.message)
+      await removeStaffUser(id)
+      setUsers(list => list.filter(u => u.id !== id))
+    } finally {
+      setSaving(false)
+    }
+  }, [])
+
+  const revokeInvite = useCallback(async id => {
+    setSaving(true)
+    try {
+      await revokeStaffInvite(id)
+      setInvites(list => list.filter(i => i.id !== id))
     } finally {
       setSaving(false)
     }
@@ -772,7 +871,7 @@ export function AdminProvider({ children }) {
     success, dismissSuccess: () => setSuccess(''),
     refresh, resetDemo,
     user, login, logout, allowed,
-    services, upsertService, deleteService, loadService,
+    services, saveTreatment, deleteService, loadService,
     verticals, upsertVertical, deleteVertical,
     categories, upsertCategory, deleteCategory,
     doctors, upsertDoctor, deleteDoctor,
@@ -784,7 +883,7 @@ export function AdminProvider({ children }) {
     pages: resolvedPages, updatePageSection,
     site: resolvedSite, updateSiteSection,
     basePages: pages, baseSite: site,
-    activeCountry, setActiveCountry,
+    activeCountry, setActiveCountry, accessibleCountries,
     overrides: countryOverrides,
     // The full map, so the switcher can show how much each market differs.
     allOverrides: overrides,
@@ -795,7 +894,7 @@ export function AdminProvider({ children }) {
     tellUs, tellUsError, saveTellUs,
     customPages, customPagesError, upsertCustomPage, deleteCustomPage,
     dataVersion,
-    users, setUserRole, setUserCountry, refreshUsers,
+    users, invites, saveUser, deleteUser, revokeInvite, refreshUsers,
     moveUp, moveDown,
   }
 

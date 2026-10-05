@@ -6,13 +6,16 @@ import { emptyContact } from '@/shared/lib/content'
 import ContactForm from '@/features/contacts/components/ContactForm'
 import MissingRecord from '@/shared/components/MissingRecord'
 import { useQuery, useQueryText } from '@/shared/hooks/useUrlState'
+import { useCountryFilter } from '@/shared/hooks/useCountryFilter'
 
 export default function ContactsView() {
-  const { contacts, countryRecords, upsertContact, deleteContact, allowed, dataVersion } = useAdmin()
+  const { contacts, upsertContact, deleteContact, allowed, dataVersion } = useAdmin()
   // Search and the open record live in the URL (?q, ?edit=<id>, ?new=1) so a
   // refresh or a new tab reopens the same screen.
   const { get, set, href } = useQuery()
   const [query, setQuery] = useQueryText('q')
+  // ?country is shared with the top-bar switcher; empty falls back to it.
+  const [country, setCountry, countryOptions] = useCountryFilter()
   const editId = get('edit')
   const isNew = get('new') === '1'
   const newContact = useMemo(() => (isNew ? emptyContact() : null), [isNew])
@@ -21,8 +24,9 @@ export default function ContactsView() {
   const canCreate = allowed('create')
   const canDelete = allowed('delete')
 
-  // Countries without a contact yet — the only ones offered when creating a new one.
-  const availableCountries = countryRecords.filter(c => !contacts.some(k => k.countryId === c.id))
+  // Countries this user can access that have no contact yet — the only ones
+  // offered when creating a new one.
+  const availableCountries = countryOptions.filter(c => !contacts.some(k => k.countryId === c.id))
 
   const closeEditor = () => set({ edit: '', new: '' })
 
@@ -45,7 +49,8 @@ export default function ContactsView() {
 
   const q = query.trim().toLowerCase()
   const filtered = contacts.filter(c => (
-    !q || `${c.countryName} ${c.countryCode} ${c.phoneNumber} ${c.whatsappNumber}`.toLowerCase().includes(q)
+    (!country || c.countryCode === country) &&
+    (!q || `${c.countryName} ${c.countryCode} ${c.phoneNumber} ${c.whatsappNumber}`.toLowerCase().includes(q))
   ))
 
   const target = confirm ? contacts.find(c => c.id === confirm) : null
@@ -78,6 +83,10 @@ export default function ContactsView() {
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
+        <select className="ad-input ad-filter" value={country} onChange={e => setCountry(e.target.value)}>
+          <option value="">All countries</option>
+          {countryOptions.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+        </select>
       </div>
 
       <div className="ad-table-wrap">

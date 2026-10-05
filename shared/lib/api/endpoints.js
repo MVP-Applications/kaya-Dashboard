@@ -148,6 +148,7 @@ export const ApiEndpoints = {
   treatments: {
     adminList: `${V1}/admin/treatments`,
     adminById: id => `${V1}/admin/treatments/${id}`,
+    adminCountry: (id, countryId) => `${V1}/admin/treatments/${id}/countries/${countryId}`,
     adminReorder: `${V1}/admin/treatments/reorder`,
     publicList: `${V1}/public/treatments`,
     publicBySlug: slug => `${V1}/public/treatments/${slug}`,

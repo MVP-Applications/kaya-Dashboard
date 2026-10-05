@@ -102,7 +102,7 @@ function Block({ block, locale, services, doctors }) {
           {t('sub') && <p className="ad-pp-lead">{t('sub')}</p>}
           <div className="ad-pp-cards">
             {picked.map(s => (
-              <div key={s.slug} className="ad-pp-card ad-pp-card--tx">
+              <div key={s.id} className="ad-pp-card ad-pp-card--tx">
                 <span className="ad-pp-card-img">{s.image ? <img src={s.image} alt="" /> : <span aria-hidden="true">✦</span>}</span>
                 <strong>{(locale === 'AR' && s.nameAr) || s.name}</strong>
                 <span>{s.sub}</span>

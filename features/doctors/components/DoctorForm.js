@@ -13,7 +13,7 @@ function cloneSafe(obj) {
 }
 
 export default function DoctorForm({ initial, isNew, onClose }) {
-  const { verticals, services, doctors, countryRecords, upsertDoctor } = useAdmin()
+  const { verticals, services, doctors, countryRecords, accessibleCountries, upsertDoctor } = useAdmin()
   const [form, setForm] = useState(() => ({ image: '', ...cloneSafe(initial) }))
   const [error, setError] = useState('')
   const [clinicOptions, setClinicOptions] = useState([])
@@ -37,6 +37,32 @@ export default function DoctorForm({ initial, isNew, onClose }) {
         ? f[field].filter(v => v !== value)
         : [...f[field], value],
     }))
+  }
+
+  // Only countries this user can access are offered; a link to another team's
+  // country is kept and shown ticked but read-only.
+  const accessible = new Set(accessibleCountries.map(c => c.code))
+  const lockedCountries = form.countries.filter(code => !accessible.has(code))
+  const countryChoices = sortCountries([
+    ...accessibleCountries,
+    ...lockedCountries.map(code => countryRecords.find(c => c.code === code) || { code, name: code }),
+  ])
+
+  // Treatments are per-country versions (`treatments` holds version ids);
+  // offer only versions in the doctor's countries.
+  const treatmentChoices = services.filter(s => form.countries.includes(s.country))
+
+  function toggleCountry(code) {
+    if (!accessible.has(code)) return
+    setForm(f => {
+      const countries = f.countries.includes(code) ? f.countries.filter(c => c !== code) : [...f.countries, code]
+      // Unticking a country drops that country's treatment versions too.
+      const treatments = f.treatments.filter(id => {
+        const v = services.find(s => s.id === id)
+        return !v || countries.includes(v.country)
+      })
+      return { ...f, countries, treatments }
+    })
   }
 
   function handleImage(e) {
@@ -211,14 +237,23 @@ export default function DoctorForm({ initial, isNew, onClose }) {
           <div className="ad-field">
             <span className="ad-field-label">Countries</span>
             <div className="ad-check-grid">
-              {sortCountries(countryRecords).map(c => (
-                <label key={c.code} className={`ad-check${form.countries.includes(c.code) ? ' active' : ''}`}>
-                  <input type="checkbox" checked={form.countries.includes(c.code)}
-                    onChange={() => toggleIn('countries', c.code)} />
-                  {c.name}
-                </label>
-              ))}
+              {countryChoices.map(c => {
+                const isLocked = !accessible.has(c.code)
+                return (
+                  <label key={c.code} className={`ad-check${form.countries.includes(c.code) ? ' active' : ''}`}
+                    title={isLocked ? 'Managed by another country team' : undefined}>
+                    <input type="checkbox" checked={form.countries.includes(c.code)} disabled={isLocked}
+                      onChange={() => toggleCountry(c.code)} />
+                    {c.name}
+                  </label>
+                )
+              })}
             </div>
+            {lockedCountries.length > 0 && (
+              <span className="ad-field-hint">
+                {lockedCountries.join(', ')} {lockedCountries.length === 1 ? 'is' : 'are'} managed by another country team.
+              </span>
+            )}
           </div>
         </fieldset>
 
@@ -255,17 +290,23 @@ export default function DoctorForm({ initial, isNew, onClose }) {
         <fieldset className="ad-fieldset">
           <legend>Treatments offered</legend>
           <p className="ad-fieldset-hint">Linked to your Treatments &amp; Services.</p>
-          {services.length === 0 ? (
-            <p className="ad-muted">No services available yet.</p>
+          {treatmentChoices.length === 0 ? (
+            <p className="ad-muted">
+              {form.countries.length ? 'No treatments in the selected countries yet.' : 'Pick a country to choose treatments.'}
+            </p>
           ) : (
             <div className="ad-check-grid ad-check-grid--3">
-              {services.map(s => (
-                <label key={s.slug} className={`ad-check${form.treatments.includes(s.slug) ? ' active' : ''}`}>
-                  <input type="checkbox" checked={form.treatments.includes(s.slug)}
-                    onChange={() => toggleIn('treatments', s.slug)} />
-                  {s.name}
-                </label>
-              ))}
+              {treatmentChoices.map(s => {
+                const isLocked = !accessible.has(s.country)
+                return (
+                  <label key={s.id} className={`ad-check${form.treatments.includes(s.id) ? ' active' : ''}`}
+                    title={isLocked ? 'Managed by another country team' : undefined}>
+                    <input type="checkbox" checked={form.treatments.includes(s.id)} disabled={isLocked}
+                      onChange={() => toggleIn('treatments', s.id)} />
+                    {`${s.name} · ${s.country}`}
+                  </label>
+                )
+              })}
             </div>
           )}
         </fieldset>

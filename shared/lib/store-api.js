@@ -19,6 +19,7 @@ import { getAccessToken } from '@/shared/lib/api/token'
 import { ApiError } from '@/shared/lib/api/errors'
 import { footerLinkHasUrl } from '@/shared/lib/footer-links'
 import { parsePriceInput } from '@/shared/lib/price'
+import { ROLE_LABELS, ROLE_TO_BACKEND, ROLE_FROM_BACKEND } from '@/shared/lib/roles'
 
 function notConnected(what) {
   throw new Error(`${what} isn't connected to the new backend yet.`)
@@ -34,7 +35,6 @@ function notConnected(what) {
 // reorder call for treatments (the only one of the two with a displayOrder
 // column and a reorder endpoint at all — see KA-30 for verticals' gaps).
 
-const treatmentIds = new Map() // slug -> backend id
 const pillarIds = new Map() // slug -> backend id
 
 /**
@@ -111,20 +111,28 @@ function benefitsToForm(list) {
   return (list || []).map(b => ({ i: b.icon || '', t: b.title || '', d: b.description || '' }))
 }
 
+/**
+ * One country's version of a treatment -> the record ServiceForm edits.
+ * Versions of the same treatment share `groupId`; the form shows them as
+ * one tab per country (see features/services).
+ */
 function treatmentToService(treatment) {
-  treatmentIds.set(treatment.slug, treatment.id)
   const t = translationOf(treatment.translations)
   const ar = (treatment.translations || []).find(x => x.locale === 'AR')
   return {
-    id: treatment.id, // real backend id — lets a slug rename PUT in place instead of delete+recreate
+    id: treatment.id, // the version's backend id — what doctors, reviews and leads link to
+    groupId: treatment.groupId,
+    country: treatment.country?.code || '',
     slug: treatment.slug,
     name: t.title || treatment.slug,
     image: treatment.imageUrl || '',
+    cardImage: treatment.cardImageUrl || '',
     thumb: treatment.icon || '',
     category: treatment.categoryId || '',
     verticals: (treatment.pillars || []).map(p => p.slug),
     badge: treatment.badge || '',
     isPopular: treatment.isPopular ?? false,
+    displayOrder: treatment.displayOrder ?? 0,
     sub: t.subtitle || '',
     what: t.summary || '',
     mechanism: t.howItWorks || '',
@@ -144,9 +152,13 @@ function treatmentToService(treatment) {
     sessionsAr: ar?.sessions || '',
     downtimeNotesAr: ar?.downtimeNotes || '',
     downtimeLevelAr: ar?.downtimeSeverity || '',
-    countries: (treatment.countries || []).map(c => c.code),
     clinics: (treatment.clinics || []).map(c => c.id),
   }
+}
+
+/** A treatment group from the API -> its version records (only the countries this user can access). */
+function groupToVersions(group) {
+  return (group.versions || []).map(treatmentToService)
 }
 
 async function fetchVerticals() {
@@ -230,18 +242,16 @@ export const removeCategory = async slug => {
   categoryIds.delete(slug)
 }
 
+/** Every treatment version this user can see, flattened (one record per country). */
 async function fetchServices() {
-  const treatments = await fetchAllPages(ApiEndpoints.treatments.adminList)
-  treatmentIds.clear()
-  return treatments.map(treatmentToService)
+  const groups = await fetchAllPages(ApiEndpoints.treatments.adminList)
+  return groups.flatMap(groupToVersions)
 }
 
-/** One treatment, fresh from the backend — ServicesView loads this on Edit so the form never edits a stale copy. */
-export async function fetchService(slug) {
-  const id = treatmentIds.get(slug)
-  if (!id) throw new Error(`"${slug}" wasn't found.`)
-  const { data } = await apiRequest(ApiEndpoints.treatments.adminById(id))
-  return treatmentToService(data)
+/** One treatment's versions, fresh from the backend — ServicesView loads this on Edit so the form never edits a stale copy. */
+export async function fetchService(groupId) {
+  const { data } = await apiRequest(ApiEndpoints.treatments.adminById(groupId))
+  return groupToVersions(data)
 }
 
 function toNumberOrUndefined(value) {
@@ -327,119 +337,109 @@ export const removeVertical = async slug => {
   pillarIds.delete(slug)
 }
 
-export const persistServices = async list => {
-  const countryIds = await ensureCountryIds(list.flatMap(s => s.countries || []))
-  const clinicCountries = await clinicCountriesFor(list)
-  for (const s of list) {
-    const imageUrl = await uploadImageIfNeeded(s.image)
+/** A version record -> the backend's per-country body. */
+async function serviceToVersionBody(s, countryIds) {
+  const imageUrl = await uploadImageIfNeeded(s.image)
+  const cardImageUrl = await uploadImageIfNeeded(s.cardImage)
 
-    // ServiceForm's shorthand ({i, t, d}) -> the backend's shape
-    // ({icon, title, description}, KA-30). `title` is the one field the
-    // backend requires per benefit, so that's what a blank row is judged on.
-    const benefitObjects = list => (list || [])
-      .map(b => ({ icon: b.i || undefined, title: b.t, description: b.d || undefined }))
-      .filter(b => b.title)
+  // ServiceForm's shorthand ({i, t, d}) -> the backend's shape
+  // ({icon, title, description}, KA-30). `title` is the one field the
+  // backend requires per benefit, so that's what a blank row is judged on.
+  const benefitObjects = list => (list || [])
+    .map(b => ({ icon: b.i || undefined, title: b.t, description: b.d || undefined }))
+    .filter(b => b.title)
 
-    // AR only included when title/summary/howItWorks are all filled — the
-    // backend requires a complete translation. Unlike Doctors (KA-40),
-    // Treatment updates upsert per locale rather than replacing the whole
-    // array, so omitting AR here can never delete an existing one — but the
-    // form still loads existing AR values in, so a resave without touching
-    // them resends the same content rather than an empty one.
-    //
-    // `null`, not omitted — like categoryId/badge below, these columns are
-    // nullable on the backend and an update only clears a field it's
-    // explicitly given; an omitted/`undefined` key is read as "don't touch",
-    // so a blanked-out field would otherwise silently keep its old value.
-    const translations = [{
-      locale: 'EN',
-      title: s.name,
-      subtitle: s.sub || '',
-      summary: s.what || '',
-      howItWorks: s.mechanism || '',
-      benefits: benefitObjects(s.benefits),
-      suitableFor: s.suitable || [],
-      duration: s.durationMins || null,
-      sessions: s.sessions || null,
-      downtimeNotes: s.downtimeNotes || null,
-      downtimeSeverity: s.downtimeLevel || null,
-    }]
-    if (s.nameAr && s.whatAr && s.mechanismAr) {
-      translations.push({
-        locale: 'AR',
-        title: s.nameAr,
-        subtitle: s.subAr || '',
-        summary: s.whatAr,
-        howItWorks: s.mechanismAr,
-        benefits: benefitObjects(s.benefitsAr),
-        suitableFor: s.suitableAr || [],
-        duration: s.durationMinsAr || null,
-        sessions: s.sessionsAr || null,
-        downtimeNotes: s.downtimeNotesAr || null,
-        downtimeSeverity: s.downtimeLevelAr || null,
-      })
-    }
-    const body = {
-      slug: s.slug,
-      pillarIds: (s.verticals || []).map(vSlug => pillarIds.get(vSlug)).filter(Boolean),
-      // `null`, not omitted — the backend only clears an existing category
-      // when it sees `categoryId: null` explicitly; leaving the key out of
-      // the request is read as "don't touch it", so picking "— none —"
-      // would silently fail to remove a previously-set category otherwise.
-      categoryId: s.category || null,
-      // `null`, not `''` — the backend's `badge` is now a real enum
-      // (TreatmentBadge), which rejects an empty string; `null` explicitly
-      // clears a previously-set badge, same as `categoryId` above.
-      badge: s.badge || null,
-      isPopular: s.isPopular,
-      imageUrl,
-      icon: s.thumb,
-      isPublished: true,
-      translations,
-      ...marketScopeBody(s, countryIds, clinicCountries),
-    }
-    // `s.id` (the record's real backend id, carried since it was fetched)
-    // takes priority over a slug lookup — that's what lets a slug edit PUT
-    // in place as a rename instead of needing a delete-then-recreate dance.
-    const existingId = s.id || treatmentIds.get(s.slug)
-    const { data } = existingId
-      ? await apiRequest(ApiEndpoints.treatments.adminById(existingId), { method: 'PUT', body })
-      : await apiRequest(ApiEndpoints.treatments.adminList, { method: 'POST', body })
-    rememberId(treatmentIds, data.slug, data.id)
+  // AR only included when title/summary/howItWorks are all filled — the
+  // backend requires a complete translation, and updates upsert per locale,
+  // so omitting AR never deletes an existing one.
+  //
+  // `null`, not omitted — these columns are nullable and an update only
+  // clears a field it's explicitly given.
+  const translations = [{
+    locale: 'EN',
+    title: s.name,
+    subtitle: s.sub || '',
+    summary: s.what || '',
+    howItWorks: s.mechanism || '',
+    benefits: benefitObjects(s.benefits),
+    suitableFor: s.suitable || [],
+    duration: s.durationMins || null,
+    sessions: s.sessions || null,
+    downtimeNotes: s.downtimeNotes || null,
+    downtimeSeverity: s.downtimeLevel || null,
+  }]
+  if (s.nameAr && s.whatAr && s.mechanismAr) {
+    translations.push({
+      locale: 'AR',
+      title: s.nameAr,
+      subtitle: s.subAr || '',
+      summary: s.whatAr,
+      howItWorks: s.mechanismAr,
+      benefits: benefitObjects(s.benefitsAr),
+      suitableFor: s.suitableAr || [],
+      duration: s.durationMinsAr || null,
+      sessions: s.sessionsAr || null,
+      downtimeNotes: s.downtimeNotesAr || null,
+      downtimeSeverity: s.downtimeLevelAr || null,
+    })
   }
-
-  // Display order is only ever set through this dedicated endpoint — write
-  // the whole list's order every time, mirroring how `sort` used to be
-  // rewritten from array position on every save.
-  const orders = list
-    .map((s, displayOrder) => ({ id: treatmentIds.get(s.slug), displayOrder }))
-    .filter(o => o.id)
-  if (orders.length) {
-    await apiRequest(ApiEndpoints.treatments.adminReorder, { method: 'PATCH', body: { orders } })
+  const countryId = countryIds.get(String(s.country).toUpperCase())
+  if (!countryId) throw new Error(`Country "${s.country}" wasn't found — refresh and try again.`)
+  return {
+    countryId,
+    slug: s.slug,
+    pillarIds: (s.verticals || []).map(vSlug => pillarIds.get(vSlug)).filter(Boolean),
+    // `null` explicitly clears a previously-set category / badge / card image.
+    categoryId: s.category || null,
+    badge: s.badge || null,
+    isPopular: !!s.isPopular,
+    imageUrl,
+    cardImageUrl: cardImageUrl || null,
+    icon: s.thumb,
+    isPublished: true,
+    clinicIds: s.clinics || [],
+    translations,
   }
 }
 
 /**
- * Renumber `displayOrder` only, via the dedicated reorder endpoint — unlike
- * persistServices, this never round-trips every record's full body (which
- * revalidates fields like `sessions` on records nobody touched), so it can't
- * fail on an unrelated field's validation. Used after a delete, where all
- * that's needed is closing the gap left in the order.
+ * Save one treatment: `versions` are the country tabs being offered. New
+ * treatments are created; existing ones upsert only the countries sent —
+ * the backend leaves every other country's version (including ones this
+ * user can't see) untouched. Returns the saved versions.
+ */
+export async function persistTreatment({ groupId, versions }) {
+  const countryIds = await ensureCountryIds(versions.map(v => v.country))
+  const body = { versions: [] }
+  for (const v of versions) body.versions.push(await serviceToVersionBody(v, countryIds))
+  const { data } = groupId
+    ? await apiRequest(ApiEndpoints.treatments.adminById(groupId), { method: 'PUT', body })
+    : await apiRequest(ApiEndpoints.treatments.adminList, { method: 'POST', body })
+  return groupToVersions(data)
+}
+
+/** Stop offering a treatment in one country (deletes that country's version). */
+export async function removeTreatmentCountry(groupId, countryCode) {
+  const countryIds = await ensureCountryIds([countryCode])
+  const countryId = countryIds.get(String(countryCode).toUpperCase())
+  if (!countryId) throw new Error(`Country "${countryCode}" wasn't found — refresh and try again.`)
+  await apiRequest(ApiEndpoints.treatments.adminCountry(groupId, countryId), { method: 'DELETE' })
+}
+
+/**
+ * Renumber `displayOrder` via the dedicated reorder endpoint. Order is per
+ * country, so `list` is one country's versions in their new order.
  */
 export const reorderServices = async list => {
-  const orders = list
-    .map((s, displayOrder) => ({ id: treatmentIds.get(s.slug), displayOrder }))
-    .filter(o => o.id)
+  const orders = list.map((s, displayOrder) => ({ id: s.id, displayOrder })).filter(o => o.id)
   if (orders.length) {
     await apiRequest(ApiEndpoints.treatments.adminReorder, { method: 'PATCH', body: { orders } })
   }
 }
 
-export const removeService = async slug => {
-  const id = treatmentIds.get(slug)
-  if (!id) throw new Error(`Could not delete "${slug}" — it wasn't found.`)
-  await apiRequest(ApiEndpoints.treatments.adminById(id), { method: 'DELETE' })
-  treatmentIds.delete(slug)
+/** Delete a whole treatment (every country's version). */
+export const removeService = async groupId => {
+  await apiRequest(ApiEndpoints.treatments.adminById(groupId), { method: 'DELETE' })
 }
 
 // ── Doctors ────────────────────────────────────────────────────────────
@@ -492,7 +492,7 @@ function doctorToRecord(doctor) {
     verticals: (doctor.verticals || []).map(v => v.slug),
     countries: (doctor.countries || []).map(c => c.code),
     clinics: (doctor.clinics || []).map(c => c.id),
-    treatments: (doctor.treatments || []).map(t => t.slug),
+    treatments: (doctor.treatments || []).map(t => t.id), // treatment version ids
   }
 }
 
@@ -565,7 +565,7 @@ export const persistDoctors = async list => {
       isPublished: true,
       translations,
       clinicIds: d.clinics || [],
-      treatmentIds: (d.treatments || []).map(slug => treatmentIds.get(slug)).filter(Boolean),
+      treatmentIds: (d.treatments || []).filter(Boolean),
       countryIds: (d.countries || []).map(c => countryIds.get(String(c).toUpperCase())).filter(Boolean),
       verticalIds: (d.verticals || []).map(slug => pillarIds.get(slug)).filter(Boolean),
     }
@@ -1124,9 +1124,10 @@ export async function redeemVoucher(id) {
   return voucherRequestToRecord(data)
 }
 
-function voucherRequestQueryParams({ search, status, customerId, page, pageSize } = {}) {
+function voucherRequestQueryParams({ search, status, customerId, country, page, pageSize } = {}) {
   const params = new URLSearchParams()
   if (search) params.set('search', search)
+  if (country) params.set('country', country)
   if (customerId) params.set('customerId', customerId)
   if (status) params.set('status', status)
   if (page) params.set('page', String(page))
@@ -1244,7 +1245,7 @@ export async function exportCustomersCsv(filters) {
 // Treatment, never a Pillar) — dropped from the form, also tracked there.
 // `treatment` holds a Treatment slug (ReviewForm renders it as a real
 // <select> over `services`, KA-44) and resolves to a real id via the same
-// `treatmentIds` slug -> id map Services/Doctors already use, rather than
+// treatment version id (slugs repeat per country), rather than
 // the old free-text-plus-datalist field that let anyone type an unlisted
 // value and silently fail to link.
 
@@ -1259,7 +1260,7 @@ function reviewToRecord(t) {
     location: t.address || '',
     // Country.code (the Countries screen's list); '' when not set.
     country: t.country?.code || '',
-    treatment: t.treatment?.slug || '',
+    treatment: t.treatment?.id || '', // treatment version id
     quote: t.quote,
     rating: t.rating ?? 5,
     consentGiven: !!t.consentGiven,
@@ -1293,7 +1294,7 @@ export const persistReviews = async list => {
     }
     const body = {
       rating: toNumberOrUndefined(r.rating) ?? 5,
-      treatmentId: treatmentIds.get(r.treatment) || undefined,
+      treatmentId: r.treatment || undefined,
       beforeImgUrl: beforeImgUrl || undefined,
       afterImgUrl: afterImgUrl || undefined,
       consentGiven: !!r.consentGiven,
@@ -1878,25 +1879,33 @@ export const persistOverrideSection = () => notConnected('Country overrides')
 
 // ── Users & Roles (staff accounts) ──────────────────────────────────────
 //
-// list/create/invite exist; there's no endpoint to change a staff member's
-// role (or remove one) after they're created — see KA-39. The dashboard's
-// role-change control only shows in preview mode as a result; against the
-// real API, roles display read-only.
-//
-// There's also no "list pending invites" endpoint, so an invite sent here
-// doesn't appear anywhere in the dashboard afterward — only once the
-// invited person accepts and becomes a real staff user.
-
-const ROLE_TO_BACKEND = { admin: 'ADMIN', editor: 'STAFF' }
-const ROLE_FROM_BACKEND = { ADMIN: 'admin', STAFF: 'editor' }
-const ROLE_TITLE = { admin: 'Administrator', editor: 'Content Editor' }
+// Three roles (super admin / admin / staff), each with a set of countries
+// and optional clinics. The backend enforces who may manage whom: super
+// admins anyone; admins only staff in their own countries/clinics; nobody
+// their own role. The dashboard only hides what would be refused.
+// Countries travel as ids on the wire and as Country.code in the app.
 
 function staffToUser(staff) {
-  const role = ROLE_FROM_BACKEND[staff.role] || 'editor'
+  const role = ROLE_FROM_BACKEND[staff.role] || 'staff'
   return {
-    id: staff.id, name: staff.name, email: staff.email, title: ROLE_TITLE[role], role,
-    country: staff.country?.code || '', // Country.code; '' when not set
+    id: staff.id,
+    name: staff.name,
+    email: staff.email,
+    role,
+    title: ROLE_LABELS[role] || '',
+    countries: (staff.countries || []).map(c => c.code),
+    clinics: (staff.clinics || []).map(c => c.id),
   }
+}
+
+/** Country codes -> ids for a request body; throws on a code the backend doesn't know. */
+async function countryIdsFor(codes = []) {
+  const ids = await ensureCountryIds(codes)
+  return codes.map(code => {
+    const id = ids.get(String(code).toUpperCase())
+    if (!id) throw new Error(`Country "${code}" wasn't found — refresh and try again.`)
+    return id
+  })
 }
 
 export async function fetchUsers() {
@@ -1904,24 +1913,63 @@ export async function fetchUsers() {
   return staff.map(staffToUser)
 }
 
-export const updateUserRole = () => notConnected('Changing a staff member’s role')
-
-export async function inviteStaffUser({ name, email, role, country }) {
-  const countryIds = country ? await ensureCountryIds([country]) : null
-  const countryId = country ? countryIds.get(String(country).toUpperCase()) : undefined
+export async function inviteStaffUser({ name, email, role, countries = [], clinics = [] }) {
+  const superAdmin = role === 'super_admin'
+  const countryIds = superAdmin ? [] : await countryIdsFor(countries)
   await apiRequest(ApiEndpoints.staffUsers.adminInvite, {
     method: 'POST',
-    body: { name, email, role: ROLE_TO_BACKEND[role] || 'STAFF', ...(countryId ? { countryId } : {}) },
+    body: {
+      name, email,
+      role: ROLE_TO_BACKEND[role] || 'STAFF',
+      countryIds,
+      ...(superAdmin ? {} : { clinicIds: clinics }),
+    },
   })
 }
 
-/** Set (or, with '', clear) a staff member's country. */
-export async function updateStaffCountry(id, country) {
-  const countryIds = country ? await ensureCountryIds([country]) : null
-  const countryId = country ? countryIds.get(String(country).toUpperCase()) : null
-  if (country && !countryId) throw new Error(`Country "${country}" wasn't found — refresh and try again.`)
-  const { data } = await apiRequest(ApiEndpoints.staffUsers.adminById(id), { method: 'PATCH', body: { countryId } })
+/**
+ * Change a staff member's role and/or access. `countries` / `clinics`, when
+ * given, replace the whole set (codes / clinic ids). Returns the saved user.
+ */
+export async function updateStaffUser(id, { name, role, countries, clinics } = {}) {
+  const body = {}
+  if (name !== undefined) body.name = name
+  if (role !== undefined) body.role = ROLE_TO_BACKEND[role] || 'STAFF'
+  if (countries !== undefined) body.countryIds = await countryIdsFor(countries)
+  if (clinics !== undefined) body.clinicIds = clinics
+  const { data } = await apiRequest(ApiEndpoints.staffUsers.adminById(id), { method: 'PATCH', body })
   return staffToUser(data)
+}
+
+export async function removeStaffUser(id) {
+  await apiRequest(ApiEndpoints.staffUsers.adminById(id), { method: 'DELETE' })
+}
+
+// Accepted invites are deleted by the backend, so this lists pending (and
+// expired-but-unrevoked) ones only.
+const staffInvitesPath = `${ApiEndpoints.staffUsers.adminList}/invites`
+
+export async function fetchStaffInvites() {
+  const [invites, ids] = await Promise.all([fetchAllPages(staffInvitesPath), ensureCountryIds()])
+  const codeById = new Map([...ids].map(([code, cid]) => [cid, code]))
+  return invites.map(inv => {
+    const role = ROLE_FROM_BACKEND[inv.role] || 'staff'
+    return {
+      id: inv.id,
+      name: inv.name,
+      email: inv.email,
+      role,
+      title: ROLE_LABELS[role] || '',
+      createdAt: inv.createdAt,
+      expiresAt: inv.expiresAt,
+      countries: (inv.countryIds || []).map(cid => codeById.get(cid) || cid),
+      clinics: inv.clinicIds || [],
+    }
+  })
+}
+
+export async function revokeStaffInvite(id) {
+  await apiRequest(`${staffInvitesPath}/${id}`, { method: 'DELETE' })
 }
 
 /**
