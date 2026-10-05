@@ -14,6 +14,7 @@ import {
 } from '@/shared/lib/demo-seed'
 import { REQUEST_STATUS_LABELS, REQUEST_SOURCE_LABELS } from '@/shared/lib/seed'
 import { toCsv } from '@/shared/lib/csv'
+import { ROLE_LABELS } from '@/shared/lib/roles'
 import { seedTellUs } from '@/shared/lib/tell-us'
 import { CUSTOM_PAGES } from '@/shared/lib/seed-data/custom-pages'
 import { VOUCHER_STATUS_FLOW, voucherStatusLabel } from '@/shared/lib/voucher-status'
@@ -229,7 +230,7 @@ function seedContacts() {
 // ── Reads ───────────────────────────────────────────────────
 export async function fetchAll() {
   return settle({
-    services: load('services', seedServices),
+    services: loadServices(),
     verticals: load('verticals', seedVerticals),
     categories: load('categories', seedCategories),
     doctors: load('doctors', seedDoctors),
@@ -318,11 +319,43 @@ export async function fetchClinicOptions() {
   return settle(locations.map(l => ({ id: l.id, name: l.name })))
 }
 
-/** One service — preview mode's stand-in for GET /admin/treatments/:id. */
-export async function fetchService(slug) {
-  const s = load('services', seedServices).find(x => x.slug === slug)
-  if (!s) throw new Error('This service no longer exists.')
-  return settle(s)
+/**
+ * Treatment versions, one per country, grouped by `groupId` — preview mode's
+ * stand-in for the API's per-country treatments. Seed rows predate that and
+ * become a UAE version in a group of their own.
+ */
+function loadServices() {
+  return load('services', seedServices).map(s => ({
+    ...s,
+    country: s.country || 'UAE',
+    groupId: s.groupId || s.slug,
+    id: s.id || `${s.country || 'UAE'}-${s.slug}`,
+  }))
+}
+
+/** One treatment's versions — preview mode's stand-in for GET /admin/treatments/:id. */
+export async function fetchService(groupId) {
+  const versions = loadServices().filter(x => x.groupId === groupId)
+  if (!versions.length) throw new Error('This treatment no longer exists.')
+  return settle(versions)
+}
+
+/** Save a treatment's country versions (upsert by country), like PUT /admin/treatments/:id. */
+export async function persistTreatment({ groupId, versions }) {
+  const list = loadServices()
+  const id = groupId || `group-${Date.now()}`
+  for (const v of versions) {
+    const taken = list.find(x => x.country === v.country && x.slug === v.slug && x.groupId !== id)
+    if (taken) throw new Error(`A treatment with slug "${v.slug}" already exists in ${v.country}.`)
+  }
+  const saved = versions.map(v => ({ ...v, groupId: id, id: v.id || `${v.country}-${v.slug}-${Date.now()}` }))
+  const next = list.filter(x => !(x.groupId === id && saved.some(v => v.country === x.country)))
+  write(KEYS.services, [...saved, ...next])
+  return settle(loadServices().filter(x => x.groupId === id))
+}
+
+export async function removeTreatmentCountry(groupId, country) {
+  write(KEYS.services, loadServices().filter(x => !(x.groupId === groupId && x.country === country)))
 }
 
 /** One clinic — preview mode's stand-in for GET /admin/clinics/:id. */
@@ -380,8 +413,8 @@ export async function persistOverrideSection(country, groupId, sectionId, data) 
 
 // ── Writes ──────────────────────────────────────────────────
 const persist = key => async list => { write(KEYS[key], list) }
+const persistServices = persist('services')
 
-export const persistServices = persist('services')
 export const persistVerticals = persist('verticals')
 export const persistCategories = persist('categories')
 export const persistDoctors = persist('doctors')
@@ -396,7 +429,12 @@ export const persistContacts = persist('contacts')
 // reordering is just the same whole-list write as persist(...) — these exist
 // only so callers (AdminContext's deleteFrom) don't need to know which
 // backend is in play.
-export const reorderServices = persistServices
+// Treatments reorder per country: `ordered` is one country's versions.
+export async function reorderServices(ordered) {
+  const ids = new Set(ordered.map(v => v.id))
+  const rest = loadServices().filter(x => !ids.has(x.id))
+  persistServices([...ordered, ...rest])
+}
 export const reorderCategories = persistCategories
 export const reorderDoctors = persistDoctors
 export const reorderVouchers = persistVouchers
@@ -409,7 +447,9 @@ const remove = (key, field) => async value => {
   write(KEYS[key], load(key, () => []).filter(r => r[field] !== value))
 }
 
-export const removeService = remove('services', 'slug')
+export async function removeService(groupId) {
+  write(KEYS.services, loadServices().filter(x => x.groupId !== groupId))
+}
 export const removeVertical = remove('verticals', 'id')
 export const removeCategory = remove('categories', 'slug')
 export const removeDoctor = remove('doctors', 'slug')
@@ -582,10 +622,11 @@ export async function redeemVoucher(id) {
   return settle(saveVoucherRequest({ ...v, status: 'REDEEMED', redeemedAt: now, statusUpdatedAt: now }))
 }
 
-function filteredVoucherRequests({ search, status, customerId } = {}) {
+function filteredVoucherRequests({ search, status, customerId, country } = {}) {
   return loadVoucherRequests()
     .filter(v => {
       if (customerId && v.customerId !== customerId) return false
+      if (country && String(v.countryCode || '').toUpperCase() !== country.toUpperCase()) return false
       if (status && v.status !== status) return false
       if (search) {
         const q = search.trim().toLowerCase()
@@ -691,28 +732,56 @@ export async function submitRequest(record) {
 }
 
 // ── Users ───────────────────────────────────────────────────
+// Accounts saved by older builds had one `country` and the roles
+// admin/editor — read them as the current shape.
+const LEGACY_ROLES = { editor: 'staff' }
+function normaliseUser(u) {
+  const role = ROLE_LABELS[u.role] ? u.role : (LEGACY_ROLES[u.role] || 'staff')
+  return {
+    ...u,
+    role,
+    title: ROLE_LABELS[role],
+    countries: Array.isArray(u.countries) ? u.countries : (u.country ? [u.country] : []),
+    clinics: Array.isArray(u.clinics) ? u.clinics : [],
+  }
+}
+const loadUsers = () => load('users', seedUsers).map(normaliseUser)
+
 export async function fetchUsers() {
-  return settle(load('users', seedUsers))
+  return settle(loadUsers())
 }
-
-export async function updateUserRole(id, role) {
-  write(KEYS.users, load('users', seedUsers).map(u => (u.id === id ? { ...u, role } : u)))
-}
-
-const ROLE_TITLE = { admin: 'Administrator', editor: 'Content Editor' }
 
 /** Preview mode's stand-in for sending a real invite — adds the account directly rather than waiting on an accept step that doesn't exist here. */
-export async function inviteStaffUser({ name, email, role, country = '' }) {
-  const list = load('users', seedUsers)
+export async function inviteStaffUser({ name, email, role, countries = [], clinics = [] }) {
+  const list = loadUsers()
   const id = `demo-${Date.now()}`
-  write(KEYS.users, [...list, { id, name, email, role, country, title: ROLE_TITLE[role] || role }])
+  const superAdmin = role === 'super_admin'
+  write(KEYS.users, [...list, normaliseUser({
+    id, name, email, role,
+    countries: superAdmin ? [] : countries,
+    clinics: superAdmin ? [] : clinics,
+  })])
   return settle({ id })
 }
 
-export async function updateStaffCountry(id, country) {
-  const next = load('users', seedUsers).map(u => (u.id === id ? { ...u, country: country || '' } : u))
+export async function updateStaffUser(id, patch = {}) {
+  const changes = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
+  const next = loadUsers().map(u => (u.id === id ? normaliseUser({ ...u, ...changes }) : u))
   write(KEYS.users, next)
   return settle(next.find(u => u.id === id))
+}
+
+export async function removeStaffUser(id) {
+  write(KEYS.users, loadUsers().filter(u => u.id !== id))
+  return settle(undefined)
+}
+
+// Preview invites are accepted on the spot (see inviteStaffUser), so none are ever pending.
+export async function fetchStaffInvites() {
+  return settle([])
+}
+export async function revokeStaffInvite() {
+  return settle(undefined)
 }
 
 // ── Preview session ─────────────────────────────────────────

@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useAdmin } from '@/shared/context/AdminContext'
 import ConfirmDialog from '@/shared/components/ConfirmDialog'
 import ReorderCell from '@/shared/components/ReorderCell'
-import { emptyService } from '@/shared/lib/seed'
 import ServiceForm from '@/features/services/components/ServiceForm'
 import MissingRecord from '@/shared/components/MissingRecord'
 import { useQuery, useQueryParam, useQueryText } from '@/shared/hooks/useUrlState'
@@ -15,8 +14,8 @@ function ServiceFormSkeleton({ onClose }) {
       <div className="ad-editor-head">
         <button type="button" className="ad-back" onClick={onClose}>← Back</button>
         <div className="ad-editor-titles">
-          <h1 className="ad-view-title">Edit service</h1>
-          <p className="ad-view-sub">Loading service details…</p>
+          <h1 className="ad-view-title">Edit treatment</h1>
+          <p className="ad-view-sub">Loading treatment details…</p>
         </div>
       </div>
       <div className="ad-editor-body">
@@ -32,18 +31,26 @@ function ServiceFormSkeleton({ onClose }) {
   )
 }
 
+/**
+ * Treatments list. Each treatment has one version per country; with a
+ * country picked in the top-bar switcher (`?country=`) the list shows that
+ * country's versions in their display order (reorderable), otherwise one row
+ * per treatment with the countries it's offered in.
+ */
 export default function ServicesView() {
-  const { services, verticals, deleteService, loadService, allowed, dataVersion } = useAdmin()
+  const {
+    services, verticals, deleteService, loadService, allowed, dataVersion,
+    activeCountry, accessibleCountries,
+  } = useAdmin()
   // Filters and the open record live in the URL (?q, ?vertical,
-  // ?edit=<slug>, ?new=1) so a refresh or a new tab reopens the same screen.
+  // ?edit=<treatment id>, ?new=1) so a refresh or a new tab reopens the same screen.
   const { get, set, href } = useQuery()
   const [query, setQuery] = useQueryText('q')
   const [vertical, setVertical] = useQueryParam('vertical')
-  const editSlug = get('edit')
+  const editId = get('edit')
   const isNew = get('new') === '1'
-  const newService = useMemo(() => (isNew ? emptyService() : null), [isNew])
-  const [loaded, setLoaded] = useState(null)     // { slug, record } — record undefined while loading, null if not found
-  const [confirm, setConfirm] = useState(null)    // slug pending delete
+  const [loaded, setLoaded] = useState(null)     // { id, versions } — undefined while loading, null if not found
+  const [confirm, setConfirm] = useState(null)    // { groupId, name } pending delete
   const ready = dataVersion > 0
 
   const verticalMeta = useMemo(() => {
@@ -52,60 +59,89 @@ export default function ServicesView() {
     return map
   }, [verticals])
 
+  const countryName = useMemo(() => {
+    const map = {}
+    accessibleCountries.forEach(c => { map[c.code] = c.name })
+    return map
+  }, [accessibleCountries])
+
+  // One country: its versions. All countries: one row per treatment, named
+  // after its first version, with every country it's offered in.
+  const rows = useMemo(() => {
+    if (activeCountry) {
+      return services
+        .filter(s => s.country === activeCountry)
+        .map(s => ({ key: s.id, groupId: s.groupId, version: s, countries: [s.country] }))
+    }
+    const groups = new Map()
+    services.forEach(s => {
+      const g = groups.get(s.groupId)
+      if (g) g.countries.push(s.country)
+      else groups.set(s.groupId, { key: s.groupId, groupId: s.groupId, version: s, countries: [s.country] })
+    })
+    return [...groups.values()]
+  }, [services, activeCountry])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return services.filter(s => {
+    return rows.filter(({ version: s }) => {
       if (vertical && !(s.verticals || []).includes(vertical)) return false
       if (q && !(`${s.name} ${s.slug}`.toLowerCase().includes(q))) return false
       return true
     })
-  }, [services, query, vertical])
+  }, [rows, query, vertical])
 
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
   const isFiltered = Boolean(query.trim() || vertical)
+  // Order is per country, so it can only be changed with one country in view.
+  const canReorder = Boolean(activeCountry) && !isFiltered
+  const treatmentCount = useMemo(() => new Set(services.map(s => s.groupId)).size, [services])
 
   // Edit always starts from the backend's latest copy, not the list's
-  // possibly-stale one. Waits for the first data load (the API looks the
-  // slug up in the list), and ignores the result if the admin has since gone
-  // Back or opened another service.
+  // possibly-stale one. Ignores the result if the admin has since gone Back
+  // or opened another treatment.
   useEffect(() => {
-    if (!editSlug || !ready) { setLoaded(null); return }
+    if (!editId || !ready) { setLoaded(null); return }
     let cancelled = false
-    setLoaded({ slug: editSlug, record: undefined })
-    loadService(editSlug).then(fresh => {
-      if (!cancelled) setLoaded({ slug: editSlug, record: fresh || null })
+    setLoaded({ id: editId, versions: undefined })
+    loadService(editId).then(fresh => {
+      if (!cancelled) setLoaded({ id: editId, versions: fresh && fresh.length ? fresh : null })
     })
     return () => { cancelled = true }
-  }, [editSlug, ready, loadService])
+  }, [editId, ready, loadService])
 
-  const closeEditor = () => set({ edit: '', new: '' })
+  const closeEditor = () => set({ edit: '', new: '', tab: '' })
 
   // The create/edit form is a full page within the dashboard.
   if (isNew) {
-    return <ServiceForm key="new" initial={newService} isNew onClose={closeEditor} />
+    return <ServiceForm key="new" groupId={null} initialVersions={[]} onClose={closeEditor} />
   }
-  if (editSlug) {
-    const current = loaded?.slug === editSlug ? loaded.record : undefined
+  if (editId) {
+    const current = loaded?.id === editId ? loaded.versions : undefined
     if (current === undefined) {
       return <ServiceFormSkeleton onClose={closeEditor} />
     }
     if (!current) {
-      return <MissingRecord label="service" backHref={href({ edit: '' })} />
+      return <MissingRecord label="treatment" backHref={href({ edit: '' })} />
     }
-    return <ServiceForm key={editSlug} initial={current} isNew={false} onClose={closeEditor} />
+    return <ServiceForm key={editId} groupId={editId} initialVersions={current} onClose={closeEditor} />
   }
+
+  const scopeLabel = activeCountry ? countryName[activeCountry] || activeCountry : 'all your countries'
 
   return (
     <div className="ad-view">
       <div className="ad-view-head">
         <div>
           <h1 className="ad-view-title">Treatments &amp; Services</h1>
-          <p className="ad-view-sub">{services.length} services · showing {filtered.length}</p>
+          <p className="ad-view-sub">
+            {treatmentCount} treatments · showing {filtered.length} in {scopeLabel}
+          </p>
         </div>
         {canCreate && (
           <Link className="ad-btn ad-btn--primary" href={href({ new: 1 })}>
-            + New service
+            + New treatment
           </Link>
         )}
       </div>
@@ -127,28 +163,38 @@ export default function ServicesView() {
         <table className="ad-table">
           <thead>
             <tr>
-              <th className="ad-th-order">Order</th>
+              {activeCountry && <th className="ad-th-order">Order</th>}
               <th>Name</th>
+              <th>Countries</th>
               <th>Verticals</th>
               <th>Badge</th>
               <th className="ad-th-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map(s => (
-              <tr key={s.slug}>
-                <td className="ad-td-order">
-                  <ReorderCell
-                    collection="services"
-                    itemKey={s.slug}
-                    index={services.indexOf(s)}
-                    total={services.length}
-                    disabled={isFiltered}
-                  />
-                </td>
+            {filtered.map(({ key, groupId, version: s, countries }, i) => (
+              <tr key={key}>
+                {activeCountry && (
+                  <td className="ad-td-order">
+                    <ReorderCell
+                      collection="services"
+                      itemKey={s.id}
+                      index={i}
+                      total={filtered.length}
+                      disabled={!canReorder}
+                    />
+                  </td>
+                )}
                 <td>
                   <div className="ad-cell-name">{s.name}</div>
                   <div className="ad-cell-slug">{s.slug}</div>
+                </td>
+                <td>
+                  <span className="ad-pill-row">
+                    {countries.map(code => (
+                      <span key={code} className="ad-badge" title={countryName[code] || code}>{code}</span>
+                    ))}
+                  </span>
                 </td>
                 <td>
                   {(s.verticals || []).length ? (
@@ -164,20 +210,21 @@ export default function ServicesView() {
                 </td>
                 <td>{s.badge ? <span className="ad-badge">{s.badge}</span> : <span className="ad-muted">—</span>}</td>
                 <td className="ad-td-actions">
-                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: s.slug })}>Edit</Link>
+                  <Link className="ad-btn ad-btn--soft ad-btn--sm"
+                    href={href({ edit: groupId, tab: activeCountry || countries[0] })}>Edit</Link>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm"
-                      onClick={() => setConfirm(s.slug)}>Delete</button>
+                      onClick={() => setConfirm({ groupId, name: s.name })}>Delete</button>
                   )}
                 </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="ad-empty">
-                  {services.length === 0
-                    ? 'No services yet. Create your first one to see it on the site.'
-                    : 'No services match your filters.'}
+                <td colSpan={activeCountry ? 6 : 5} className="ad-empty">
+                  {rows.length === 0
+                    ? `No treatments in ${scopeLabel} yet. Create your first one to see it on the site.`
+                    : 'No treatments match your filters.'}
                 </td>
               </tr>
             )}
@@ -187,12 +234,13 @@ export default function ServicesView() {
 
       {confirm && (
         <ConfirmDialog
-          title="Delete service?"
+          title="Delete treatment?"
           onCancel={() => setConfirm(null)}
-          onConfirm={() => { deleteService(confirm); setConfirm(null) }}
+          onConfirm={() => { deleteService(confirm.groupId); setConfirm(null) }}
         >
-          This will remove <strong>{confirm}</strong> and take it off every page it
-          appears on.
+          This will remove <strong>{confirm.name}</strong> in every country it&apos;s offered in
+          and take it off every page it appears on. To stop offering it in one country only,
+          open it and switch that country off.
         </ConfirmDialog>
       )}
     </div>

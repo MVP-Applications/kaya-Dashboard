@@ -79,7 +79,8 @@
   padding: 3px 8px; border-radius: var(--r-full); white-space: nowrap;
 }
 .ad-role-pill--admin  { background: #EAE2F7; color: #5B3FA0; }
-.ad-role-pill--editor { background: #E2F0EA; color: #37795A; }
+.ad-role-pill--staff  { background: #E2F0EA; color: #37795A; }
+.ad-role-pill--super_admin { background: #F7E6D9; color: #9A4F1C; }
 .ad-avatar {
   width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
@@ -1645,3 +1646,40 @@
 .ad-shell a.ad-ov-stat,
 .ad-shell a.ad-page-card,
 .ad-shell a.ad-pg-card-main { color: inherit; }
+
+/* ── Treatment form: country tabs ─────────────────────────── */
+.ad-country-tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--ad-line, #e5e1da); margin: 0 0 16px; }
+.ad-country-tab {
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px;
+  border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0;
+  background: transparent; color: #6b6660; font: inherit; cursor: pointer; margin-bottom: -1px;
+}
+.ad-country-tab:hover { color: #2b2723; background: #f6f3ee; }
+.ad-country-tab.active { background: #fff; color: #2b2723; border-color: var(--ad-line, #e5e1da); font-weight: 600; }
+.ad-country-tab-mark {
+  display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  font-size: 11px; background: #ece8e1; color: #8a847c;
+}
+.ad-country-tab.on .ad-country-tab-mark { background: #E2F0EA; color: #37795A; }
+.ad-country-tab.error { color: #b3261e; }
+.ad-country-tab.error .ad-country-tab-mark { background: #fbe4e2; color: #b3261e; }
+.ad-country-tab-code { font-size: 11px; color: #8a847c; letter-spacing: .04em; }
+.ad-country-offer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.ad-country-off { text-align: center; padding: 36px 16px; }
+.ad-country-off p { margin: 0 0 14px; }
+.ad-country-off-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ad-image-hint { margin: 0 0 6px; }
+.ad-country-fixed { font-size: 13px; }
+
+/* ── Users & Roles ─────────────────────────────────────── */
+.ad-users-hint { margin: 0 0 6px; }
+.ad-users-codes { font-size: 12px; font-weight: 600; letter-spacing: .03em; }
+.ad-users-clinics { font-size: 12px; color: var(--slate); }
+.ad-users-actions { display: inline-flex; gap: 6px; justify-content: flex-end; }
+.ad-users-remove { color: #B42318; }
+.ad-users-invites { margin-top: 20px; }
+.ad-users-expired {
+  font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: var(--r-full); background: #FDECEC; color: #B42318;
+}
+.ad-users-scope { font-size: 12px; color: var(--slate); margin: 8px 0 0; }

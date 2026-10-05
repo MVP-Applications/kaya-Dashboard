@@ -28,7 +28,8 @@ function blockSummary(block) {
 
 export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
   const { customPages, upsertCustomPage, services, doctors, allowed, saving } = useAdmin()
-  const canEdit = allowed('edit')
+  // Pages are global settings — only a super admin changes them.
+  const canEdit = allowed('manageSettings')
 
   const [page, setPage] = useState(() => cloneSafe(initial))
   const [saved, setSaved] = useState(() => (isNew ? null : JSON.stringify(initial)))
@@ -175,6 +176,8 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
           </button>
         </div>
       </div>
+
+      {!canEdit && <div className="ad-note">Only a super admin can change these settings.</div>}
 
       {problems.length > 0 && (
         <div className="ad-form-error ad-tu-problems" role="alert">

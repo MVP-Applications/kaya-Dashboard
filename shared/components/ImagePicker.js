@@ -2,9 +2,9 @@
 
 /**
  * Reusable image field: preview + upload (stored as a data URL in the mock)
- * or a pasted URL / path. Used by the review & voucher forms.
+ * or a pasted URL / path. `hint` says what size/shape the site shows it at.
  */
-export default function ImagePicker({ value, onChange, icon = '🖼', variant = '' }) {
+export default function ImagePicker({ value, onChange, icon = '🖼', variant = '', hint = '' }) {
   function handleFile(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -37,6 +37,7 @@ export default function ImagePicker({ value, onChange, icon = '🖼', variant = 
             Remove
           </button>
         )}
+        {hint && <p className="ad-fieldset-hint ad-image-hint">{hint}</p>}
         <label className="ad-field ad-image-url">
           <span className="ad-field-label">or paste URL / path</span>
           <input className="ad-input" value={isData ? '' : (value || '')}

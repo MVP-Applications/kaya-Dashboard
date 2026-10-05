@@ -18,9 +18,10 @@ export default function CountriesView() {
   const newCountry = useMemo(() => (isNew ? emptyCountry() : null), [isNew])
   const [confirm, setConfirm] = useState(null)
 
-  // Countries and cities are ADMIN-only on the backend.
-  const canCreate = allowed('manageCountries')
-  const canDelete = allowed('delete')
+  // Countries and cities are SUPER_ADMIN-only on the backend.
+  const canManage = allowed('manageCountries')
+  const canCreate = canManage
+  const canDelete = canManage
 
   const closeEditor = () => set({ edit: '', new: '' })
 
@@ -66,6 +67,8 @@ export default function CountriesView() {
           </Link>
         )}
       </div>
+
+      {!canManage && <div className="ad-note">Only a super admin can change these settings.</div>}
 
       <div className="ad-toolbar">
         <input

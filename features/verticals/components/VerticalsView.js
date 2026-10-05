@@ -9,6 +9,7 @@ import SlugField from '@/shared/components/SlugField'
 import { resolveSlug } from '@/shared/lib/slug'
 import MissingRecord from '@/shared/components/MissingRecord'
 import { useQuery } from '@/shared/hooks/useUrlState'
+import { useCountryFilter } from '@/shared/hooks/useCountryFilter'
 
 // The vertical page hero renders full-bleed at ~2:1 (see vp-hero in the
 // website's globals.css) — anything far off that gets cropped hard by
@@ -31,6 +32,8 @@ export default function VerticalsView() {
   // The open record lives in the URL (?edit=<id>, ?new=1) so a refresh or a
   // new tab reopens the same screen.
   const { get, set, href } = useQuery()
+  // ?country is shared with the top-bar switcher; empty falls back to it.
+  const [country, setCountry, countryOptions] = useCountryFilter()
   const editId = get('edit')
   const isNew = get('new') === '1'
   const newVertical = useMemo(() => (isNew ? { ...empty } : null), [isNew])
@@ -43,9 +46,16 @@ export default function VerticalsView() {
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
 
+  // `services` holds one version per country — count treatments (groupId),
+  // limited to the filtered country when one is picked.
   function countFor(id) {
-    return services.filter(s => (s.verticals || []).includes(id)).length
+    const groups = new Set(services
+      .filter(s => (s.verticals || []).includes(id) && (!country || s.country === country))
+      .map(s => s.groupId ?? s.id))
+    return groups.size
   }
+
+  const shown = country ? verticals.filter(v => (v.countries || []).includes(country)) : verticals
 
   const closeEditor = () => set({ edit: '', new: '' })
 
@@ -92,8 +102,20 @@ export default function VerticalsView() {
         )}
       </div>
 
+      <div className="ad-toolbar">
+        <select className="ad-input ad-filter" value={country} onChange={e => setCountry(e.target.value)}>
+          <option value="">All countries</option>
+          {countryOptions.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+        </select>
+      </div>
+
       <div className="ad-vert-grid">
-        {verticals.map(v => (
+        {shown.length === 0 && (
+          <div className="ad-empty ad-empty--grid">
+            {verticals.length === 0 ? 'No verticals yet.' : 'No verticals in this country.'}
+          </div>
+        )}
+        {shown.map(v => (
           <div key={v.id} className="ad-vert-card">
             <span className="ad-vert-swatch" style={{ background: v.color }} />
             <div className="ad-vert-body">

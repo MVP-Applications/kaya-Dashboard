@@ -1,5 +1,6 @@
 'use client'
 import { useAdmin } from '@/shared/context/AdminContext'
+import { useQuery } from '@/shared/hooks/useUrlState'
 
 /**
  * Says which copy is being edited: the shared version, or one market's
@@ -11,6 +12,7 @@ import { useAdmin } from '@/shared/context/AdminContext'
  */
 export default function CountryNotice() {
   const { activeCountry, setActiveCountry, countryRecords } = useAdmin()
+  const { set } = useQuery()
   const activeCountryName = countryRecords.find(c => c.code === activeCountry)?.name || activeCountry
 
   if (!activeCountry) {
@@ -29,7 +31,7 @@ export default function CountryNotice() {
         Fields you change here stop following the shared copy. Anything you leave
         alone keeps updating with it.
       </span>
-      <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => setActiveCountry('')}>
+      <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => { setActiveCountry(''); set({ country: '' }) }}>
         Edit shared instead
       </button>
     </div>

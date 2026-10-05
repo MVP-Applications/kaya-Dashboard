@@ -2,72 +2,14 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useAdmin } from '@/shared/context/AdminContext'
-import { ROLE_LABELS, PERMISSIONS } from '@/shared/lib/auth'
-import { inviteStaffUser } from '@/shared/lib/store'
-import { sortCountries } from '@/shared/lib/content'
+import { ROLE_LABELS } from '@/shared/lib/auth'
 import { useQuery, useQueryText } from '@/shared/hooks/useUrlState'
-
-const ROLES = ['admin', 'editor']
-
-function InviteForm({ onClose, onInvited, countries }) {
-  const [name, setName] = useState('')
-  const [country, setCountry] = useState('')
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState('editor')
-  const [error, setError] = useState('')
-  const [sending, setSending] = useState(false)
-
-  async function submit(e) {
-    e.preventDefault()
-    if (!name.trim()) return setError('Name is required.')
-    if (!email.trim()) return setError('Email is required.')
-    setSending(true)
-    try {
-      await inviteStaffUser({ name: name.trim(), email: email.trim(), role, country })
-      onInvited(email.trim())
-    } catch (e2) {
-      setError(e2.message)
-    } finally {
-      setSending(false)
-    }
-  }
-
-  return (
-    <div className="ad-drawer-scrim" onClick={onClose}>
-      <form className="ad-confirm" onClick={e => e.stopPropagation()} onSubmit={submit}>
-        <h3 className="ad-confirm-title">Invite a staff member</h3>
-        {error && <div className="ad-form-error">{error}</div>}
-        <label className="ad-field">
-          <span className="ad-field-label">Name</span>
-          <input className="ad-input" value={name} onChange={e => setName(e.target.value)} />
-        </label>
-        <label className="ad-field">
-          <span className="ad-field-label">Email</span>
-          <input className="ad-input" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-        </label>
-        <label className="ad-field">
-          <span className="ad-field-label">Role</span>
-          <select className="ad-input" value={role} onChange={e => setRole(e.target.value)}>
-            {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-          </select>
-        </label>
-        <label className="ad-field">
-          <span className="ad-field-label">Country</span>
-          <select className="ad-input" value={country} onChange={e => setCountry(e.target.value)}>
-            <option value="">— not set —</option>
-            {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-          </select>
-        </label>
-        <div className="ad-confirm-actions">
-          <button type="button" className="ad-btn ad-btn--ghost" onClick={onClose}>Cancel</button>
-          <button type="submit" className="ad-btn ad-btn--primary" disabled={sending}>
-            {sending ? 'Sending…' : 'Send invite'}
-          </button>
-        </div>
-      </form>
-    </div>
-  )
-}
+import ConfirmDialog from '@/shared/components/ConfirmDialog'
+import MissingRecord from '@/shared/components/MissingRecord'
+import InviteForm from '@/features/users/components/InviteForm'
+import EditUserDrawer from '@/features/users/components/EditUserDrawer'
+import RoleCard from '@/features/users/components/RoleCard'
+import { ROLE_ORDER, canManage } from '@/features/users/lib/access'
 
 function initials(name) {
   return (name || '?')
@@ -75,48 +17,103 @@ function initials(name) {
     .map(n => n[0].toUpperCase()).join('')
 }
 
-/** What each role can do, shown so the choice isn't guesswork. */
-function RoleCard({ role }) {
-  const p = PERMISSIONS[role]
-  const rows = [
-    ['Create records', p.create],
-    ['Edit records', p.edit],
-    ['Delete records', p.delete],
-    ['Manage users', p.manageUsers],
-    ['Manage countries & cities', p.manageCountries],
-  ]
+function formatDate(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+/** Countries + clinics cells, shared by the people and invites tables. */
+function AccessCells({ person, clinicName }) {
+  if (person.role === 'super_admin') {
+    return (
+      <>
+        <td><span className="ad-muted">All countries</span></td>
+        <td><span className="ad-muted">All clinics</span></td>
+      </>
+    )
+  }
+  const countries = person.countries || []
+  const clinics = person.clinics || []
   return (
-    <div className="ad-role-card">
-      <span className={`ad-role-pill ad-role-pill--${role}`}>{ROLE_LABELS[role]}</span>
-      <ul className="ad-role-perms">
-        {rows.map(([label, on]) => (
-          <li key={label} className={on ? 'is-on' : 'is-off'}>
-            <span className="ad-role-perm-ico" aria-hidden="true">{on ? '✓' : '✕'}</span>
-            {label}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <>
+      <td>
+        {countries.length
+          ? <span className="ad-users-codes">{countries.join(', ')}</span>
+          : <span className="ad-muted">—</span>}
+      </td>
+      <td>
+        {clinics.length
+          ? <span className="ad-users-clinics">{clinics.map(clinicName).join(', ')}</span>
+          : <span className="ad-muted">All clinics</span>}
+      </td>
+    </>
   )
 }
 
 export default function UsersView() {
-  const { users, setUserRole, setUserCountry, user, allowed, loading, demoMode, refreshUsers, countryRecords } = useAdmin()
-  const countries = sortCountries(countryRecords)
-  const countryName = code => countries.find(c => c.code === code)?.name || code
-  // Search (?q) and the open invite dialog (?invite=1) live in the URL.
+  const {
+    users, invites, user, allowed, loading, demoMode, refreshUsers, locations,
+    deleteUser, revokeInvite,
+  } = useAdmin()
+  // Search (?q), the invite dialog (?invite=1) and the edit drawer (?edit=<id>) live in the URL.
   const { get, set, href } = useQuery()
   const [query, setQuery] = useQueryText('q')
   const [invited, setInvited] = useState('')
+  // Confirm dialogs stay local: { kind: 'user' | 'invite', record }.
+  const [confirm, setConfirm] = useState(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+  const [confirmError, setConfirmError] = useState('')
 
-  const canManage = allowed('manageUsers')
-  const inviting = canManage && get('invite') === '1'
+  const canManageUsers = allowed('manageUsers')
+  const inviting = canManageUsers && get('invite') === '1'
+  const editId = canManageUsers ? get('edit') : ''
+  const editing = editId ? users.find(u => u.id === editId) : null
+
+  const clinicName = id => locations.find(l => l.id === id)?.name || 'Unknown clinic'
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return users
     return users.filter(u => `${u.name} ${u.email} ${u.title}`.toLowerCase().includes(q))
   }, [users, query])
+
+  if (!canManageUsers) {
+    return (
+      <div className="ad-view">
+        <h1 className="ad-view-title">Users &amp; Roles</h1>
+        <div className="ad-panel ad-muted">Only admins can manage staff accounts.</div>
+      </div>
+    )
+  }
+
+  // Not loaded yet, gone, or someone this user may not manage.
+  if (editId && !(editing && canManage(user, editing))) {
+    return (
+      <MissingRecord
+        loading={loading && users.length === 0}
+        label="staff member"
+        backHref={href({ edit: '' })}
+        backLabel="← Back to Users & Roles"
+      />
+    )
+  }
+
+  async function runConfirm() {
+    setConfirmBusy(true)
+    setConfirmError('')
+    try {
+      if (confirm.kind === 'user') await deleteUser(confirm.record.id)
+      else await revokeInvite(confirm.record.id)
+      setConfirm(null)
+    } catch (e) {
+      setConfirmError(e.message)
+    } finally {
+      setConfirmBusy(false)
+    }
+  }
+
+  const now = Date.now()
 
   return (
     <div className="ad-view">
@@ -128,35 +125,23 @@ export default function UsersView() {
             {query && ` · showing ${filtered.length}`}
           </p>
         </div>
-        {canManage && (
-          <Link className="ad-btn ad-btn--primary" href={href({ invite: 1 })} scroll={false}>
-            + Invite staff member
-          </Link>
-        )}
+        <Link className="ad-btn ad-btn--primary" href={href({ invite: 1 })} scroll={false}>
+          + Invite staff member
+        </Link>
       </div>
 
       {invited && (
         <div className="ad-note">
-          <strong>Invite sent.</strong> {invited} can accept it using the link they were sent.
-          {' '}They won&apos;t appear in the list below until they do.
+          {demoMode ? (
+            <><strong>Account added.</strong> {invited} is in the list below (preview mode skips the invite email).</>
+          ) : (
+            <>
+              <strong>Invite sent.</strong> {invited} can accept it using the link they were sent.
+              {' '}It shows under Pending invites until they do.
+            </>
+          )}
         </div>
       )}
-
-      {/* Roles can only be set in preview mode — the real API has no
-          endpoint yet to change one after a staff account exists (KA-39),
-          so against it, roles display read-only. */}
-      <div className="ad-note">
-        {demoMode ? (
-          <>
-            <strong>Preview mode.</strong> These are sample accounts.
-          </>
-        ) : (
-          <>
-            <strong>Roles are read-only here for now.</strong> The API can create and
-            invite staff, but not yet change an existing account&apos;s role — see KA-39.
-          </>
-        )}
-      </div>
 
       <div className="ad-toolbar">
         <input
@@ -173,27 +158,27 @@ export default function UsersView() {
             <tr>
               <th>Person</th>
               <th>Role</th>
-              <th>Country</th>
-              <th className="ad-th-actions">Change role</th>
+              <th>Countries</th>
+              <th>Clinics</th>
+              <th className="ad-th-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading && !users.length && (
-              <tr><td colSpan={4} className="ad-empty">Loading people…</td></tr>
+              <tr><td colSpan={5} className="ad-empty">Loading people…</td></tr>
             )}
 
             {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan={4} className="ad-empty">
-                  {query
-                    ? 'No one matches that search.'
-                    : "No accounts yet — this screen isn't connected to the backend yet."}
+                <td colSpan={5} className="ad-empty">
+                  {query ? 'No one matches that search.' : 'No accounts yet.'}
                 </td>
               </tr>
             )}
 
             {filtered.map(u => {
               const isSelf = u.id === user?.id
+              const manageable = canManage(user, u)
               return (
                 <tr key={u.id}>
                   <td>
@@ -213,36 +198,23 @@ export default function UsersView() {
                       {ROLE_LABELS[u.role] || u.role}
                     </span>
                   </td>
-                  <td>
-                    {canManage ? (
-                      <select className="ad-input ad-input--sm" value={u.country || ''}
-                        aria-label={`${u.name}'s country`}
-                        onChange={e => setUserCountry(u.id, e.target.value)}>
-                        <option value="">— not set —</option>
-                        {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-                      </select>
-                    ) : (
-                      <span className={u.country ? undefined : 'ad-muted'}>{u.country ? countryName(u.country) : '—'}</span>
-                    )}
-                  </td>
+                  <AccessCells person={u} clinicName={clinicName} />
                   <td className="ad-td-actions">
-                    {/* Changing your own role is blocked so the last admin
-                        can't lock themselves out of the dashboard. Only
-                        possible in preview mode — see the note above. */}
-                    {demoMode && canManage && !isSelf ? (
-                      <select
-                        className="ad-input ad-input--sm"
-                        value={u.role}
-                        onChange={e => setUserRole(u.id, e.target.value)}
-                      >
-                        {ROLES.map(r => (
-                          <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                        ))}
-                      </select>
+                    {manageable ? (
+                      <div className="ad-users-actions">
+                        <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: u.id })} scroll={false}>
+                          Edit
+                        </Link>
+                        <button
+                          type="button"
+                          className="ad-btn ad-btn--ghost ad-btn--sm ad-users-remove"
+                          onClick={() => { setConfirmError(''); setConfirm({ kind: 'user', record: u }) }}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     ) : (
-                      <span className="ad-muted">
-                        {isSelf ? 'Your own role' : demoMode ? 'Admins only' : '—'}
-                      </span>
+                      <span className="ad-muted">{isSelf ? 'Your account' : '—'}</span>
                     )}
                   </td>
                 </tr>
@@ -252,22 +224,81 @@ export default function UsersView() {
         </table>
       </div>
 
+      {invites.length > 0 && (
+        <div className="ad-panel ad-users-invites">
+          <div className="ad-panel-head">
+            <h2 className="ad-panel-title">Pending invites</h2>
+          </div>
+          <div className="ad-table-wrap">
+            <table className="ad-table">
+              <thead>
+                <tr>
+                  <th>Person</th>
+                  <th>Role</th>
+                  <th>Countries</th>
+                  <th>Clinics</th>
+                  <th>Expires</th>
+                  <th className="ad-th-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invites.map(inv => {
+                  const expired = inv.expiresAt && new Date(inv.expiresAt).getTime() < now
+                  return (
+                    <tr key={inv.id}>
+                      <td>
+                        <span className="ad-user-cell-info">
+                          <span className="ad-cell-name">{inv.name}</span>
+                          <span className="ad-cell-slug">{inv.email}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`ad-role-pill ad-role-pill--${inv.role}`}>
+                          {ROLE_LABELS[inv.role] || inv.role}
+                        </span>
+                      </td>
+                      <AccessCells person={inv} clinicName={clinicName} />
+                      <td>
+                        {expired
+                          ? <span className="ad-users-expired">Expired</span>
+                          : formatDate(inv.expiresAt)}
+                      </td>
+                      <td className="ad-td-actions">
+                        {canManage(user, inv) ? (
+                          <button
+                            type="button"
+                            className="ad-btn ad-btn--ghost ad-btn--sm ad-users-remove"
+                            onClick={() => { setConfirmError(''); setConfirm({ kind: 'invite', record: inv }) }}
+                          >
+                            Revoke
+                          </button>
+                        ) : <span className="ad-muted">—</span>}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <div className="ad-panel ad-roles-panel">
         <div className="ad-panel-head">
           <h2 className="ad-panel-title">What each role can do</h2>
         </div>
         <div className="ad-role-cards">
-          {ROLES.map(r => <RoleCard key={r} role={r} />)}
+          {ROLE_ORDER.map(r => <RoleCard key={r} role={r} />)}
         </div>
         <p className="ad-role-foot">
-          Permissions are enforced by the database, not just hidden in this
-          interface — an editor&apos;s delete is refused even outside the dashboard.
+          Permissions are enforced by the API, not just hidden in this interface — a
+          staff member&apos;s delete is refused even outside the dashboard. Admins can only
+          invite and manage staff in their own countries and clinics.
         </p>
       </div>
 
       {inviting && (
         <InviteForm
-          countries={countries}
           onClose={() => set({ invite: '' })}
           onInvited={async email => {
             set({ invite: '' })
@@ -275,6 +306,25 @@ export default function UsersView() {
             await refreshUsers()
           }}
         />
+      )}
+
+      {editing && (
+        <EditUserDrawer key={editing.id} person={editing} onClose={() => set({ edit: '' })} />
+      )}
+
+      {confirm && (
+        <ConfirmDialog
+          title={confirm.kind === 'user' ? `Remove ${confirm.record.name}?` : `Revoke the invite for ${confirm.record.email}?`}
+          confirmLabel={confirm.kind === 'user' ? 'Remove' : 'Revoke'}
+          busy={confirmBusy}
+          error={confirmError}
+          onCancel={() => setConfirm(null)}
+          onConfirm={runConfirm}
+        >
+          {confirm.kind === 'user'
+            ? 'They will no longer be able to sign in to the dashboard.'
+            : 'The invite link they were sent will stop working.'}
+        </ConfirmDialog>
       )}
     </div>
   )

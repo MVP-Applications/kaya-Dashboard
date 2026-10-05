@@ -1,150 +1,214 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAdmin } from '@/shared/context/AdminContext'
-import { BADGE_OPTIONS, THUMB_OPTIONS } from '@/shared/lib/seed'
-import LocaleToggle from '@/shared/components/LocaleToggle'
-import ImagePicker from '@/shared/components/ImagePicker'
-import MarketScopeFields from '@/shared/components/MarketScopeFields'
-import SlugField from '@/shared/components/SlugField'
+import { emptyService } from '@/shared/lib/seed'
+import { sortCountries } from '@/shared/lib/content'
 import { resolveSlug } from '@/shared/lib/slug'
+import { useQueryParam } from '@/shared/hooks/useUrlState'
+import CountryTabs from '@/features/services/components/CountryTabs'
+import TreatmentFields from '@/features/services/components/TreatmentFields'
 
-export default function ServiceForm({ initial, isNew, onClose }) {
-  const { verticals, categories, upsertService, services } = useAdmin()
-  const [form, setForm] = useState(() => ({
-    slug: '', name: '', image: '', thumb: '', category: '', verticals: [], badge: '',
-    countries: [], clinics: [],
-    isPopular: false,
-    sub: '', what: '', mechanism: '', durationMins: '', sessions: '',
-    downtimeNotes: '', downtimeLevel: '', suitable: [],
-    benefits: [],
-    nameAr: '', subAr: '', whatAr: '', mechanismAr: '', suitableAr: [], benefitsAr: [],
+/** Every field a country tab edits, with defaults for anything missing. */
+function draftFrom(record, country) {
+  return {
+    ...emptyService(),
+    cardImage: '', clinics: [], isPopular: false,
     durationMinsAr: '', sessionsAr: '', downtimeNotesAr: '', downtimeLevelAr: '',
-    ...initial,
-  }))
+    ...record,
+    country,
+  }
+}
+
+const trimList = list => list.map(s => s.trim()).filter(Boolean)
+// The backend requires a title per benefit — a row with only an icon or a
+// description typed in is dropped as incomplete.
+const cleanBenefits = list => list
+  .map(b => ({ i: b.i.trim(), t: b.t.trim(), d: b.d.trim() }))
+  .filter(b => b.t)
+
+/**
+ * Create / edit one treatment. Each country the user can access is a tab
+ * with the full form for that country's own version — its own name, slug,
+ * copy, images, verticals and clinics. A tab that is switched on is offered
+ * in that country; switching an existing one off removes it there on save.
+ * Countries the user can't access aren't shown and are never changed.
+ */
+export default function ServiceForm({ groupId, initialVersions, onClose }) {
+  const { services, verticals, saveTreatment, saving, accessibleCountries, activeCountry, allowed } = useAdmin()
+  const countries = useMemo(() => sortCountries(accessibleCountries), [accessibleCountries])
+  const isNew = !groupId
+
+  const initiallyOffered = useMemo(() => new Set(initialVersions.map(v => v.country)), [initialVersions])
+  const [drafts, setDrafts] = useState(() => {
+    const byCountry = {}
+    countries.forEach(c => {
+      byCountry[c.code] = draftFrom(initialVersions.find(v => v.country === c.code), c.code)
+    })
+    return byCountry
+  })
+  const [offered, setOffered] = useState(() => {
+    if (initialVersions.length) return new Set(initiallyOffered)
+    const first = activeCountry || countries[0]?.code
+    return new Set(first ? [first] : [])
+  })
   const [error, setError] = useState('')
-  const [locale, setLocale] = useState('EN')
-  const originalSlug = isNew ? null : initial.slug
+  const [invalidTab, setInvalidTab] = useState('')
 
-  const isAr = locale === 'AR'
-  const nameKey = isAr ? 'nameAr' : 'name'
-  const subKey = isAr ? 'subAr' : 'sub'
-  const whatKey = isAr ? 'whatAr' : 'what'
-  const mechanismKey = isAr ? 'mechanismAr' : 'mechanism'
-  const suitableKey = isAr ? 'suitableAr' : 'suitable'
-  const benefitsKey = isAr ? 'benefitsAr' : 'benefits'
-  const durationKey = isAr ? 'durationMinsAr' : 'durationMins'
-  const sessionsKey = isAr ? 'sessionsAr' : 'sessions'
-  const downtimeNotesKey = isAr ? 'downtimeNotesAr' : 'downtimeNotes'
-  const downtimeLevelKey = isAr ? 'downtimeLevelAr' : 'downtimeLevel'
+  // The open tab is in the URL (?tab=KSA) so a refresh or shared link reopens it.
+  const [tabParam, setTab] = useQueryParam('tab')
+  const fallbackTab = (activeCountry && countries.some(c => c.code === activeCountry) && activeCountry)
+    || [...offered][0] || countries[0]?.code || ''
+  const tab = countries.some(c => c.code === tabParam) ? tabParam : fallbackTab
+  const tabCountry = countries.find(c => c.code === tab)
+  const form = drafts[tab] || draftFrom(null, tab)
+  const isOn = offered.has(tab)
+  const canRemoveCountry = allowed('delete')
+  const title = [...offered].map(code => drafts[code]?.name).find(Boolean) || initialVersions[0]?.name || ''
 
-  function set(field, value) {
-    setForm(f => ({ ...f, [field]: value }))
-  }
-  function toggleVertical(id) {
-    setForm(f => ({
-      ...f,
-      verticals: f.verticals.includes(id)
-        ? f.verticals.filter(v => v !== id)
-        : [...f.verticals, id],
-    }))
+  function patchDraft(code, patch) {
+    setDrafts(d => ({ ...d, [code]: { ...(d[code] || draftFrom(null, code)), ...patch } }))
   }
 
-  // ── Benefits (repeatable icon + title + description) — EN or AR depending on the active tab ──
-  function addBenefit() {
-    setForm(f => ({ ...f, [benefitsKey]: [...f[benefitsKey], { i: '', t: '', d: '' }] }))
-  }
-  function updateBenefit(idx, field, value) {
-    setForm(f => ({
-      ...f,
-      [benefitsKey]: f[benefitsKey].map((b, i) => (i === idx ? { ...b, [field]: value } : b)),
-    }))
-  }
-  function removeBenefit(idx) {
-    setForm(f => ({ ...f, [benefitsKey]: f[benefitsKey].filter((_, i) => i !== idx) }))
+  function setOn(code, on) {
+    setOffered(prev => {
+      const next = new Set(prev)
+      if (on) next.add(code)
+      else next.delete(code)
+      return next
+    })
   }
 
-  // ── Suitable for (repeatable, one line of text each) — EN or AR depending on the active tab ──
-  function addSuitable() {
-    setForm(f => ({ ...f, [suitableKey]: [...f[suitableKey], ''] }))
+  /**
+   * Start a country's tab from another country's content — not its clinics
+   * (those are per country) or verticals this country doesn't offer.
+   */
+  function copyFrom(fromCode) {
+    const src = drafts[fromCode]
+    const here = drafts[tab]
+    const offeredHere = new Set(verticals.filter(v => (v.countries || []).includes(tab)).map(v => v.id))
+    patchDraft(tab, {
+      ...src,
+      id: here.id,
+      groupId: here.groupId,
+      country: tab,
+      clinics: [],
+      verticals: src.verticals.filter(id => offeredHere.has(id)),
+    })
+    setOn(tab, true)
   }
-  function updateSuitable(idx, value) {
-    setForm(f => ({ ...f, [suitableKey]: f[suitableKey].map((s, i) => (i === idx ? value : s)) }))
-  }
-  function removeSuitable(idx) {
-    setForm(f => ({ ...f, [suitableKey]: f[suitableKey].filter((_, i) => i !== idx) }))
-  }
 
-  function submit(e) {
-    e.preventDefault()
-    const name = form.name.trim()
-    if (!name) return setError('Name is required.')
-    const what = form.what.trim()
-    if (!what) return setError('"What it is" is required.')
-    const mechanism = form.mechanism.trim()
-    if (!mechanism) return setError('"How it works" is required.')
-    if (!form.countries.length) return setError('Pick at least one country.')
+  /** One country's draft -> the record the store saves, or an error message. */
+  function toVersion(code) {
+    const f = drafts[code] || draftFrom(null, code)
+    const name = f.name.trim()
+    if (!name) return { error: 'Name is required.' }
+    const what = f.what.trim()
+    if (!what) return { error: '"What it is" is required.' }
+    const mechanism = f.mechanism.trim()
+    if (!mechanism) return { error: '"How it works" is required.' }
 
-    const { slug, error: slugError } = resolveSlug(
-      form.slug, name, services.map(s => s.slug).filter(s => s !== originalSlug),
-    )
-    if (slugError) return setError(slugError)
+    // Slugs only need to be unique within the country.
+    const taken = services
+      .filter(s => s.country === code && s.groupId !== groupId)
+      .map(s => s.slug)
+    const { slug, error: slugError } = resolveSlug(f.slug, name, taken)
+    if (slugError) return { error: slugError }
 
-    // The backend requires a title per benefit (not a description) — a row
-    // with only an icon/description typed in is dropped as incomplete.
-    const cleanBenefits = list => list
-      .map(b => ({ i: b.i.trim(), t: b.t.trim(), d: b.d.trim() }))
-      .filter(b => b.t)
-
-    const record = {
-      id: form.id,
-      slug,
-      name,
-      image: form.image,
-      thumb: form.thumb,
-      category: form.category,
-      verticals: form.verticals,
-      countries: form.countries,
-      clinics: form.clinics,
-      badge: form.badge,
-      isPopular: form.isPopular,
-      sub: form.sub.trim(),
-      what,
-      mechanism,
-      durationMins: form.durationMins.trim(),
-      sessions: form.sessions.trim(),
-      downtimeNotes: form.downtimeNotes.trim(),
-      downtimeLevel: form.downtimeLevel.trim(),
-      suitable: form.suitable.map(s => s.trim()).filter(Boolean),
-      benefits: cleanBenefits(form.benefits),
-      nameAr: form.nameAr.trim(),
-      subAr: form.subAr.trim(),
-      whatAr: form.whatAr.trim(),
-      mechanismAr: form.mechanismAr.trim(),
-      suitableAr: form.suitableAr.map(s => s.trim()).filter(Boolean),
-      benefitsAr: cleanBenefits(form.benefitsAr),
-      durationMinsAr: form.durationMinsAr.trim(),
-      sessionsAr: form.sessionsAr.trim(),
-      downtimeNotesAr: form.downtimeNotesAr.trim(),
-      downtimeLevelAr: form.downtimeLevelAr.trim(),
+    return {
+      version: {
+        id: f.id,
+        groupId,
+        country: code,
+        slug,
+        name,
+        image: f.image,
+        cardImage: f.cardImage,
+        thumb: f.thumb,
+        category: f.category,
+        verticals: f.verticals,
+        clinics: f.clinics,
+        badge: f.badge,
+        isPopular: f.isPopular,
+        sub: f.sub.trim(),
+        what,
+        mechanism,
+        durationMins: String(f.durationMins).trim(),
+        sessions: String(f.sessions).trim(),
+        downtimeNotes: f.downtimeNotes.trim(),
+        downtimeLevel: f.downtimeLevel.trim(),
+        suitable: trimList(f.suitable),
+        benefits: cleanBenefits(f.benefits),
+        nameAr: f.nameAr.trim(),
+        subAr: f.subAr.trim(),
+        whatAr: f.whatAr.trim(),
+        mechanismAr: f.mechanismAr.trim(),
+        suitableAr: trimList(f.suitableAr),
+        benefitsAr: cleanBenefits(f.benefitsAr),
+        durationMinsAr: String(f.durationMinsAr).trim(),
+        sessionsAr: String(f.sessionsAr).trim(),
+        downtimeNotesAr: f.downtimeNotesAr.trim(),
+        downtimeLevelAr: f.downtimeLevelAr.trim(),
+      },
     }
-    upsertService(record, originalSlug)
-    onClose()
   }
+
+  async function submit(e) {
+    e.preventDefault()
+    setError('')
+    setInvalidTab('')
+
+    const codes = countries.map(c => c.code).filter(code => offered.has(code))
+    if (!codes.length) {
+      return setError(isNew
+        ? 'Turn on at least one country.'
+        : 'Turn on at least one country. To remove this treatment everywhere, delete it from the list.')
+    }
+
+    const versions = []
+    for (const code of codes) {
+      const { version, error: err } = toVersion(code)
+      if (err) {
+        setTab(code)
+        setInvalidTab(code)
+        return setError(`${countries.find(c => c.code === code)?.name || code}: ${err}`)
+      }
+      versions.push(version)
+    }
+    const removedCountries = [...initiallyOffered].filter(code => !offered.has(code))
+
+    const saved = await saveTreatment({ groupId, versions, removedCountries })
+    // On failure the error toast is shown and the draft stays open.
+    if (saved) onClose()
+  }
+
+  if (!countries.length) {
+    return (
+      <div className="ad-editor">
+        <div className="ad-editor-head">
+          <button type="button" className="ad-back" onClick={onClose}>← Back</button>
+        </div>
+        <p className="ad-empty">You don&apos;t have access to any country yet — ask a super admin to assign one.</p>
+      </div>
+    )
+  }
+
+  const otherOffered = countries.filter(c => c.code !== tab && offered.has(c.code))
+  const removingExisting = !isOn && initiallyOffered.has(tab)
 
   return (
     <form className="ad-editor" onSubmit={submit}>
       <div className="ad-editor-head">
         <button type="button" className="ad-back" onClick={onClose}>← Back</button>
         <div className="ad-editor-titles">
-          <h1 className="ad-view-title">{isNew ? 'New service' : 'Edit service'}</h1>
+          <h1 className="ad-view-title">{isNew ? 'New treatment' : 'Edit treatment'}</h1>
           <p className="ad-view-sub">
-            {isNew ? 'Create a treatment for the site.' : form.slug}
+            {isNew ? 'Create a treatment and fill in its content for each country.' : title}
           </p>
         </div>
         <div className="ad-editor-actions">
           <button type="button" className="ad-btn ad-btn--ghost" onClick={onClose}>Cancel</button>
-          <button type="submit" className="ad-btn ad-btn--primary">
-            {isNew ? 'Create service' : 'Save changes'}
+          <button type="submit" className="ad-btn ad-btn--primary" disabled={saving}>
+            {saving ? 'Saving…' : isNew ? 'Create treatment' : 'Save changes'}
           </button>
         </div>
       </div>
@@ -152,181 +216,50 @@ export default function ServiceForm({ initial, isNew, onClose }) {
       {error && <div className="ad-form-error ad-editor-error">{error}</div>}
 
       <div className="ad-editor-body ad-form-sections">
-        <fieldset className="ad-fieldset">
-          <legend>Name &amp; content</legend>
-          <p className="ad-fieldset-hint">
-            English is required. Fill in the Arabic Name, &quot;What it is&quot;
-            and &quot;How it works&quot; to add an Arabic translation.
-          </p>
-          <LocaleToggle locale={locale} onChange={setLocale} />
-          <div className="ad-frow">
-            <label className="ad-field ad-w-lg">
-              <span className="ad-field-label">{isAr ? 'الاسم (Name)' : 'Name *'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
-                onChange={e => set(nameKey, e.target.value)} />
-            </label>
-            <SlugField className="ad-field ad-w-md" value={form.slug} source={form.name}
-              onChange={v => set('slug', v)} />
-          </div>
-          <label className="ad-field ad-w-xl">
-            <span className="ad-field-label">{isAr ? 'مقتطف قصير (Short teaser)' : 'Short teaser'}</span>
-            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[subKey]}
-              placeholder="A one-line summary shown on service cards"
-              onChange={e => set(subKey, e.target.value)} />
+        <CountryTabs countries={countries} active={tab} offered={offered} invalid={invalidTab}
+          onSelect={code => { setTab(code); setInvalidTab('') }} />
+
+        <div className="ad-note ad-country-offer">
+          <label className="ad-check">
+            <input
+              type="checkbox"
+              checked={isOn}
+              disabled={isOn && initiallyOffered.has(tab) && !canRemoveCountry}
+              onChange={e => setOn(tab, e.target.checked)}
+            />
+            Offer this treatment in {tabCountry?.name}
           </label>
-          <div className="ad-split">
-            <label className="ad-field">
-              <span className="ad-field-label">{isAr ? 'ما هو (What it is)' : 'What it is *'}</span>
-              <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
-                value={form[whatKey]} onChange={e => set(whatKey, e.target.value)} />
-            </label>
-            <label className="ad-field">
-              <span className="ad-field-label">{isAr ? 'كيف يعمل (How it works)' : 'How it works (mechanism) *'}</span>
-              <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
-                value={form[mechanismKey]} onChange={e => set(mechanismKey, e.target.value)} />
-            </label>
-          </div>
-        </fieldset>
+          {isOn && initiallyOffered.has(tab) && !canRemoveCountry && (
+            <span className="ad-muted">Only an admin can stop offering it in a country.</span>
+          )}
+          {removingExisting && (
+            <span className="ad-form-error">
+              Saving will remove this treatment from {tabCountry?.name}. Its content there is deleted.
+            </span>
+          )}
+        </div>
 
-        <div className="ad-pair">
-          <fieldset className="ad-fieldset">
-            <legend>What to expect {isAr ? '(العربية)' : ''}</legend>
-            <p className="ad-fieldset-hint">
-              English is required. Fill in the Arabic versions so visitors browsing
-              in Arabic see these details in Arabic too.
+        {isOn ? (
+          <TreatmentFields key={tab} country={tab} form={form} onChange={patch => patchDraft(tab, patch)} />
+        ) : (
+          <div className="ad-fieldset ad-country-off">
+            <p>
+              {removingExisting
+                ? `Turn it back on to keep ${tabCountry?.name}'s version.`
+                : `Not offered in ${tabCountry?.name}. Turn it on to add content for ${tabCountry?.name}.`}
             </p>
-            <div className="ad-frow">
-              <label className="ad-field ad-w-md">
-                <span className="ad-field-label">{isAr ? 'المدة (Duration)' : 'Duration'}</span>
-                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[durationKey]}
-                  placeholder="e.g. 45 mins"
-                  onChange={e => set(durationKey, e.target.value)} />
-              </label>
-              <label className="ad-field ad-w-md">
-                <span className="ad-field-label">{isAr ? 'الجلسات (Sessions)' : 'Sessions'}</span>
-                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[sessionsKey]}
-                  placeholder="e.g. 3–6 sessions"
-                  onChange={e => set(sessionsKey, e.target.value)} />
-              </label>
+            <div className="ad-country-off-actions">
+              <button type="button" className="ad-btn ad-btn--primary" onClick={() => setOn(tab, true)}>
+                {removingExisting ? 'Keep this country' : `Start empty`}
+              </button>
+              {!removingExisting && otherOffered.map(c => (
+                <button key={c.code} type="button" className="ad-btn ad-btn--soft" onClick={() => copyFrom(c.code)}>
+                  Copy content from {c.name}
+                </button>
+              ))}
             </div>
-            <div className="ad-frow">
-              <label className="ad-field ad-w-md">
-                <span className="ad-field-label">{isAr ? 'فترة التعافي (Downtime)' : 'Downtime'}</span>
-                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeNotesKey]}
-                  onChange={e => set(downtimeNotesKey, e.target.value)} />
-              </label>
-              <label className="ad-field ad-w-md">
-                <span className="ad-field-label">
-                  {isAr ? 'شدة فترة التعافي (Downtime severity)' : 'Downtime severity'}
-                </span>
-                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeLevelKey]}
-                  placeholder="e.g. Minimal, Mild, Moderate"
-                  onChange={e => set(downtimeLevelKey, e.target.value)} />
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset className="ad-fieldset">
-            <legend>Suitable for {isAr ? '(العربية)' : ''}</legend>
-            {form[suitableKey].map((s, i) => (
-              <div key={i} className="ad-repeat-row">
-                <div className="ad-frow">
-                  <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={s}
-                    placeholder="e.g. Oily or acne-prone skin"
-                    onChange={e => updateSuitable(i, e.target.value)} />
-                </div>
-                <button type="button" className="ad-icon-btn" onClick={() => removeSuitable(i)}
-                  aria-label="Remove">✕</button>
-              </div>
-            ))}
-            <button type="button" className="ad-btn ad-btn--soft" onClick={addSuitable}>+ Add</button>
-          </fieldset>
-        </div>
-
-        <fieldset className="ad-fieldset">
-          <legend>Benefits {isAr ? '(العربية)' : ''}</legend>
-          {form[benefitsKey].map((b, i) => (
-            <div key={i} className="ad-repeat-row">
-              <div className="ad-frow">
-                <input className="ad-input ad-w-xs" dir={isAr ? 'rtl' : undefined} value={b.i} placeholder="Icon (e.g. ✦)"
-                  aria-label="Icon" onChange={e => updateBenefit(i, 'i', e.target.value)} />
-                <input className="ad-input ad-w-md" dir={isAr ? 'rtl' : undefined} value={b.t} placeholder="Title"
-                  aria-label="Title" onChange={e => updateBenefit(i, 't', e.target.value)} />
-                <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={b.d} placeholder="Description"
-                  aria-label="Description" onChange={e => updateBenefit(i, 'd', e.target.value)} />
-              </div>
-              <button type="button" className="ad-icon-btn" onClick={() => removeBenefit(i)}
-                aria-label="Remove benefit">✕</button>
-            </div>
-          ))}
-          <button type="button" className="ad-btn ad-btn--soft" onClick={addBenefit}>+ Add benefit</button>
-        </fieldset>
-
-        <div className="ad-pair">
-          <fieldset className="ad-fieldset">
-            <legend>Media</legend>
-            <div className="ad-field">
-              <span className="ad-field-label">Image</span>
-              <ImagePicker value={form.image} onChange={v => set('image', v)} />
-            </div>
-            <label className="ad-field ad-w-md">
-              <span className="ad-field-label">Icon</span>
-              <select className="ad-input" value={form.thumb}
-                onChange={e => set('thumb', e.target.value)}>
-                <option value="">— none —</option>
-                {THUMB_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </label>
-          </fieldset>
-
-          <fieldset className="ad-fieldset">
-            <legend>Classification</legend>
-            <div className="ad-field">
-              <span className="ad-field-label">Verticals</span>
-              <div className="ad-check-grid">
-                {verticals.map(v => (
-                  <label key={v.id} className={`ad-check${form.verticals.includes(v.id) ? ' active' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={form.verticals.includes(v.id)}
-                      onChange={() => toggleVertical(v.id)}
-                    />
-                    <span className="ad-check-dot" style={{ background: v.color }} />
-                    {v.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="ad-frow">
-              <label className="ad-field ad-w-md">
-                <span className="ad-field-label">Category</span>
-                <select className="ad-input" value={form.category}
-                  onChange={e => set('category', e.target.value)}>
-                  <option value="">— none —</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </label>
-              <label className="ad-field ad-w-md">
-                <span className="ad-field-label">Badge</span>
-                <select className="ad-input" value={form.badge}
-                  onChange={e => set('badge', e.target.value)}>
-                  {BADGE_OPTIONS.map(b => <option key={b.value || 'none'} value={b.value}>{b.label}</option>)}
-                </select>
-              </label>
-            </div>
-            <label className="ad-field ad-field--toggle">
-              <span className="ad-field-label">Popular</span>
-              <label className="ad-check">
-                <input type="checkbox" checked={form.isPopular}
-                  onChange={e => set('isPopular', e.target.checked)} />
-                Show this treatment in the site&apos;s Popular treatments section
-              </label>
-            </label>
-          </fieldset>
-        </div>
-
-        <MarketScopeFields countries={form.countries} clinics={form.clinics}
-          onChange={scope => setForm(f => ({ ...f, ...scope }))} />
+          </div>
+        )}
       </div>
     </form>
   )

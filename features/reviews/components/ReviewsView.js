@@ -7,6 +7,7 @@ import { emptyReview } from '@/shared/lib/seed'
 import ReviewForm from '@/features/reviews/components/ReviewForm'
 import MissingRecord from '@/shared/components/MissingRecord'
 import { useQuery, useQueryText } from '@/shared/hooks/useUrlState'
+import { useCountryFilter } from '@/shared/hooks/useCountryFilter'
 
 export default function ReviewsView() {
   const { reviews, services, deleteReview, allowed, dataVersion } = useAdmin()
@@ -14,26 +15,30 @@ export default function ReviewsView() {
   // refresh or a new tab reopens the same screen.
   const { get, set, href } = useQuery()
   const [query, setQuery] = useQueryText('q')
+  // ?country is shared with the top-bar switcher; empty falls back to it.
+  const [country, setCountry, countryOptions] = useCountryFilter()
   const editId = get('edit')
   const isNew = get('new') === '1'
   const newReview = useMemo(() => (isNew ? emptyReview() : null), [isNew])
   const [confirm, setConfirm] = useState(null)
 
-  // `r.treatment` holds the linked Treatment's slug (KA-44) — resolve it to
-  // a display name for the table and search instead of showing the slug.
+  // `r.treatment` holds the linked treatment VERSION id (one per country) —
+  // resolve it to a display name for the table and search.
   const treatmentName = useMemo(() => {
     const map = {}
-    services.forEach(s => { map[s.slug] = s.name })
+    services.forEach(s => { map[s.id] = s.name })
     return map
   }, [services])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return reviews
-    return reviews.filter(r => (
-      `${r.name} ${treatmentName[r.treatment] || r.treatment} ${r.location}`.toLowerCase().includes(q)
-    ))
-  }, [reviews, query, treatmentName])
+    return reviews.filter(r => {
+      // A review with no country is shown in every country, so it always matches.
+      if (country && r.country && r.country !== country) return false
+      if (q && !`${r.name} ${treatmentName[r.treatment] || ''} ${r.location}`.toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [reviews, query, country, treatmentName])
 
   const canDelete = allowed('delete')
   const canCreate = allowed('create')
@@ -68,6 +73,10 @@ export default function ReviewsView() {
       <div className="ad-toolbar">
         <input className="ad-input ad-search" placeholder="Search by name, treatment, or location…"
           value={query} onChange={e => setQuery(e.target.value)} />
+        <select className="ad-input ad-filter" value={country} onChange={e => setCountry(e.target.value)}>
+          <option value="">All countries</option>
+          {countryOptions.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+        </select>
       </div>
 
       <div className="ad-table-wrap">

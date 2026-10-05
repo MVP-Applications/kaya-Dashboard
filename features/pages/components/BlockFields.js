@@ -85,7 +85,7 @@ function Field({ field, data, locale, onChange, services, doctors }) {
         <div className="ad-field">
           <span className="ad-field-label">{label}</span>
           <PickList value={value} onChange={v => onChange(k, v)} addLabel="+ Add treatment" emptyLabel="No treatments picked yet."
-            options={services.map(s => ({ value: s.id, label: s.name }))} />
+            options={services.map(s => ({ value: s.id, label: s.country ? `${s.name} · ${s.country}` : s.name }))} />
         </div>
       )
     case 'doctors':

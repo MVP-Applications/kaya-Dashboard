@@ -26,8 +26,10 @@ export default function CategoriesView() {
   // screen instead of flashing "not found" on the way out.
   const held = useRef(null)
 
-  const canDelete = allowed('delete')
-  const canCreate = allowed('create')
+  // Categories are global settings — only a super admin changes them.
+  const canManage = allowed('manageSettings')
+  const canDelete = canManage
+  const canCreate = canManage
 
   // How many treatments currently point at each category — computed
   // client-side from `services`, same approach VerticalsView uses for its
@@ -35,7 +37,16 @@ export default function CategoriesView() {
   // there; this way it stays live as services change without a refetch).
   const treatmentCount = useMemo(() => {
     const map = {}
-    services.forEach(s => { if (s.category) map[s.category] = (map[s.category] || 0) + 1 })
+    // `services` holds one version per country — count each treatment
+    // (groupId) once.
+    const seen = {}
+    services.forEach(s => {
+      if (!s.category) return
+      const group = s.groupId ?? s.id
+      seen[s.category] = seen[s.category] || new Set()
+      seen[s.category].add(group)
+    })
+    Object.entries(seen).forEach(([k, groups]) => { map[k] = groups.size })
     return map
   }, [services])
 
@@ -46,7 +57,7 @@ export default function CategoriesView() {
   const closeEditor = () => set({ edit: '', new: '' })
   const saveAndClose = (rec, orig) => { upsertCategory(rec, orig); closeEditor() }
 
-  if (isNew) {
+  if (isNew && canCreate) {
     return (
       <CategoryForm key="new" initial={newCategory} isNew existing={categories}
         onSave={saveAndClose} onClose={closeEditor} />
@@ -62,7 +73,7 @@ export default function CategoriesView() {
     }
     return (
       <CategoryForm key={editSlug} initial={record} isNew={false} existing={categories}
-        onSave={saveAndClose} onClose={closeEditor} />
+        readOnly={!canManage} onSave={saveAndClose} onClose={closeEditor} />
     )
   }
 
@@ -83,6 +94,8 @@ export default function CategoriesView() {
           </Link>
         )}
       </div>
+
+      {!canManage && <div className="ad-note">Only a super admin can change these settings.</div>}
 
       <div className="ad-toolbar">
         <input className="ad-input ad-search" placeholder="Search by name or slug…"
@@ -108,7 +121,7 @@ export default function CategoriesView() {
                     itemKey={c.slug}
                     index={categories.indexOf(c)}
                     total={categories.length}
-                    disabled={isFiltered}
+                    disabled={isFiltered || !canManage}
                   />
                 </td>
                 <td>
@@ -117,7 +130,7 @@ export default function CategoriesView() {
                 </td>
                 <td>{treatmentCount[c.id] || 0}</td>
                 <td className="ad-td-actions">
-                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: c.slug })}>Edit</Link>
+                  <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: c.slug })}>{canManage ? 'Edit' : 'View'}</Link>
                   {canDelete && (
                     <button className="ad-btn ad-btn--danger ad-btn--sm"
                       onClick={() => setConfirm(c.slug)}>Delete</button>
@@ -152,7 +165,7 @@ export default function CategoriesView() {
   )
 }
 
-function CategoryForm({ initial, isNew, existing, onSave, onClose }) {
+function CategoryForm({ initial, isNew, existing, readOnly = false, onSave, onClose }) {
   const [form, setForm] = useState({
     slug: '', name: '', description: '', nameAr: '', descriptionAr: '', ...initial,
   })
@@ -168,6 +181,7 @@ function CategoryForm({ initial, isNew, existing, onSave, onClose }) {
 
   function submit(e) {
     e.preventDefault()
+    if (readOnly) return
     const name = form.name.trim()
     if (!name) return setError('Name is required.')
 
@@ -189,20 +203,23 @@ function CategoryForm({ initial, isNew, existing, onSave, onClose }) {
       <div className="ad-editor-head">
         <button type="button" className="ad-back" onClick={onClose}>← Back</button>
         <div className="ad-editor-titles">
-          <h1 className="ad-view-title">{isNew ? 'New category' : 'Edit category'}</h1>
+          <h1 className="ad-view-title">{isNew ? 'New category' : readOnly ? 'Category' : 'Edit category'}</h1>
           <p className="ad-view-sub">{isNew ? 'Add a treatment category.' : form.slug}</p>
         </div>
         <div className="ad-editor-actions">
-          <button type="button" className="ad-btn ad-btn--ghost" onClick={onClose}>Cancel</button>
-          <button type="submit" className="ad-btn ad-btn--primary">
-            {isNew ? 'Create category' : 'Save changes'}
-          </button>
+          <button type="button" className="ad-btn ad-btn--ghost" onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</button>
+          {!readOnly && (
+            <button type="submit" className="ad-btn ad-btn--primary">
+              {isNew ? 'Create category' : 'Save changes'}
+            </button>
+          )}
         </div>
       </div>
 
       {error && <div className="ad-form-error ad-editor-error">{error}</div>}
 
       <div className="ad-editor-body">
+        {readOnly && <div className="ad-note">Only a super admin can change these settings.</div>}
         <fieldset className="ad-fieldset">
           <legend>Basics</legend>
           <SlugField value={form.slug} source={form.name} onChange={v => set('slug', v)} />

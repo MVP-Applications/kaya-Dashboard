@@ -50,7 +50,7 @@ const NAV_GROUPS = [
   },
   {
     label: 'Settings',
-    items: [{ id: 'users', label: 'Users & Roles', icon: '👤' }],
+    items: [{ id: 'users', label: 'Users & Roles', icon: '👤', permission: 'manageUsers' }],
   },
 ]
 

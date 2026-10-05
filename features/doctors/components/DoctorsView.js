@@ -8,15 +8,17 @@ import { emptyDoctor } from '@/shared/lib/seed'
 import DoctorForm from '@/features/doctors/components/DoctorForm'
 import MissingRecord from '@/shared/components/MissingRecord'
 import { useQuery, useQueryParam, useQueryText } from '@/shared/hooks/useUrlState'
+import { useCountryFilter } from '@/shared/hooks/useCountryFilter'
 
 export default function DoctorsView() {
-  const { doctors, verticals, countryRecords, deleteDoctor, allowed, dataVersion } = useAdmin()
+  const { doctors, verticals, deleteDoctor, allowed, dataVersion } = useAdmin()
   // Filters and the open record live in the URL (?q, ?vertical, ?country,
   // ?edit=<slug>, ?new=1) so a refresh or a new tab reopens the same screen.
   const { get, set, href } = useQuery()
   const [query, setQuery] = useQueryText('q')
   const [vertical, setVertical] = useQueryParam('vertical')
-  const [country, setCountry] = useQueryParam('country')
+  // ?country is shared with the top-bar switcher; empty falls back to it.
+  const [country, setCountry, countryOptions] = useCountryFilter()
   const editSlug = get('edit')
   const isNew = get('new') === '1'
   const newDoctor = useMemo(() => (isNew ? emptyDoctor() : null), [isNew])
@@ -78,7 +80,7 @@ export default function DoctorsView() {
         </select>
         <select className="ad-input ad-filter" value={country} onChange={e => setCountry(e.target.value)}>
           <option value="">All countries</option>
-          {countryRecords.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+          {countryOptions.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
         </select>
       </div>
 

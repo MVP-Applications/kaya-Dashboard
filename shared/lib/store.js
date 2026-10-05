@@ -24,7 +24,8 @@ const backend = isApiConfigured ? remote : local
 
 export const fetchAll = (...a) => backend.fetchAll(...a)
 
-export const persistServices = (...a) => backend.persistServices(...a)
+export const persistTreatment = (...a) => backend.persistTreatment(...a)
+export const removeTreatmentCountry = (...a) => backend.removeTreatmentCountry(...a)
 export const fetchService = (...a) => backend.fetchService(...a)
 export const persistVerticals = (...a) => backend.persistVerticals(...a)
 export const persistCategories = (...a) => backend.persistCategories(...a)
@@ -97,9 +98,11 @@ export const fetchOverrides = (...a) => backend.fetchOverrides(...a)
 export const persistOverrideSection = (...a) => backend.persistOverrideSection(...a)
 
 export const fetchUsers = (...a) => backend.fetchUsers(...a)
-export const updateUserRole = (...a) => backend.updateUserRole(...a)
 export const inviteStaffUser = (...a) => backend.inviteStaffUser(...a)
-export const updateStaffCountry = (...a) => backend.updateStaffCountry(...a)
+export const updateStaffUser = (...a) => backend.updateStaffUser(...a)
+export const removeStaffUser = (...a) => backend.removeStaffUser(...a)
+export const fetchStaffInvites = (...a) => backend.fetchStaffInvites(...a)
+export const revokeStaffInvite = (...a) => backend.revokeStaffInvite(...a)
 
 /**
  * Submit an enquiry from the public site.

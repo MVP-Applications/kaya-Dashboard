@@ -8,9 +8,13 @@
  * silently mint a new one from the cookie, so signing in survives a reload
  * the same way Supabase's persisted session used to.
  *
- * The backend only knows two roles, STAFF and ADMIN — mapped here onto this
- * app's existing 'editor'/'admin' so ROLE_LABELS, PERMISSIONS and every
- * screen that reads user.role stay unchanged.
+ * Three roles, fixed per role (no per-user permission editor):
+ *   super_admin — every country; manages admins, staff and global settings.
+ *   admin       — assigned countries/clinics; can delete; manages staff there.
+ *   staff       — assigned countries/clinics; create and edit only.
+ * Admins and staff only ever see their own countries/clinics — the backend
+ * filters every list and rejects writes outside them; `user.countries` /
+ * `user.clinics` here only shape the UI (country tabs, pickers, filters).
  *
  * IMPORTANT: `can()` is a UI convenience — it hides buttons a role shouldn't
  * press. It is NOT the security boundary; the backend's own role guards are.
@@ -21,36 +25,24 @@ import { setAccessToken, clearAccessToken } from '@/shared/lib/api/token'
 import { isApiConfigured } from '@/shared/lib/api/config'
 import { loadSession, saveSession, clearSession, demoUsers } from '@/shared/lib/store'
 
-export const ROLE_LABELS = {
-  admin: 'Administrator',
-  editor: 'Content Editor',
-}
-
-/**
- * Permissions per role. Admins can do everything; editors can't delete,
- * manage users, see customer accounts (which hold health data), or change
- * countries and cities (the backend allows those to ADMIN only).
- */
-export const PERMISSIONS = {
-  admin: { create: true, edit: true, delete: true, manageUsers: true, viewCustomers: true, manageCountries: true },
-  editor: { create: true, edit: true, delete: false, manageUsers: false, viewCustomers: false, manageCountries: false },
-}
-
-export function can(user, action) {
-  if (!user) return false
-  return Boolean(PERMISSIONS[user.role]?.[action])
-}
-
-const ROLE_FROM_BACKEND = { ADMIN: 'admin', STAFF: 'editor' }
+export {
+  ROLE_LABELS, PERMISSIONS, can, ROLE_TO_BACKEND, ROLE_FROM_BACKEND, isSuperAdmin,
+} from '@/shared/lib/roles'
+import { ROLE_LABELS, ROLE_FROM_BACKEND } from '@/shared/lib/roles'
 
 /** Build the app-level user object the dashboard renders from a staff profile. */
 function toUser(staff) {
+  const role = ROLE_FROM_BACKEND[staff.role] || 'staff'
   return {
     id: staff.id,
     email: staff.email || '',
     name: staff.name || (staff.email || '').split('@')[0],
-    title: ROLE_LABELS[ROLE_FROM_BACKEND[staff.role]] || '',
-    role: ROLE_FROM_BACKEND[staff.role] || 'editor',
+    title: ROLE_LABELS[role] || '',
+    role,
+    // Country.code of each assigned country — empty for super admins, who see every country.
+    countries: (staff.countries || []).map(c => c.code),
+    // Assigned clinic ids — empty means every clinic in `countries`.
+    clinics: (staff.clinics || []).map(c => c.id),
   }
 }
 
