@@ -12,6 +12,7 @@ import { DOCTORS } from '@/shared/lib/seed-data/doctors'
 import { REVIEWS } from '@/shared/lib/seed-data/reviews'
 import { VOUCHERS } from '@/shared/lib/seed-data/vouchers'
 import { CUSTOMERS } from '@/shared/lib/seed-data/customers'
+import { BLOGS, BLOG_CATEGORIES } from '@/shared/lib/seed-data/blogs'
 import { TREATMENT_CATEGORIES } from '@/shared/lib/taxonomy'
 import { seedLocations, seedPages, seedSite } from '@/shared/lib/content'
 
@@ -102,6 +103,46 @@ export function seedDoctors() {
     countries: [...(d.countries || [])],
     clinics: [...(d.clinics || [])],
     treatments: [...(d.treatments || [])],
+  }))
+}
+
+export function seedBlogCategories() {
+  return BLOG_CATEGORIES.map(c => ({
+    id: c.slug, // preview mode has no separate backend id
+    slug: c.slug,
+    name: c.name,
+    nameAr: c.nameAr,
+    postCount: BLOGS.filter(b => b.category === c.slug).length,
+  }))
+}
+
+export function seedBlogs() {
+  const words = blocks => blocks.reduce((n, b) => n + b.text.trim().split(/\s+/).length, 0)
+  return BLOGS.map(b => ({
+    id: b.slug,
+    slug: b.slug,
+    title: b.title, titleAr: b.titleAr,
+    excerpt: b.excerpt, excerptAr: b.excerptAr,
+    body: b.body.map(block => ({ ...block })),
+    bodyAr: [],
+    image: b.image,
+    categoryId: b.category,
+    // Linked when the preview has that doctor, else just the name.
+    authorDoctorId: DOCTORS[b.author] ? b.author : '',
+    authorName: DOCTORS[b.author] ? '' : b.authorName,
+    status: 'published',
+    publishedAt: b.publishedAt,
+    featured: b.featured,
+    countries: ['UAE', 'KSA', 'OMAN'],
+    readMins: Math.max(1, Math.round(words(b.body) / 200)),
+    metaTitle: b.metaTitle, metaTitleAr: '',
+    metaDescription: b.metaDescription, metaDescriptionAr: '',
+    keywords: [...b.keywords], keywordsAr: [],
+    ogTitle: '', ogTitleAr: '',
+    ogDescription: '', ogDescriptionAr: '',
+    ogImage: '',
+    canonicalUrl: '',
+    noIndex: false,
   }))
 }
 

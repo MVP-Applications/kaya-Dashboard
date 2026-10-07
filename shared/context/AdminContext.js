@@ -18,6 +18,8 @@ import {
   fetchOverrides, persistOverrideSection,
   fetchTellUs, persistTellUs,
   fetchCustomPages, persistCustomPages, removeCustomPage,
+  fetchBlogs, persistBlogs, removeBlog,
+  fetchBlogCategories, persistBlogCategories, removeBlogCategory,
   isDemoMode, resetDemo as resetDemoData,
 } from '@/shared/lib/store'
 import { resolveContent, setOverride, clearSectionOverride } from '@/shared/lib/country-content'
@@ -66,6 +68,10 @@ export function AdminProvider({ children }) {
   // Page builder pages — loaded on their own, like Tell Us.
   const [customPages, setCustomPages] = useState([])
   const [customPagesError, setCustomPagesError] = useState('')
+  // Blog posts + topics — loaded on their own too; '' while fine, else why not.
+  const [blogs, setBlogs] = useState([])
+  const [blogCategories, setBlogCategories] = useState([])
+  const [blogsError, setBlogsError] = useState('')
   // Bumped after every full reload (Refresh content, Reset sample data), so
   // screens that fetch their own data — Requests, Voucher Requests, Customers
   // — refetch too.
@@ -142,6 +148,13 @@ export function AdminProvider({ children }) {
     }
 
     try {
+      const [posts, topics] = await Promise.all([fetchBlogs(), fetchBlogCategories()])
+      if (token === loadToken.current) { setBlogs(posts || []); setBlogCategories(topics || []); setBlogsError('') }
+    } catch (e) {
+      if (token === loadToken.current) { setBlogs([]); setBlogCategories([]); setBlogsError(e.message) }
+    }
+
+    try {
       const doc = await fetchTellUs()
       if (token === loadToken.current) { setTellUsRaw(doc); setTellUsError('') }
     } catch (e) {
@@ -192,6 +205,8 @@ export function AdminProvider({ children }) {
         applyAll(EMPTY)
         setTellUsRaw(null)
         setCustomPages([])
+        setBlogs([])
+        setBlogCategories([])
       }
     })
 
@@ -235,6 +250,8 @@ export function AdminProvider({ children }) {
     applyAll(EMPTY)
     setTellUsRaw(null)
     setCustomPages([])
+    setBlogs([])
+    setBlogCategories([])
   }, [])
 
   const allowed = useCallback(action => can(user, action), [user])
@@ -367,8 +384,11 @@ export function AdminProvider({ children }) {
       countryRecords: { list: countryRecords, setList: setCountryRecords, persist: persistCountries, remove: removeCountry, keyOf: byId },
       contacts: { list: contacts, setList: setContacts, persist: persistContacts, remove: removeContact, keyOf: byId },
       customPages: { list: customPages, setList: setCustomPages, persist: persistCustomPages, remove: removeCustomPage, keyOf: byId },
+      blogs: { list: blogs, setList: setBlogs, persist: persistBlogs, remove: removeBlog, keyOf: byId },
+      // Topics are an ordered list; the whole-list save also writes their order.
+      blogCategories: { list: blogCategories, setList: setBlogCategories, persist: persistBlogCategories, remove: removeBlogCategory, keyOf: byId, reorder: persistBlogCategories },
     }
-  }, [verticals, categories, doctors, reviews, vouchers, locations, countryRecords, contacts, customPages])
+  }, [verticals, categories, doctors, reviews, vouchers, locations, countryRecords, contacts, customPages, blogs, blogCategories])
 
   // ── Collection CRUD ───────────────────────────────────
   // Verticals and locations append (they render as ordered settings lists);
@@ -605,6 +625,24 @@ export function AdminProvider({ children }) {
   // ── Page builder ──────────────────────────────────────
   const upsertCustomPage = useCallback((r, k) => upsertInto(cols.customPages, r, k), [cols, upsertInto])
   const deleteCustomPage = useCallback(k => deleteFrom(cols.customPages, k), [cols, deleteFrom])
+
+  // ── Blog ──────────────────────────────────────────────
+  const upsertBlog = useCallback((r, k) => upsertInto(cols.blogs, r, k), [cols, upsertInto])
+  const deleteBlog = useCallback(k => deleteFrom(cols.blogs, k), [cols, deleteFrom])
+  // Topics append, so a new one lands at the end of the ordered list.
+  const upsertBlogCategory = useCallback((record, originalId) => {
+    const exists = originalId != null && cols.blogCategories.list.some(c => c.id === originalId)
+    return exists
+      ? upsertInto(cols.blogCategories, record, originalId)
+      : appendTo(cols.blogCategories, record)
+  }, [cols, upsertInto, appendTo])
+  const deleteBlogCategory = useCallback(async k => {
+    const ok = await deleteFrom(cols.blogCategories, k)
+    // The backend leaves the topic's posts uncategorised — mirror that, so
+    // the next save of one of them doesn't send the deleted topic's id.
+    if (ok) setBlogs(list => list.map(b => (b.categoryId === k ? { ...b, categoryId: '' } : b)))
+    return ok
+  }, [cols, deleteFrom])
 
   // ── Tell Us Everything ────────────────────────────────
   // Normalised against the live verticals: areas keyed by pillar id, one per
@@ -910,6 +948,7 @@ export function AdminProvider({ children }) {
     contacts, upsertContact, deleteContact,
     tellUs, tellUsError, saveTellUs,
     customPages, customPagesError, upsertCustomPage, deleteCustomPage,
+    blogs, blogCategories, blogsError, upsertBlog, deleteBlog, upsertBlogCategory, deleteBlogCategory,
     dataVersion,
     users, invites, saveUser, deleteUser, revokeInvite, refreshUsers,
     moveUp, moveDown,

@@ -1049,6 +1049,180 @@ export const removeCustomPage = async id => {
   customPageSaved.delete(id)
 }
 
+// ── Blog (posts + topics) ─────────────────────────────────────────────────
+//
+// Posts are per-country (countryIds, like doctors) with EN/AR translations —
+// title, excerpt, body blocks [{ type: 'p'|'h2'|'quote', text }] and the
+// per-locale SEO text. The writer is a doctor id or, failing that, a typed
+// name. Topics (blog categories) are shared by every country.
+
+const blogIds = new Map() // client id -> backend id
+// Topics keep a client id too: one created this session is known by its slug
+// until the next load, so posts translate it before sending (recordToBlogBody).
+const blogCategoryIds = new Map() // client id -> backend id
+const blogCategorySaved = new Map()
+// Last-saved record per post, so a list save only sends the posts that
+// changed instead of re-PUTting every one (AdminContext persists the list).
+const blogSaved = new Map()
+
+/** Blocks with something in them — empty rows left in the editor aren't sent. */
+function blogBlocks(blocks) {
+  return (blocks || [])
+    .map(b => ({ type: b.type, text: String(b.text || '').trim() }))
+    .filter(b => b.text)
+}
+
+function blogToRecord(b) {
+  const en = translationOf(b.translations)
+  const ar = (b.translations || []).find(t => t.locale === 'AR') || {}
+  const record = {
+    id: b.id,
+    slug: b.slug,
+    title: en.title || '', titleAr: ar.title || '',
+    excerpt: en.excerpt || '', excerptAr: ar.excerpt || '',
+    body: Array.isArray(en.body) ? en.body : [], bodyAr: Array.isArray(ar.body) ? ar.body : [],
+    image: b.coverImageUrl || '',
+    categoryId: b.categoryId || '',
+    authorDoctorId: b.authorDoctorId || '',
+    authorName: b.authorName || '',
+    status: b.isPublished ? 'published' : 'draft',
+    publishedAt: b.publishedAt ? String(b.publishedAt).slice(0, 10) : '',
+    featured: !!b.featured,
+    countries: (b.countries || []).map(c => c.code),
+    readMins: b.readMins ?? null,
+    metaTitle: en.metaTitle || '', metaTitleAr: ar.metaTitle || '',
+    metaDescription: en.metaDescription || '', metaDescriptionAr: ar.metaDescription || '',
+    keywords: en.keywords || [], keywordsAr: ar.keywords || [],
+    ogTitle: en.ogTitle || '', ogTitleAr: ar.ogTitle || '',
+    ogDescription: en.ogDescription || '', ogDescriptionAr: ar.ogDescription || '',
+    ogImage: b.ogImageUrl || '',
+    canonicalUrl: b.canonicalUrl || '',
+    noIndex: !!b.noIndex,
+  }
+  blogIds.set(record.id, b.id)
+  blogSaved.set(record.id, JSON.stringify(record))
+  return record
+}
+
+function blogTranslation(locale, r, suffix) {
+  return {
+    locale,
+    title: r[`title${suffix}`],
+    excerpt: r[`excerpt${suffix}`],
+    body: blogBlocks(r[`body${suffix}`]),
+    metaTitle: r[`metaTitle${suffix}`] || '',
+    metaDescription: r[`metaDescription${suffix}`] || '',
+    keywords: (r[`keywords${suffix}`] || []).filter(Boolean),
+    ogTitle: r[`ogTitle${suffix}`] || '',
+    ogDescription: r[`ogDescription${suffix}`] || '',
+  }
+}
+
+function recordToBlogBody(r, { coverImageUrl, ogImageUrl, countryIds }) {
+  const translations = [blogTranslation('EN', r, '')]
+  // Arabic only when it's a whole article — the backend needs title, excerpt
+  // and body together. BlogForm enforces "all or nothing".
+  if (r.titleAr && r.excerptAr && blogBlocks(r.bodyAr).length) {
+    translations.push(blogTranslation('AR', r, 'Ar'))
+  }
+  return {
+    slug: r.slug,
+    coverImageUrl: coverImageUrl || null,
+    categoryId: (r.categoryId && blogCategoryIds.get(r.categoryId)) || null,
+    authorDoctorId: r.authorDoctorId || null,
+    authorName: r.authorDoctorId ? null : (r.authorName || null),
+    isPublished: r.status === 'published',
+    publishedAt: r.publishedAt ? new Date(`${r.publishedAt}T00:00:00Z`).toISOString() : null,
+    featured: !!r.featured,
+    canonicalUrl: r.canonicalUrl || null,
+    ogImageUrl: ogImageUrl || null,
+    noIndex: !!r.noIndex,
+    countryIds: (r.countries || []).map(c => countryIds.get(String(c).toUpperCase())).filter(Boolean),
+    translations,
+  }
+}
+
+export async function fetchBlogs() {
+  const items = await fetchAllPages(ApiEndpoints.blogs.adminList)
+  blogIds.clear()
+  blogSaved.clear()
+  return items.map(blogToRecord)
+}
+
+export const persistBlogs = async list => {
+  const changed = list.filter(r => !blogIds.get(r.id) || blogSaved.get(r.id) !== JSON.stringify(r))
+  if (!changed.length) return
+  const countryIds = await ensureCountryIds(changed.flatMap(r => r.countries || []))
+  for (const r of changed) {
+    const existingId = blogIds.get(r.id)
+    const body = recordToBlogBody(r, {
+      coverImageUrl: await uploadImageIfNeeded(r.image),
+      ogImageUrl: await uploadImageIfNeeded(r.ogImage),
+      countryIds,
+    })
+    const { data } = existingId
+      ? await apiRequest(ApiEndpoints.blogs.adminById(existingId), { method: 'PUT', body })
+      : await apiRequest(ApiEndpoints.blogs.adminList, { method: 'POST', body })
+    blogIds.set(r.id, data.id)
+    blogSaved.set(r.id, JSON.stringify(r))
+  }
+}
+
+export const removeBlog = async id => {
+  const backendId = blogIds.get(id)
+  if (!backendId) throw new Error('Could not delete this post — it wasn\'t found.')
+  await apiRequest(ApiEndpoints.blogs.adminById(backendId), { method: 'DELETE' })
+  blogIds.delete(id)
+  blogSaved.delete(id)
+}
+
+function blogCategoryToRecord(c) {
+  const en = translationOf(c.translations)
+  const ar = (c.translations || []).find(t => t.locale === 'AR')
+  const record = { id: c.id, slug: c.slug, name: en.name || '', nameAr: ar?.name || '', postCount: c.postCount ?? 0 }
+  blogCategoryIds.set(record.id, c.id)
+  blogCategorySaved.set(record.id, JSON.stringify(record))
+  return record
+}
+
+export async function fetchBlogCategories() {
+  const items = await fetchAllPages(ApiEndpoints.blogCategories.adminList)
+  blogCategoryIds.clear()
+  blogCategorySaved.clear()
+  // The list endpoint pages in display order already.
+  return items.map(blogCategoryToRecord)
+}
+
+/** Saves the topics that changed, then writes the whole order (list order = display order). */
+export const persistBlogCategories = async list => {
+  for (const c of list) {
+    const existingId = blogCategoryIds.get(c.id)
+    if (existingId && blogCategorySaved.get(c.id) === JSON.stringify(c)) continue
+    const translations = [{ locale: 'EN', name: c.name }]
+    if (c.nameAr) translations.push({ locale: 'AR', name: c.nameAr })
+    const body = { slug: c.slug, translations }
+    const { data } = existingId
+      ? await apiRequest(ApiEndpoints.blogCategories.adminById(existingId), { method: 'PUT', body })
+      : await apiRequest(ApiEndpoints.blogCategories.adminList, { method: 'POST', body })
+    blogCategoryIds.set(c.id, data.id)
+    blogCategorySaved.set(c.id, JSON.stringify(c))
+  }
+  const orders = list
+    .map((c, displayOrder) => ({ id: blogCategoryIds.get(c.id), displayOrder }))
+    .filter(o => o.id)
+  if (orders.length) {
+    await apiRequest(ApiEndpoints.blogCategories.adminReorder, { method: 'PATCH', body: { orders } })
+  }
+}
+
+export const removeBlogCategory = async id => {
+  const backendId = blogCategoryIds.get(id)
+  if (!backendId) throw new Error('Could not delete this topic — it wasn\'t found.')
+  await apiRequest(ApiEndpoints.blogCategories.adminById(backendId), { method: 'DELETE' })
+  blogCategoryIds.delete(id)
+  blogCategorySaved.delete(id)
+}
+
 // ── Tell Us Everything (concern-finder questionnaire) ────────────────────
 //
 // A single document — GET/PUT the whole thing, like Footer & Global. Areas

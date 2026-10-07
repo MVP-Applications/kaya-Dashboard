@@ -104,6 +104,51 @@ export function emptyCategory() {
 }
 
 /** No `vertical` — kaya-nest-api's Testimonial links to a Treatment, never a Pillar. See KA-38. */
+// Blog post lifecycle. Only `published` posts dated today or earlier appear
+// on the website (the backend stores it as isPublished + publishedAt).
+export const BLOG_STATUS_OPTIONS = ['draft', 'published']
+export const BLOG_STATUS_LABELS = { draft: 'Draft', published: 'Published' }
+
+/**
+ * An empty blog post for the "create" form. English title, excerpt and body
+ * are required; the `…Ar` fields add an Arabic version. `body`/`bodyAr` are
+ * ordered blocks: [{ type: 'p' | 'h2' | 'quote', text }]. The writer is a
+ * doctor (`authorDoctorId`) or, failing that, a typed `authorName`.
+ */
+export function emptyBlog() {
+  return {
+    id: '', // set once the backend assigns one — see AdminContext's upsertInto
+    slug: '',
+    title: '', titleAr: '',
+    excerpt: '', excerptAr: '',
+    body: [{ type: 'p', text: '' }], bodyAr: [],
+    image: '',
+    categoryId: '',
+    authorDoctorId: '',
+    authorName: '',
+    status: 'draft',
+    publishedAt: '',
+    featured: false,
+    countries: [],
+    readMins: null,
+    // Search engines — every field optional; the website falls back to the
+    // title / excerpt / cover.
+    metaTitle: '', metaTitleAr: '',
+    metaDescription: '', metaDescriptionAr: '',
+    keywords: [], keywordsAr: [],
+    ogTitle: '', ogTitleAr: '',
+    ogDescription: '', ogDescriptionAr: '',
+    ogImage: '',
+    canonicalUrl: '',
+    noIndex: false,
+  }
+}
+
+/** A blog topic (the website's filter chips). Shared by every country. */
+export function emptyBlogCategory() {
+  return { id: '', slug: '', name: '', nameAr: '', postCount: 0 }
+}
+
 export function emptyReview() {
   return {
     id: '',
