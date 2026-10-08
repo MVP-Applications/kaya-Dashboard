@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { SectionFields, ListCard, countFieldErrors } from '@/shared/components/ContentFields'
+import { SectionFields, FieldsCard, ListCard, countFieldErrors } from '@/shared/components/ContentFields'
 import LocaleToggle from '@/shared/components/LocaleToggle'
 
 /**
@@ -112,6 +112,7 @@ export default function ContentEditor({
     const scalars = fields.filter(f => f.type !== 'list')
     const lists = fields.filter(f => f.type === 'list')
     const keys = fields.map(f => f.key)
+    const scalarKeys = scalars.map(f => f.key)
     const hint = panel.hint ?? section.hint
     const canRevert = canEdit && seed?.[section.id]
       && !same(pick(draft[section.id], keys), pick(seed[section.id], keys))
@@ -141,28 +142,21 @@ export default function ContentEditor({
         </nav>
 
         <div className="ad-cf-panel">
-          <section className={`ad-fieldset ad-cf-sec${panelStatus(section, panel).dirty ? ' ad-cf-sec--dirty' : ''}`}>
-            <div className={`ad-cf-sec-head${scalars.length ? '' : ' ad-cf-sec-head--solo'}`}>
-              <div>
-                <h2 className="ad-cf-panel-title">{panel.label}</h2>
-                {hint && <p className="ad-cf-sec-hint">{hint}</p>}
-              </div>
-              {canRevert && (
-                <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
-                  onClick={() => (panel.keys ? revertKeys(section.id, keys) : revert(section.id))}>
-                  ↺ Revert
-                </button>
-              )}
-            </div>
-            {scalars.length > 0 && (
-              <SectionFields
-                fields={scalars}
-                values={draft[section.id]?.[locale]}
-                onChange={(key, value) => setField(section.id, key, value)}
-                disabled={!canEdit}
-              />
+          <FieldsCard key={panel.id}
+            title={panel.label}
+            hint={hint}
+            fields={scalars}
+            values={draft[section.id]?.[locale]}
+            onChange={(key, value) => setField(section.id, key, value)}
+            disabled={!canEdit}
+            dirty={!same(pick(draft[section.id], scalarKeys), pick(values?.[section.id], scalarKeys))}
+            actions={canRevert && (
+              <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
+                onClick={() => (panel.keys ? revertKeys(section.id, keys) : revert(section.id))}>
+                ↺ Revert
+              </button>
             )}
-          </section>
+          />
 
           {lists.map(f => (
             <ListCard key={`${panel.id}:${f.key}`}

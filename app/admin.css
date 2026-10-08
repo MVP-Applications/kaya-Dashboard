@@ -854,6 +854,20 @@
 .ad-cf-panel-title { font-size: 16px; font-weight: 700; color: var(--deep); }
 .ad-cf-sec-head--solo { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
 
+/* Read-only view of single-value fields (Edit swaps in the inputs) */
+.ad-cf-view { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; margin: 0; }
+.ad-cf-view-row { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ad-cf-view-row--wide { grid-column: 1 / -1; }
+.ad-cf-view dt { font-size: 12px; font-weight: 600; color: var(--slate); }
+.ad-cf-view dd {
+  margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--ink);
+  white-space: pre-line; overflow-wrap: anywhere;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.ad-cf-view dd.ad-cf-view-empty { color: var(--slate); font-style: italic; opacity: .75; }
+.ad-cf-view-img { width: 120px; height: 72px; object-fit: contain; border: 1px solid var(--line); border-radius: 8px; background: var(--whisper); }
+@media (max-width: 600px) { .ad-cf-view { grid-template-columns: 1fr; } }
+
 /* List card: rows first, Edit / Delete per row, Add on top */
 .ad-cf-list-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;

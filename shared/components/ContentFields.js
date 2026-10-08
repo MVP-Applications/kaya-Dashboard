@@ -113,7 +113,7 @@ function Field({ field, value, values, onChange, disabled }) {
         <label className="ad-field">
           <span className="ad-field-label">{field.label}</span>
           {hint}
-          <textarea className="ad-textarea" rows={field.rows || 3} value={value || ''}
+          <textarea className={`${inputClass} ad-textarea`} rows={field.rows || 3} value={value || ''}
             placeholder={field.placeholder} disabled={disabled}
             onChange={e => onChange(e.target.value)} />
           {errorNote}
@@ -188,7 +188,7 @@ function StringList({ field, value, onChange, disabled }) {
             <ItemControls index={i} total={value.length} disabled={disabled}
               onMove={move} onRemove={() => onChange(value.filter((_, j) => j !== i))} />
           </div>
-          <textarea className="ad-textarea" rows={4} value={item} disabled={disabled}
+          <textarea className="ad-input ad-textarea" rows={4} value={item} disabled={disabled}
             onChange={e => update(i, e.target.value)} />
         </div>
       ))}
@@ -390,4 +390,65 @@ function displayValue(field, value) {
   if (field.type === 'select') return field.options?.find(o => o.value === value)?.label || value
   if (field.type === 'image' || field.type === 'toggle') return ''
   return String(value)
+}
+
+/**
+ * Single-value fields (headings, text) shown read-only first, with Edit in the
+ * corner; Edit swaps in the inputs and Done goes back. Same `values`/`onChange`
+ * contract as SectionFields — Done only closes the inputs, the draft is saved
+ * from the editor's save bar as before.
+ */
+export function FieldsCard({ title, hint, fields, values, onChange, disabled, dirty, actions }) {
+  // Whether the inputs are showing is screen-only state, like an open row.
+  const [editing, setEditing] = useState(false)
+  const shown = visibleFields(fields, values)
+  const errors = countFieldErrors(fields, values)
+
+  return (
+    <section className={`ad-fieldset ad-cf-sec${dirty ? ' ad-cf-sec--dirty' : ''}`}>
+      <div className={`ad-cf-sec-head${shown.length ? '' : ' ad-cf-sec-head--solo'}`}>
+        <div>
+          <h2 className="ad-cf-panel-title">{title}</h2>
+          {hint && <p className="ad-cf-sec-hint">{hint}</p>}
+        </div>
+        <div className="ad-cf-row-actions">
+          {!editing && errors > 0 && <span className="ad-cf-row-warn">Needs fixing</span>}
+          {actions}
+          {shown.length > 0 && (editing ? (
+            <button type="button" className="ad-btn ad-btn--primary ad-btn--sm"
+              onClick={() => setEditing(false)}>
+              Done
+            </button>
+          ) : (
+            <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
+              onClick={() => setEditing(true)}>
+              {disabled ? 'View' : 'Edit'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {shown.length > 0 && (editing ? (
+        <SectionFields fields={fields} values={values} onChange={onChange} disabled={disabled} />
+      ) : (
+        <dl className="ad-cf-view">
+          {shown.map(f => {
+            const text = displayValue(f, values?.[f.key])
+            const error = f.validate?.(values?.[f.key], values || {})
+            return (
+              <div key={f.key} className={`ad-cf-view-row${f.type === 'textarea' ? ' ad-cf-view-row--wide' : ''}`}>
+                <dt>{f.label}</dt>
+                <dd className={text ? '' : 'ad-cf-view-empty'}>
+                  {f.type === 'image' && values?.[f.key]
+                    ? <img src={values[f.key]} alt="" className="ad-cf-view-img" />
+                    : text || 'Not set — hidden on the website'}
+                  {error && <span className="ad-field-error">{error}</span>}
+                </dd>
+              </div>
+            )
+          })}
+        </dl>
+      ))}
+    </section>
+  )
 }
