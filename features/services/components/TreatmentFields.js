@@ -168,12 +168,12 @@ export default function TreatmentFields({ country, form, onChange }) {
           <div className="ad-field">
             <span className="ad-field-label">Card image</span>
             <ImagePicker value={form.cardImage} onChange={v => set('cardImage', v)} ratio={16 / 9}
-              hint="Shown on treatment cards in lists — landscape 16:9. Use an image about 1600 × 900 px; keep the subject in the centre. If empty, the detail image is used (cropped to fit)." />
+              hint="Desktop only: the treatment's own page and treatment cards in lists — landscape 16:9. Use about 1600 × 900 px; keep the subject in the centre. If empty, the detail image is used (cropped to fit)." />
           </div>
           <div className="ad-field">
             <span className="ad-field-label">Detail image</span>
             <ImagePicker value={form.image} onChange={v => set('image', v)} ratio={4 / 5}
-              hint="Shown on the treatment's own page and the homepage Popular treatments cards — portrait 4:5. Use about 840 × 1050 px." />
+              hint="Portrait 4:5 — the homepage Popular treatments cards, and every treatment image on phones (treatment page and lists). Use about 840 × 1050 px. If empty, the card image is used (cropped to fit)." />
           </div>
           <label className="ad-field ad-w-md">
             <span className="ad-field-label">Icon</span>
