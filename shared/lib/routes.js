@@ -19,6 +19,7 @@ export const VIEW_IDS = [
   'indulgence',
   'reviews',
   'pages',
+  'blog',
   'locations',
   'countries',
   'contacts',

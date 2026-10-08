@@ -11,6 +11,7 @@ import ReviewsView from '@/features/reviews/components/ReviewsView'
 import CustomersView from '@/features/customers/components/CustomersView'
 import RequestsView from '@/features/requests/components/RequestsView'
 import PagesView from '@/features/pages/components/PagesView'
+import BlogsView from '@/features/blog/components/BlogsView'
 import LocationsView from '@/features/locations/components/LocationsView'
 import CountriesView from '@/features/countries/components/CountriesView'
 import ContactsView from '@/features/contacts/components/ContactsView'
@@ -30,6 +31,7 @@ const VIEWS = {
   indulgence: IndulgenceView,
   reviews: ReviewsView,
   pages: PagesView,
+  blog: BlogsView,
   locations: LocationsView,
   countries: CountriesView,
   contacts: ContactsView,

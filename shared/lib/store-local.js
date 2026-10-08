@@ -11,6 +11,7 @@
 import {
   seedServices, seedVerticals, seedCategories, seedDoctors, seedReviews, seedVouchers,
   seedRequests, seedVoucherRequests, seedLocations, seedPages, seedSite, seedUsers, seedCustomers,
+  seedBlogs, seedBlogCategories,
 } from '@/shared/lib/demo-seed'
 import { REQUEST_STATUS_LABELS, REQUEST_SOURCE_LABELS } from '@/shared/lib/seed'
 import { toCsv } from '@/shared/lib/csv'
@@ -31,6 +32,8 @@ const KEYS = {
   voucherRequests: 'kaya_admin_voucher_requests_v1',
   tellUs: 'kaya_admin_tell_us_v1',
   customPages: 'kaya_admin_custom_pages_v1',
+  blogs: 'kaya_admin_blogs_v1',
+  blogCategories: 'kaya_admin_blog_categories_v1',
   locations: 'kaya_admin_locations_v3', // v3: Oman's code is OMAN, as on the backend
   countries: 'kaya_admin_countries_v1',
   contacts: 'kaya_admin_contacts_v1',
@@ -421,6 +424,8 @@ export const persistDoctors = persist('doctors')
 export const persistReviews = persist('reviews')
 export const persistVouchers = persist('vouchers')
 export const persistCustomPages = persist('customPages')
+export const persistBlogs = persist('blogs')
+export const persistBlogCategories = persist('blogCategories')
 export const persistLocations = persist('locations')
 export const persistCountries = persist('countries')
 export const persistContacts = persist('contacts')
@@ -456,6 +461,8 @@ export const removeDoctor = remove('doctors', 'slug')
 export const removeReview = remove('reviews', 'id')
 export const removeVoucher = remove('vouchers', 'id')
 export const removeCustomPage = remove('customPages', 'id')
+export const removeBlog = remove('blogs', 'id')
+export const removeBlogCategory = remove('blogCategories', 'id')
 export const removeLocation = remove('locations', 'id')
 export const removeCountry = remove('countries', 'id')
 export const removeContact = remove('contacts', 'id')
@@ -642,6 +649,15 @@ function filteredVoucherRequests({ search, status, customerId, country } = {}) {
 /** Pages built in the page builder — one sample page in preview mode. */
 export async function fetchCustomPages() {
   return settle(load('customPages', () => JSON.parse(JSON.stringify(CUSTOM_PAGES))))
+}
+
+/** Blog posts and their topics — the sample posts in preview mode. */
+export async function fetchBlogs() {
+  return settle(load('blogs', seedBlogs))
+}
+
+export async function fetchBlogCategories() {
+  return settle(load('blogCategories', seedBlogCategories))
 }
 
 /**

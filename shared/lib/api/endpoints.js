@@ -21,6 +21,17 @@ export const ApiEndpoints = {
     loginAttempts: `${V1}/admin/login-attempts`,
   },
 
+  blogs: {
+    adminList: `${V1}/admin/blogs`,
+    adminById: id => `${V1}/admin/blogs/${id}`,
+  },
+
+  blogCategories: {
+    adminList: `${V1}/admin/blog-categories`,
+    adminById: id => `${V1}/admin/blog-categories/${id}`,
+    adminReorder: `${V1}/admin/blog-categories/reorder`,
+  },
+
   categories: {
     adminList: `${V1}/admin/categories`,
     adminById: id => `${V1}/admin/categories/${id}`,
