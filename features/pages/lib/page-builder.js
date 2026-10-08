@@ -50,7 +50,10 @@ export const BLOCK_TYPES = {
       text('eyebrow', 'Eyebrow'),
       text('heading', 'Heading', { hint: 'Wrap highlighted words in *asterisks*.' }),
       area('sub', 'Subtitle'),
-      image('image', 'Background image'),
+      image('image', 'Background image', {
+        ratio: 2,
+        hint: 'Full-width background behind the headline — about 2:1 on desktop; phones crop it to a taller middle part. Use about 1920 × 960 px with the subject in the centre.',
+      }),
       select('align', 'Text alignment', [{ value: 'left', label: 'Left' }, { value: 'center', label: 'Centre' }]),
       text('buttonLabel', 'Button label'),
       select('buttonAction', 'Button does', BUTTON_ACTIONS),
@@ -73,7 +76,10 @@ export const BLOCK_TYPES = {
     icon: '◧',
     hint: 'Image beside a heading, text and optional button.',
     fields: [
-      image('image', 'Image'),
+      image('image', 'Image', {
+        ratio: 4 / 3,
+        hint: 'Shown beside the text at 4:3 (above it on phones). Use about 1200 × 900 px.',
+      }),
       select('imageSide', 'Image on the', [{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }]),
       text('eyebrow', 'Eyebrow'),
       text('heading', 'Heading', { hint: 'Wrap highlighted words in *asterisks*.' }),
@@ -89,7 +95,10 @@ export const BLOCK_TYPES = {
     icon: '▣',
     hint: 'A single image with an optional caption.',
     fields: [
-      image('image', 'Image'),
+      image('image', 'Image', {
+        fit: 'contain',
+        hint: 'Shown in its own shape — never cropped. Use at least 1600 px wide (2400 px for full screen width).',
+      }),
       text('caption', 'Caption'),
       select('width', 'Width', [{ value: 'contained', label: 'Page width' }, { value: 'full', label: 'Full screen width' }]),
     ],

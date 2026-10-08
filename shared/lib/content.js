@@ -23,6 +23,11 @@ import {
 import { CONTENT_ICON_OPTIONS } from '@/shared/lib/content-icons'
 
 // ── Homepage ─────────────────────────────────────────────
+// Upload hints for content images — the shape the website shows each one at.
+const BANNER_HINT = 'Homepage banner, text over the left half. Landscape 4:3 — use about 1440 × 1080 px with the person in the right half and plain background on the left. Desktop trims a little off the top and bottom.'
+const PAGE_HERO_HINT = 'Full-width background behind the page title, about 2:1 on desktop. Phones show only the right-hand part, so keep the subject on the right. Use about 1920 × 960 px.'
+const VERTICAL_HERO_HINT = 'Full-screen background behind the headline, about 16:9 on desktop; phones crop it to a tall middle strip. Use about 1920 × 1080 px with the subject in the centre and calm space bottom-left for the text.'
+
 const HOME = {
   id: 'home',
   label: 'Homepage',
@@ -55,7 +60,8 @@ const HOME = {
       label: 'Primary banner',
       hint: 'The brand banner that opens the booking modal.',
       fields: [
-        { key: 'image', label: 'Background image', type: 'image' },
+        { key: 'image', label: 'Background image', type: 'image',
+          ratio: 4 / 3, hint: BANNER_HINT },
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Kaya Clinic' },
         { key: 'title', label: 'Title', type: 'text', default: 'Where beauty meets', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'medicine', width: 'half' },
@@ -68,7 +74,8 @@ const HOME = {
       label: 'Tell-us banner',
       hint: 'The second banner, linking to the concern finder.',
       fields: [
-        { key: 'image', label: 'Background image', type: 'image' },
+        { key: 'image', label: 'Background image', type: 'image',
+          ratio: 4 / 3, hint: BANNER_HINT },
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Just for you' },
         { key: 'title', label: 'Title', type: 'text', default: 'Personalised', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'treatments', width: 'half' },
@@ -185,7 +192,7 @@ const ABOUT = {
       id: 'hero',
       label: 'Hero',
       fields: [
-        { key: 'image', label: 'Background image', type: 'image', default: '' },
+        { key: 'image', label: 'Background image', type: 'image', default: '', ratio: 2, hint: PAGE_HERO_HINT },
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Our story' },
         { key: 'title', label: 'Title', type: 'text', default: 'Doctor-led wellness,', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'built for the GCC', width: 'half' },
@@ -216,7 +223,7 @@ const ABOUT = {
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Founded 2001' },
         { key: 'title', label: 'Title', type: 'text', default: 'Born in the region,', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'built for it', width: 'half' },
-        { key: 'image', label: 'Story image', type: 'image', default: '' },
+        { key: 'image', label: 'Story image', type: 'image', default: '', ratio: 1, hint: 'Shown square beside the story text. Use about 1000 × 1000 px.' },
         {
           key: 'paragraphs', label: 'Body paragraphs', type: 'strings', itemLabel: 'Paragraph',
           default: [
@@ -404,7 +411,7 @@ const TREATMENTS = {
 /** Hero fields are identical across the four vertical landing pages. */
 function heroFields({ eyebrow, headline, headlineEm, headlineEnd = '', sub, image, primaryCta, secondaryCta }) {
   return [
-    { key: 'image', label: 'Background image', type: 'image', default: image },
+    { key: 'image', label: 'Background image', type: 'image', default: image, ratio: 16 / 9, hint: VERTICAL_HERO_HINT },
     { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: eyebrow },
     { key: 'headline', label: 'Headline', type: 'text', default: headline, width: 'half' },
     { key: 'headlineEm', label: 'Headline — emphasis', type: 'text', default: headlineEm, width: 'half' },
@@ -479,7 +486,7 @@ const AESTHETIC = {
             { key: 'label', label: 'Label', type: 'text', width: 'half' },
             { key: 'href', label: 'Link URL', type: 'text', width: 'half' },
             { key: 'hint', label: 'Hint', type: 'text' },
-            { key: 'image', label: 'Image', type: 'image' },
+            { key: 'image', label: 'Image', type: 'image', ratio: 3 / 4, hint: 'Shown as a portrait 3:4 card with the label over the bottom. Use about 900 × 1200 px.' },
           ],
           default: [
             {
@@ -735,7 +742,7 @@ const DOCTORS_PAGE = {
       id: 'hero',
       label: 'Hero',
       fields: [
-        { key: 'image', label: 'Background image', type: 'image', default: '' },
+        { key: 'image', label: 'Background image', type: 'image', default: '', ratio: 2, hint: PAGE_HERO_HINT },
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Meet our doctors' },
         { key: 'title', label: 'Title', type: 'text', default: 'Meet Our', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'Experts', width: 'half' },
@@ -759,7 +766,7 @@ const INDULGENCE_PAGE = {
       id: 'hero',
       label: 'Hero',
       fields: [
-        { key: 'image', label: 'Background image', type: 'image', default: '' },
+        { key: 'image', label: 'Background image', type: 'image', default: '', ratio: 2, hint: PAGE_HERO_HINT },
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Gift Cards & Vouchers' },
         { key: 'title', label: 'Title', type: 'text', default: 'The Kaya', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'Indulgence', width: 'half' },
@@ -970,7 +977,10 @@ const GLOBAL_GROUP = {
       label: 'Brand',
       fields: [
         { key: 'name', label: 'Brand name', type: 'text', default: 'Kaya Wellness & Longevity' },
-        { key: 'logo', label: 'Logo', type: 'image', default: '/Assets/kaya-logo.svg' },
+        {
+          key: 'logo', label: 'Logo', type: 'image', default: '/Assets/kaya-logo.svg', fit: 'contain',
+          hint: 'Shown 34 px tall in the header and 28 px in the footer, recoloured white or purple — the file’s own colours aren’t kept. Use an SVG, or a PNG with a transparent background.',
+        },
       ],
     },
     {

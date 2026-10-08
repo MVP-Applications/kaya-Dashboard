@@ -161,12 +161,14 @@ export default function ReviewForm({ initial, isNew, onClose }) {
 
         <fieldset className="ad-fieldset">
           <legend>Before</legend>
-          <ImagePicker value={form.before} onChange={v => set('before', v)} />
+          <ImagePicker value={form.before} onChange={v => set('before', v)} ratio={10 / 11}
+            hint="Shown side by side with the After photo, each almost square (10:11) and cropped from the top. Use about 1000 × 1100 px, framed the same way as After." />
         </fieldset>
 
         <fieldset className="ad-fieldset">
           <legend>After</legend>
-          <ImagePicker value={form.after} onChange={v => set('after', v)} />
+          <ImagePicker value={form.after} onChange={v => set('after', v)} ratio={10 / 11}
+            hint="Shown side by side with the Before photo, each almost square (10:11) and cropped from the top. Use about 1000 × 1100 px, framed the same way as Before." />
         </fieldset>
       </div>
     </form>

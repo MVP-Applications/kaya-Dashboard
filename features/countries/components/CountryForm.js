@@ -149,8 +149,8 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
 
         <fieldset className="ad-fieldset">
           <legend>Flag</legend>
-          <p className="ad-fieldset-hint">Shown next to the country on the website’s About page.</p>
-          <ImagePicker value={form.flagUrl} onChange={v => set('flagUrl', v)} icon="🏳" />
+          <ImagePicker value={form.flagUrl} onChange={v => set('flagUrl', v)} icon="🏳" ratio={3 / 2}
+            hint="Shown small (44 × 30 px) next to the country on the website’s About page. Use a 3:2 flag about 132 × 88 px, or an SVG." />
         </fieldset>
 
         <fieldset className="ad-fieldset">

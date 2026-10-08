@@ -209,6 +209,11 @@ export default function DoctorForm({ initial, isNew, onClose }) {
                   Remove
                 </button>
               )}
+              <p className="ad-fieldset-hint ad-image-hint">
+                Portrait 2:3 on doctor cards and the profile page (taller on desktop), plus a small circle when
+                booking. Every view crops from the top — use about 800 × 1200 px with the face in the upper third
+                and a little space above the head.
+              </p>
               <label className="ad-field ad-image-url">
                 <span className="ad-field-label">or paste an image URL / path</span>
                 <input className="ad-input" value={form.image?.startsWith('data:') ? '' : (form.image || '')}

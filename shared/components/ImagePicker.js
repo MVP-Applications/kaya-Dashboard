@@ -1,10 +1,20 @@
 'use client'
 
+// The preview fits inside this box, in the shape the website shows the image.
+const PREVIEW_W = 200
+const PREVIEW_H = 150
+
 /**
  * Reusable image field: preview + upload (stored as a data URL in the mock)
  * or a pasted URL / path. `hint` says what size/shape the site shows it at.
+ *
+ * `ratio` (width ÷ height) gives the preview the website's shape, so the
+ * admin sees the crop visitors will get. `fit: 'contain'` shows the whole
+ * image instead — for logos and images the site never crops.
  */
-export default function ImagePicker({ value, onChange, icon = '🖼', variant = '', hint = '' }) {
+export default function ImagePicker({
+  value, onChange, icon = '🖼', variant = '', hint = '', ratio = null, fit = 'cover',
+}) {
   function handleFile(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -14,10 +24,15 @@ export default function ImagePicker({ value, onChange, icon = '🖼', variant = 
   }
 
   const isData = typeof value === 'string' && value.startsWith('data:')
+  const box = ratio
+    ? (ratio >= PREVIEW_W / PREVIEW_H
+      ? { width: PREVIEW_W, height: Math.round(PREVIEW_W / ratio) }
+      : { width: Math.round(PREVIEW_H * ratio), height: PREVIEW_H })
+    : undefined
 
   return (
     <div className="ad-image-field">
-      <div className={`ad-image-preview ${variant}`}>
+      <div className={`ad-image-preview ${variant}${fit === 'contain' ? ' ad-image-preview--contain' : ''}`} style={box}>
         {value
           ? <img src={value} alt="" />
           : (
