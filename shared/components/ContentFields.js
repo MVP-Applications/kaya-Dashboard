@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import ImagePicker from '@/shared/components/ImagePicker'
 import { emptyListItem } from '@/shared/lib/content'
 
@@ -263,4 +264,130 @@ function ItemControls({ index, total, disabled, onMove, onRemove }) {
         onClick={onRemove}>✕</button>
     </span>
   )
+}
+
+/**
+ * A list field shown as its own card: the items as rows first, with Edit and
+ * Delete on each and Add at the top. Edit opens that one item's fields under
+ * its row. Same `value`/`onChange` contract as ObjectList, so saving and
+ * validation are unchanged.
+ */
+export function ListCard({ field, value, onChange, disabled, dirty }) {
+  const items = Array.isArray(value) ? value : []
+  // Which row is open is part of the unsaved draft, so it stays local.
+  const [open, setOpen] = useState(null)
+  const itemLabel = (field.itemLabel || 'item').toLowerCase()
+  const subFields = field.fields || []
+  const titleKey = subFields.find(f => f.type !== 'image' && f.type !== 'icon')?.key
+
+  function update(i, key, next) {
+    onChange(items.map((item, j) => (j === i ? { ...item, [key]: next } : item)))
+  }
+  function add() {
+    onChange([...items, emptyListItem(field)])
+    setOpen(items.length)
+  }
+  function remove(i) {
+    onChange(items.filter((_, j) => j !== i))
+    setOpen(o => (o === i ? null : o !== null && o > i ? o - 1 : o))
+  }
+  function move(i, delta) {
+    const to = i + delta
+    if (to < 0 || to >= items.length) return
+    const next = [...items]
+    ;[next[i], next[to]] = [next[to], next[i]]
+    onChange(next)
+    setOpen(o => (o === i ? to : o === to ? i : o))
+  }
+
+  return (
+    <section className={`ad-fieldset ad-cf-sec ad-cf-list${dirty ? ' ad-cf-sec--dirty' : ''}`}>
+      <div className="ad-cf-list-head">
+        <div className="ad-cf-list-title">
+          <h3 className="ad-cf-sec-title">{field.label}</h3>
+          <span className="ad-badge">{items.length}</span>
+        </div>
+        {!disabled && (
+          <button type="button" className="ad-btn ad-btn--primary ad-btn--sm" onClick={add}>
+            + Add {itemLabel}
+          </button>
+        )}
+      </div>
+
+      {items.length === 0 && (
+        <p className="ad-cf-list-empty">
+          No {itemLabel}s yet.{!disabled && ` Use “+ Add ${itemLabel}” to create one.`}
+        </p>
+      )}
+
+      <ul className="ad-cf-rows">
+        {items.map((item, i) => {
+          const isOpen = open === i
+          const errors = countFieldErrors(subFields, item)
+          const summary = visibleFields(subFields, item)
+            .filter(f => f.key !== titleKey && f.type !== 'list')
+            .map(f => displayValue(f, item[f.key]))
+            .filter(Boolean)
+          return (
+            <li key={i} className={`ad-cf-row${isOpen ? ' ad-cf-row--open' : ''}`}>
+              <div className="ad-cf-row-main">
+                <span className="ad-cf-row-num">{i + 1}</span>
+                <div className="ad-cf-row-text">
+                  <span className={`ad-cf-row-title${titleKey && item[titleKey] ? '' : ' ad-muted'}`}>
+                    {(titleKey && item[titleKey]) || `Untitled ${itemLabel}`}
+                  </span>
+                  {summary.length > 0 && <span className="ad-cf-row-sub">{summary.join(' · ')}</span>}
+                </div>
+                {errors > 0 && <span className="ad-cf-row-warn">Needs fixing</span>}
+                <div className="ad-cf-row-actions">
+                  {!disabled && (
+                    <>
+                      <button type="button" className="ad-icon-btn" aria-label="Move up"
+                        disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
+                      <button type="button" className="ad-icon-btn" aria-label="Move down"
+                        disabled={i === items.length - 1} onClick={() => move(i, 1)}>↓</button>
+                    </>
+                  )}
+                  <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
+                    aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : i)}>
+                    {isOpen ? 'Close' : disabled ? 'View' : 'Edit'}
+                  </button>
+                  {!disabled && (
+                    <button type="button" className="ad-btn ad-btn--danger ad-btn--sm"
+                      onClick={() => remove(i)}>
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+              {isOpen && (
+                <div className="ad-cf-row-edit">
+                  <SectionFields
+                    fields={subFields}
+                    values={item}
+                    onChange={(key, next) => update(i, key, next)}
+                    disabled={disabled}
+                  />
+                  <div className="ad-cf-row-edit-foot">
+                    <button type="button" className="ad-btn ad-btn--soft ad-btn--sm"
+                      onClick={() => setOpen(null)}>
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+/** A sub-field's value as short row text — a select shows its option label. */
+function displayValue(field, value) {
+  if (value === undefined || value === null || value === '') return ''
+  if (field.type === 'select') return field.options?.find(o => o.value === value)?.label || value
+  if (field.type === 'image' || field.type === 'toggle') return ''
+  return String(value)
 }
