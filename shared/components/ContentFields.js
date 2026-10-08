@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import ImagePicker from '@/shared/components/ImagePicker'
 import { emptyListItem } from '@/shared/lib/content'
 
@@ -276,6 +276,9 @@ export function ListCard({ field, value, onChange, disabled, dirty }) {
   const items = Array.isArray(value) ? value : []
   // Which row is open is part of the unsaved draft, so it stays local.
   const [open, setOpen] = useState(null)
+  // The open row as it was before Edit, so Cancel can put it back (or drop
+  // it again when it was just added).
+  const before = useRef(null)
   const itemLabel = (field.itemLabel || 'item').toLowerCase()
   const subFields = field.fields || []
   const titleKey = subFields.find(f => f.type !== 'image' && f.type !== 'icon')?.key
@@ -285,7 +288,26 @@ export function ListCard({ field, value, onChange, disabled, dirty }) {
   }
   function add() {
     onChange([...items, emptyListItem(field)])
+    before.current = { isNew: true }
     setOpen(items.length)
+  }
+  function edit(i) {
+    before.current = { item: items[i] }
+    setOpen(i)
+  }
+  function cancel() {
+    const snap = before.current
+    if (open !== null && snap) {
+      onChange(snap.isNew
+        ? items.filter((_, j) => j !== open)
+        : items.map((item, j) => (j === open ? snap.item : item)))
+    }
+    before.current = null
+    setOpen(null)
+  }
+  function done() {
+    before.current = null
+    setOpen(null)
   }
   function remove(i) {
     onChange(items.filter((_, j) => j !== i))
@@ -348,10 +370,12 @@ export function ListCard({ field, value, onChange, disabled, dirty }) {
                         disabled={i === items.length - 1} onClick={() => move(i, 1)}>↓</button>
                     </>
                   )}
-                  <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
-                    aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : i)}>
-                    {isOpen ? 'Close' : disabled ? 'View' : 'Edit'}
-                  </button>
+                  {!isOpen && (
+                    <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
+                      aria-expanded={false} onClick={() => edit(i)}>
+                      {disabled ? 'View' : 'Edit'}
+                    </button>
+                  )}
                   {!disabled && (
                     <button type="button" className="ad-btn ad-btn--danger ad-btn--sm"
                       onClick={() => remove(i)}>
@@ -369,10 +393,20 @@ export function ListCard({ field, value, onChange, disabled, dirty }) {
                     disabled={disabled}
                   />
                   <div className="ad-cf-row-edit-foot">
-                    <button type="button" className="ad-btn ad-btn--soft ad-btn--sm"
-                      onClick={() => setOpen(null)}>
-                      Done
-                    </button>
+                    {disabled ? (
+                      <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm" onClick={done}>
+                        Close
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm" onClick={cancel}>
+                          Cancel
+                        </button>
+                        <button type="button" className="ad-btn ad-btn--primary ad-btn--sm" onClick={done}>
+                          Done
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -394,13 +428,30 @@ function displayValue(field, value) {
 
 /**
  * Single-value fields (headings, text) shown read-only first, with Edit in the
- * corner; Edit swaps in the inputs and Done goes back. Same `values`/`onChange`
- * contract as SectionFields — Done only closes the inputs, the draft is saved
- * from the editor's save bar as before.
+ * corner. Edit swaps in the inputs; Done keeps the changes in the draft (saved
+ * from the editor's save bar as before) and Cancel puts the fields back as
+ * they were when Edit was pressed.
+ *
+ * `snapshot()` / `restore(snap)` come from the editor so Cancel covers every
+ * locale, not just the one on screen. `editActions` (e.g. Reset to default)
+ * only show while editing.
  */
-export function FieldsCard({ title, hint, fields, values, onChange, disabled, dirty, actions }) {
+export function FieldsCard({
+  title, hint, fields, values, onChange, disabled, dirty, editActions, snapshot, restore,
+}) {
   // Whether the inputs are showing is screen-only state, like an open row.
   const [editing, setEditing] = useState(false)
+  const before = useRef(null)
+
+  function edit() {
+    before.current = snapshot?.()
+    setEditing(true)
+  }
+  function cancel() {
+    if (before.current !== undefined && before.current !== null) restore?.(before.current)
+    before.current = null
+    setEditing(false)
+  }
   const shown = visibleFields(fields, values)
   const errors = countFieldErrors(fields, values)
 
@@ -413,15 +464,26 @@ export function FieldsCard({ title, hint, fields, values, onChange, disabled, di
         </div>
         <div className="ad-cf-row-actions">
           {!editing && errors > 0 && <span className="ad-cf-row-warn">Needs fixing</span>}
-          {actions}
           {shown.length > 0 && (editing ? (
-            <button type="button" className="ad-btn ad-btn--primary ad-btn--sm"
-              onClick={() => setEditing(false)}>
-              Done
-            </button>
+            disabled ? (
+              <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
+                onClick={() => setEditing(false)}>
+                Close
+              </button>
+            ) : (
+              <>
+                {editActions}
+                <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm" onClick={cancel}>
+                  Cancel
+                </button>
+                <button type="button" className="ad-btn ad-btn--primary ad-btn--sm"
+                  onClick={() => { before.current = null; setEditing(false) }}>
+                  Done
+                </button>
+              </>
+            )
           ) : (
-            <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
-              onClick={() => setEditing(true)}>
+            <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm" onClick={edit}>
               {disabled ? 'View' : 'Edit'}
             </button>
           ))}

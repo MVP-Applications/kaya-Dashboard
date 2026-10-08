@@ -86,7 +86,12 @@ export default function ContentEditor({
   // Revert only the fields a panel shows, in every locale, so reverting the
   // Company column leaves the Support column alone.
   function revertKeys(sectionId, keys) {
-    const original = seed?.[sectionId]
+    restoreKeys(sectionId, keys, seed?.[sectionId])
+  }
+
+  // Put some fields of a section back to `original` (locale-nested) — used by
+  // Reset to default (the seed) and by Cancel (the draft from before Edit).
+  function restoreKeys(sectionId, keys, original) {
     if (!original) return
     setDraft(d => {
       const current = d[sectionId] || {}
@@ -111,11 +116,10 @@ export default function ContentEditor({
     const fields = panelFields(section, panel)
     const scalars = fields.filter(f => f.type !== 'list')
     const lists = fields.filter(f => f.type === 'list')
-    const keys = fields.map(f => f.key)
     const scalarKeys = scalars.map(f => f.key)
     const hint = panel.hint ?? section.hint
     const canRevert = canEdit && seed?.[section.id]
-      && !same(pick(draft[section.id], keys), pick(seed[section.id], keys))
+      && !same(pick(draft[section.id], scalarKeys), pick(seed[section.id], scalarKeys))
 
     return (
       <div className="ad-cf-split">
@@ -150,10 +154,13 @@ export default function ContentEditor({
             onChange={(key, value) => setField(section.id, key, value)}
             disabled={!canEdit}
             dirty={!same(pick(draft[section.id], scalarKeys), pick(values?.[section.id], scalarKeys))}
-            actions={canRevert && (
+            snapshot={() => draft[section.id] || {}}
+            restore={snap => restoreKeys(section.id, scalarKeys, snap)}
+            editActions={canRevert && (
               <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
-                onClick={() => (panel.keys ? revertKeys(section.id, keys) : revert(section.id))}>
-                ↺ Revert
+                title="Replace this area's text with the original built-in copy"
+                onClick={() => revertKeys(section.id, scalarKeys)}>
+                ↺ Reset to default
               </button>
             )}
           />
