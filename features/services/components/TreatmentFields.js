@@ -168,7 +168,7 @@ export default function TreatmentFields({ country, form, onChange }) {
           <div className="ad-field">
             <span className="ad-field-label">Card image</span>
             <ImagePicker value={form.cardImage} onChange={v => set('cardImage', v)}
-              hint="Shown on treatment cards in lists — a wide strip. Use a landscape image about 1200 × 340 px; keep the subject in the centre. If empty, the detail image is used." />
+              hint="Shown on treatment cards in lists — landscape 16:9. Use an image about 1600 × 900 px; keep the subject in the centre. If empty, the detail image is used (cropped to fit)." />
           </div>
           <div className="ad-field">
             <span className="ad-field-label">Detail image</span>
