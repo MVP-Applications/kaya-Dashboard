@@ -150,7 +150,8 @@ export default function BlogForm({ initial, isNew, onClose }) {
           <legend>Details</legend>
           <div className="ad-field">
             <span className="ad-field-label">Cover image</span>
-            <ImagePicker value={form.image} onChange={v => set('image', v)} hint="Wide image, shown on cards and atop the article." />
+            <ImagePicker value={form.image} onChange={v => set('image', v)} ratio={16 / 9}
+              hint="Shown 4:3 on blog cards, 16:9 as the featured post and 16:7 atop the article. Use a landscape 16:9 image about 1600 × 900 px and keep the subject in the centre — the edges get trimmed." />
           </div>
           <div className="ad-grid2">
             <label className="ad-field">
@@ -259,7 +260,8 @@ export default function BlogForm({ initial, isNew, onClose }) {
           </div>
           <div className="ad-field">
             <span className="ad-field-label">Social share image</span>
-            <ImagePicker value={form.ogImage} onChange={v => set('ogImage', v)} hint="1200 × 630. Defaults to the cover image." />
+            <ImagePicker value={form.ogImage} onChange={v => set('ogImage', v)} ratio={1200 / 630}
+              hint="Preview when the article is shared on social media and messaging apps (not shown on the site). Use 1200 × 630 px. Defaults to the cover image." />
           </div>
           <label className="ad-field ad-w-xl">
             <span className="ad-field-label">Canonical URL</span>

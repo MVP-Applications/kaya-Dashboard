@@ -126,7 +126,8 @@ function Field({ field, value, values, onChange, disabled }) {
       return (
         <div className="ad-field">
           <span className="ad-field-label">{field.label}</span>
-          <ImagePicker value={value || ''} onChange={disabled ? () => {} : onChange} />
+          <ImagePicker value={value || ''} onChange={disabled ? () => {} : onChange}
+            hint={field.hint} ratio={field.ratio} fit={field.fit} />
         </div>
       )
 

@@ -331,10 +331,8 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
           <div className="ad-split">
             <div className="ad-field">
               <span className="ad-field-label">Hero image</span>
-              <p className="ad-fieldset-hint">
-                A wide, landscape photo - about 1920×1000px (roughly 2:1).
-              </p>
-              <ImagePicker value={form.heroImage} onChange={setHeroImage} />
+              <ImagePicker value={form.heroImage} onChange={setHeroImage} ratio={16 / 9}
+                hint="Full-screen background at the top of the vertical page, about 16:9 on desktop; phones crop it to a tall middle strip. Also used as a short wide strip on the Tell us Everything cards. Use about 1920 × 1080 px with the subject in the centre." />
               {heroImageWarning && <div className="ad-field-warning">{heroImageWarning}</div>}
             </div>
             <div>

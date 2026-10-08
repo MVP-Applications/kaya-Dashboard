@@ -494,7 +494,9 @@
   border: 1px solid var(--line); background: var(--whisper);
 }
 .ad-image-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.ad-image-preview--doc { width: 130px; height: 160px; }
+.ad-image-preview--doc { width: 100px; height: 150px; } /* 2:3, like the site's doctor photos */
+/* Logos and never-cropped images: show the whole file */
+.ad-image-preview--contain img { object-fit: contain; padding: 8px; }
 .ad-image-ph {
   width: 100%; height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 6px;

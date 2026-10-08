@@ -205,7 +205,8 @@ export default function VoucherForm({ initial, isNew, onClose }) {
 
         <fieldset className="ad-fieldset">
           <legend>Image</legend>
-          <ImagePicker value={form.img} onChange={v => set('img', v)} />
+          <ImagePicker value={form.img} onChange={v => set('img', v)} ratio={7 / 8}
+            hint="Shown beside the offer text on the homepage and the Indulgence page — almost square, 7:8. Use about 700 × 800 px with the subject in the centre." />
         </fieldset>
       </div>
     </form>
