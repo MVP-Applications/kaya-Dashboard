@@ -28,8 +28,9 @@ Publishing never needs a website rebuild: the website reads everything below at 
 | `footerColumn` / `footerOrder` | `NONE` · `COMPANY` · `SUPPORT` | Footer link, after that column's own links. |
 | `allCountries` / `countries` | `true`, or a list of countries | Not offered in the visitor's country → the website sends them to the homepage and hides the page's links. |
 
-Locks: the homepage always stays published and offered everywhere. The site's own pages
-can't be archived, deleted, renamed or moved to another template.
+Locks: the site's own pages can't be archived, deleted, renamed or moved to another
+template. Any page — the homepage included — can be set to draft or limited to countries; an
+unavailable homepage shows the not-found page.
 
 ## 2. Endpoints
 
