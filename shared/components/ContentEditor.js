@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { SectionFields, FieldsCard, ListCard, countFieldErrors } from '@/shared/components/ContentFields'
 import LocaleToggle from '@/shared/components/LocaleToggle'
@@ -43,6 +43,17 @@ export default function ContentEditor({
   // Re-seed the draft when the editor is pointed at a different group, or at
   // the same group in a different market.
   useEffect(() => { setDraft(values || {}); setSaved(false) }, [group.id, scopeKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The editor can open before the content has loaded (straight after sign-in,
+  // a refresh, a link opened in a new tab). When the stored content arrives or
+  // changes, take it — unless the admin has already started editing, so their
+  // unsaved work is never overwritten.
+  const shownValues = useRef(values || {})
+  useEffect(() => {
+    const before = shownValues.current
+    shownValues.current = values || {}
+    setDraft(d => (same(d, before) ? (values || {}) : d))
+  }, [values])
 
   const changed = useMemo(
     () => group.sections.filter(s => !same(draft[s.id], values?.[s.id])).map(s => s.id),

@@ -736,7 +736,6 @@ export async function setPageStatus(id, status) {
   const system = systemRecords().find(p => p.id === id)
   if (system) {
     if (status === 'ARCHIVED') throw new Error("The website's own pages can't be archived.")
-    if (status !== 'PUBLISHED' && system.path === '/') throw new Error('The homepage must always stay published.')
     saveSystem(id, { status })
     return settle(systemRecords().find(p => p.id === id))
   }
