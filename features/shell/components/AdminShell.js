@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAdmin } from '@/shared/context/AdminContext'
 import { ROLE_LABELS } from '@/shared/lib/auth'
-import PublishButton from '@/features/shell/components/PublishButton'
 import CountrySwitcher from '@/features/shell/components/CountrySwitcher'
 import { SITE_URL } from '@/shared/lib/site'
 import { viewFromPath, viewHref } from '@/shared/lib/routes'
@@ -99,7 +98,6 @@ export default function AdminShell({ children }) {
         </nav>
 
         <div className="ad-sidebar-foot">
-          {!demoMode && <PublishButton />}
           <button className="ad-reset" onClick={refresh} disabled={loading}>
             {loading ? '↻ Refreshing…' : '↻ Refresh content'}
           </button>

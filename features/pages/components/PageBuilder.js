@@ -5,9 +5,11 @@ import ConfirmDialog from '@/shared/components/ConfirmDialog'
 import LocaleToggle from '@/shared/components/LocaleToggle'
 import BlockFields from '@/features/pages/components/BlockFields'
 import PagePreview from '@/features/pages/components/PagePreview'
+import PageStatusControl from '@/features/pages/components/PageStatus'
+import { PageSettingsFields } from '@/features/pages/components/PageSettings'
 import {
-  BLOCK_TYPES, BLOCK_ORDER, TEMPLATE_LABELS, NAV_POSITIONS, NAV_POSITION_LABELS,
-  newBlock, newId, slugify, validateCustomPage, plainText,
+  BLOCK_TYPES, BLOCK_ORDER, TEMPLATE_LABELS, HEADER_POSITION_LABELS, FOOTER_COLUMN_LABELS,
+  newBlock, newId, slugify, validateCustomPage, publishProblems, plainText, templateOf,
 } from '@/features/pages/lib/page-builder'
 import { PAGES } from '@/shared/lib/content'
 import { siteUrl } from '@/shared/lib/site'
@@ -27,7 +29,7 @@ function blockSummary(block) {
 }
 
 export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
-  const { customPages, upsertCustomPage, services, doctors, allowed, saving } = useAdmin()
+  const { customPages, saveBuiltPage, services, doctors, allowed, saving } = useAdmin()
   // Pages are global settings — only a super admin changes them.
   const canEdit = allowed('manageSettings')
 
@@ -54,6 +56,17 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
   const dirty = saved === null || JSON.stringify(page) !== saved
   const selected = page.blocks.find(b => b.id === selectedId) || null
   const builtInPaths = useMemo(() => PAGES.map(p => p.path), [])
+  const template = templateOf(page.template)
+  const notReady = originalId ? publishProblems(page) : []
+
+  // The status is changed from the list or the header control (after a
+  // confirmation) and saved straight away — keep this copy in step with it.
+  const liveStatus = customPages.find(p => p.id === originalId)?.status
+  useEffect(() => {
+    if (!liveStatus || liveStatus === page.status) return
+    setPage(p => ({ ...p, status: liveStatus }))
+    setSaved(prev => (prev ? JSON.stringify({ ...JSON.parse(prev), status: liveStatus }) : prev))
+  }, [liveStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!dirty) return
@@ -112,12 +125,11 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
     })
     setProblems(found)
     if (found.length) {
-      if (found.some(f => /title|address|menu/i.test(f))) setPanel('settings')
+      if (found.some(f => /title|address|country|countries/i.test(f))) setPanel('settings')
       return
     }
-    const record = { ...page, id: page.id || page.slug, updatedAt: new Date().toISOString() }
-    const ok = await upsertCustomPage(record, originalId)
-    if (ok) {
+    const record = await saveBuiltPage(page, { isNew: !originalId })
+    if (record) {
       setPage(record)
       setSaved(JSON.stringify(record))
       setOriginalId(record.id)
@@ -141,7 +153,7 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
 
   const addPalette = (
     <div className="ad-pb-palette">
-      {BLOCK_ORDER.map(type => (
+      {BLOCK_ORDER.filter(type => template.allowedTypes.includes(type)).map(type => (
         <button key={type} type="button" className="ad-pb-palette-item" onClick={() => addBlock(type)}>
           <span className="ad-pb-palette-ico" aria-hidden="true">{BLOCK_TYPES[type].icon}</span>
           <span className="ad-pb-palette-txt">
@@ -159,16 +171,22 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
         <button type="button" className="ad-back" onClick={leave}>← All pages</button>
         <div className="ad-editor-titles">
           <h1 className="ad-view-title">{page.title || (isNew && !originalId ? 'New page' : 'Untitled page')}</h1>
-          <p className="ad-view-sub">
+          <div className="ad-view-sub ad-pg-sub">
             {TEMPLATE_LABELS[page.template] || 'Custom page'} · /{page.slug || '…'} ·{' '}
-            {NAV_POSITION_LABELS[page.navPosition] ? `Menu: ${NAV_POSITION_LABELS[page.navPosition]} · ` : ''}
-            <span className={`ad-status ad-status--${page.visible ? 'booked' : 'closed'}`}>
-              <span className="ad-status-dot" />{page.visible ? 'Visible' : 'Hidden'}
-            </span>
-          </p>
+            {[HEADER_POSITION_LABELS[page.headerPosition], FOOTER_COLUMN_LABELS[page.footerColumn]].filter(Boolean).map(m => `${m} · `)}
+            <PageStatusControl
+              page={{ ...page, id: originalId || '' }}
+              canEdit={canEdit}
+              allowArchive
+              blockedReason={!originalId ? 'Create the page first.' : dirty ? 'Save your changes first — publishing uses the saved version.' : ''}
+            />
+          </div>
+          {originalId && page.status !== 'PUBLISHED' && notReady.length > 0 && (
+            <p className="ad-field-hint">Before it can be published: {notReady.join(' ')}</p>
+          )}
         </div>
         <div className="ad-editor-actions">
-          {originalId && page.visible && !dirty && (
+          {originalId && page.status === 'PUBLISHED' && !dirty && (
             <a href={siteUrl(`/${page.slug}`)} className="ad-btn ad-btn--ghost" target="_blank" rel="noreferrer">View page ↗</a>
           )}
           <button type="button" className="ad-btn ad-btn--primary" disabled={!canEdit || !dirty || saving} onClick={save}>
@@ -274,67 +292,36 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
               {dirty && <span className="ad-pb-unsaved">Unsaved changes</span>}
             </div>
 
-            <div className="ad-pair">
-              <fieldset className="ad-fieldset">
-                <legend>Page details</legend>
-                <label className="ad-field ad-w-lg">
-                  <span className="ad-field-label">{locale === 'AR' ? 'Title (Arabic)' : 'Title *'}</span>
-                  <input className="ad-input" dir={locale === 'AR' ? 'rtl' : undefined}
-                    value={locale === 'AR' ? page.titleAr : page.title}
-                    placeholder={locale === 'AR' ? page.title : 'e.g. Ramadan offers'}
-                    onChange={e => (locale === 'AR' ? set({ titleAr: e.target.value }) : setTitle(e.target.value))} />
-                  <span className="ad-field-hint">Shown in the browser tab and when the page is shared.</span>
-                </label>
-                <label className="ad-field ad-w-lg">
-                  <span className="ad-field-label">Address *</span>
-                  <span className="ad-pb-slug">
-                    <span>kaya.ae/</span>
-                    <input className="ad-input" value={page.slug}
-                      onChange={e => { setSlugTouched(true); set({ slug: slugInput(e.target.value) }) }}
-                      onBlur={e => set({ slug: slugify(e.target.value) })} placeholder="ramadan-offers" />
-                  </span>
-                  <span className="ad-field-hint">Addresses the website already uses, like /treatments, can’t be taken.</span>
-                </label>
-              </fieldset>
-
-              <fieldset className="ad-fieldset">
-                <legend>Menu &amp; visibility</legend>
-                <label className="ad-field ad-w-md">
-                  <span className="ad-field-label">Position in the website menu *</span>
-                  <select className="ad-input" value={page.navPosition || ''}
-                    onChange={e => set({ navPosition: e.target.value })}>
-                    <option value="" disabled>Choose left or right…</option>
-                    {NAV_POSITIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                  <span className="ad-field-hint">Which side of the website&apos;s header the page&apos;s link appears on, once the page is visible.</span>
-                </label>
-                <label className="ad-check ad-pb-visible">
-                  <input type="checkbox" checked={page.visible} onChange={e => set({ visible: e.target.checked })} />
-                  <span>
-                    <strong>Visible on the website</strong>
-                    <span className="ad-field-hint">Hidden pages can’t be opened by visitors and don’t appear in the website menu.</span>
-                  </span>
-                </label>
-              </fieldset>
-            </div>
-
-            <fieldset className="ad-fieldset">
-              <legend>Search engines</legend>
-              <label className="ad-field ad-w-xl">
-                <span className="ad-field-label">{locale === 'AR' ? 'SEO title (Arabic)' : 'SEO title'}</span>
-                <input className="ad-input" dir={locale === 'AR' ? 'rtl' : undefined}
-                  value={locale === 'AR' ? page.seoTitleAr : page.seoTitle}
-                  placeholder={page.title ? `${page.title} | Kaya` : ''}
-                  onChange={e => set(locale === 'AR' ? { seoTitleAr: e.target.value } : { seoTitle: e.target.value })} />
-              </label>
-              <label className="ad-field ad-w-xl">
-                <span className="ad-field-label">{locale === 'AR' ? 'Description (Arabic)' : 'Description'}</span>
-                <textarea className="ad-input ad-textarea" rows={3} dir={locale === 'AR' ? 'rtl' : undefined}
-                  value={locale === 'AR' ? page.seoDescriptionAr : page.seoDescription}
-                  onChange={e => set(locale === 'AR' ? { seoDescriptionAr: e.target.value } : { seoDescription: e.target.value })} />
-                <span className="ad-field-hint">{(locale === 'AR' ? page.seoDescriptionAr : page.seoDescription).length} / 160 characters recommended</span>
-              </label>
-            </fieldset>
+            <PageSettingsFields
+              value={page}
+              onChange={set}
+              locale={locale}
+              disabled={!canEdit}
+              withTitle
+              titleSlot={(
+                <>
+                  <label className="ad-field ad-w-lg">
+                    <span className="ad-field-label">{locale === 'AR' ? 'Title (Arabic)' : 'Title *'}</span>
+                    <input className="ad-input" dir={locale === 'AR' ? 'rtl' : undefined}
+                      value={locale === 'AR' ? page.titleAr : page.title}
+                      placeholder={locale === 'AR' ? page.title : 'e.g. Ramadan offers'}
+                      onChange={e => (locale === 'AR' ? set({ titleAr: e.target.value }) : setTitle(e.target.value))} />
+                    <span className="ad-field-hint">Shown in the browser tab and when the page is shared.</span>
+                  </label>
+                  <label className="ad-field ad-w-lg">
+                    <span className="ad-field-label">Address *</span>
+                    <span className="ad-pb-slug">
+                      <span>kaya.ae/</span>
+                      <input className="ad-input" value={page.slug}
+                        onChange={e => { setSlugTouched(true); set({ slug: slugInput(e.target.value) }) }}
+                        onBlur={e => set({ slug: slugify(e.target.value) })} placeholder="ramadan-offers" />
+                    </span>
+                    <span className="ad-field-hint">Addresses the website already uses, like /treatments, can’t be taken.</span>
+                  </label>
+                  <p className="ad-field-hint">Page type: <strong>{template.label}</strong> — {template.allowedTypes.length === BLOCK_ORDER.length ? 'any block' : `blocks: ${template.allowedTypes.map(t => BLOCK_TYPES[t].label).join(', ')}`}{template.required.length ? ` (needs ${template.required.map(t => BLOCK_TYPES[t].label).join(', ')})` : ''}.</p>
+                </>
+              )}
+            />
           </div>
         )}
 

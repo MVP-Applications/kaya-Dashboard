@@ -29,6 +29,12 @@ export default function ContentEditor({
    * the inputs — and saving would then write it into the wrong country.
    */
   scopeKey = '',
+  /**
+   * Extra controls in a section's header (e.g. show/hide on the website), and
+   * whether a section is currently switched off — it's then shown dimmed.
+   */
+  renderSectionExtra = null,
+  isSectionOff = null,
 }) {
   const [draft, setDraft] = useState(values || {})
   const [saved, setSaved] = useState(false)
@@ -145,7 +151,7 @@ export default function ContentEditor({
           })}
         </nav>
 
-        <div className="ad-cf-panel">
+        <div className="ad-cf-panel" dir={locale === 'AR' ? 'rtl' : undefined}>
           <FieldsCard key={panel.id}
             title={panel.label}
             hint={hint}
@@ -235,25 +241,31 @@ export default function ContentEditor({
         <div className="ad-cf-sections">
           {group.sections.map(section => (
             <section key={section.id}
-              className={`ad-fieldset ad-cf-sec${changed.includes(section.id) ? ' ad-cf-sec--dirty' : ''}`}>
+              className={`ad-fieldset ad-cf-sec${changed.includes(section.id) ? ' ad-cf-sec--dirty' : ''}${isSectionOff?.(section.id) ? ' ad-cf-sec--off' : ''}`}>
               <div className="ad-cf-sec-head">
                 <div>
                   <h2 className="ad-cf-sec-title">{section.label}</h2>
                   {section.hint && <p className="ad-cf-sec-hint">{section.hint}</p>}
                 </div>
-                {canEdit && seed?.[section.id] && !same(draft[section.id], seed[section.id]) && (
-                  <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
-                    onClick={() => revert(section.id)}>
-                    ↺ Revert
-                  </button>
-                )}
+                <div className="ad-cf-sec-actions">
+                  {renderSectionExtra?.(section)}
+                  {canEdit && seed?.[section.id] && !same(draft[section.id], seed[section.id]) && (
+                    <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
+                      onClick={() => revert(section.id)}>
+                      ↺ Revert
+                    </button>
+                  )}
+                </div>
               </div>
-              <SectionFields
-                fields={section.fields}
-                values={draft[section.id]?.[locale]}
-                onChange={(key, value) => setField(section.id, key, value)}
-                disabled={!canEdit}
-              />
+              {/* Arabic copy is typed right-to-left. */}
+              <div dir={locale === 'AR' ? 'rtl' : undefined}>
+                <SectionFields
+                  fields={section.fields}
+                  values={draft[section.id]?.[locale]}
+                  onChange={(key, value) => setField(section.id, key, value)}
+                  disabled={!canEdit}
+                />
+              </div>
             </section>
           ))}
         </div>

@@ -17,7 +17,8 @@ import {
   fetchUsers, updateStaffUser, removeStaffUser, fetchStaffInvites, revokeStaffInvite,
   fetchOverrides, persistOverrideSection,
   fetchTellUs, persistTellUs,
-  fetchCustomPages, persistCustomPages, removeCustomPage,
+  fetchPageRegistry, saveCustomPage, savePageSettings, setPageStatus, reorderNavigation,
+  removePage, setSectionVisible, systemPageSlug, pageSectionKey,
   fetchBlogs, persistBlogs, removeBlog,
   fetchBlogCategories, persistBlogCategories, removeBlogCategory,
   isDemoMode, resetDemo as resetDemoData,
@@ -65,9 +66,10 @@ export function AdminProvider({ children }) {
   // failure there never takes the catalogue down with it.
   const [tellUsRaw, setTellUsRaw] = useState(null)
   const [tellUsError, setTellUsError] = useState('')
-  // Page builder pages — loaded on their own, like Tell Us.
-  const [customPages, setCustomPages] = useState([])
+  // Every website page (the site's own + built ones) — loaded on their own, like Tell Us.
+  const [pageRegistry, setPageRegistry] = useState([])
   const [customPagesError, setCustomPagesError] = useState('')
+  const customPages = useMemo(() => pageRegistry.filter(p => p.kind === 'CUSTOM'), [pageRegistry])
   // Blog posts + topics — loaded on their own too; '' while fine, else why not.
   const [blogs, setBlogs] = useState([])
   const [blogCategories, setBlogCategories] = useState([])
@@ -141,10 +143,10 @@ export function AdminProvider({ children }) {
     }
 
     try {
-      const list = await fetchCustomPages()
-      if (token === loadToken.current) { setCustomPages(list || []); setCustomPagesError('') }
+      const list = await fetchPageRegistry()
+      if (token === loadToken.current) { setPageRegistry(list || []); setCustomPagesError('') }
     } catch (e) {
-      if (token === loadToken.current) { setCustomPages([]); setCustomPagesError(e.message) }
+      if (token === loadToken.current) { setPageRegistry([]); setCustomPagesError(e.message) }
     }
 
     try {
@@ -204,7 +206,7 @@ export function AdminProvider({ children }) {
         loadToken.current++
         applyAll(EMPTY)
         setTellUsRaw(null)
-        setCustomPages([])
+        setPageRegistry([])
         setBlogs([])
         setBlogCategories([])
       }
@@ -249,7 +251,7 @@ export function AdminProvider({ children }) {
     loadToken.current++
     applyAll(EMPTY)
     setTellUsRaw(null)
-    setCustomPages([])
+    setPageRegistry([])
     setBlogs([])
     setBlogCategories([])
   }, [])
@@ -383,12 +385,11 @@ export function AdminProvider({ children }) {
       locations: { list: locations, setList: setLocations, persist: persistLocations, remove: removeLocation, keyOf: byId },
       countryRecords: { list: countryRecords, setList: setCountryRecords, persist: persistCountries, remove: removeCountry, keyOf: byId },
       contacts: { list: contacts, setList: setContacts, persist: persistContacts, remove: removeContact, keyOf: byId },
-      customPages: { list: customPages, setList: setCustomPages, persist: persistCustomPages, remove: removeCustomPage, keyOf: byId },
       blogs: { list: blogs, setList: setBlogs, persist: persistBlogs, remove: removeBlog, keyOf: byId },
       // Topics are an ordered list; the whole-list save also writes their order.
       blogCategories: { list: blogCategories, setList: setBlogCategories, persist: persistBlogCategories, remove: removeBlogCategory, keyOf: byId, reorder: persistBlogCategories },
     }
-  }, [verticals, categories, doctors, reviews, vouchers, locations, countryRecords, contacts, customPages, blogs, blogCategories])
+  }, [verticals, categories, doctors, reviews, vouchers, locations, countryRecords, contacts, blogs, blogCategories])
 
   // ── Collection CRUD ───────────────────────────────────
   // Verticals and locations append (they render as ordered settings lists);
@@ -622,9 +623,82 @@ export function AdminProvider({ children }) {
     return ok
   }, [cols, deleteFrom, syncContactOntoCountry])
 
-  // ── Page builder ──────────────────────────────────────
-  const upsertCustomPage = useCallback((r, k) => upsertInto(cols.customPages, r, k), [cols, upsertInto])
-  const deleteCustomPage = useCallback(k => deleteFrom(cols.customPages, k), [cols, deleteFrom])
+  // ── Pages: registry, built pages, status, menu ───────────
+  // Each call goes straight to the API and only updates the screen once it
+  // has succeeded, so a page never shows a status or setting the backend
+  // refused.
+  const putPage = useCallback(record => setPageRegistry(list => (
+    list.some(p => p.id === record.id) ? list.map(p => (p.id === record.id ? record : p)) : [...list, record]
+  )), [])
+
+  /** Run one page write; returns the result, or null with the reason in `error`. */
+  const pageWrite = useCallback(async (run, { quiet = false } = {}) => {
+    setSaving(true)
+    try {
+      const result = await run()
+      setError('')
+      if (!quiet) setSuccess('Changes saved.')
+      return { ok: true, result }
+    } catch (e) {
+      if (!quiet) setError(e.message)
+      return { ok: false, error: e.message }
+    } finally {
+      setSaving(false)
+    }
+  }, [])
+
+  /** Create or update a built page (settings + blocks). Returns the saved page, or null. */
+  const saveBuiltPage = useCallback(async (record, { isNew }) => {
+    const r = await pageWrite(() => saveCustomPage(record, { isNew }))
+    if (r.ok) putPage(r.result)
+    return r.ok ? r.result : null
+  }, [pageWrite, putPage])
+
+  /** Draft / published / archived. Errors are returned (shown in the confirm dialog), not toasted. */
+  const changePageStatus = useCallback(async (id, status) => {
+    const r = await pageWrite(() => setPageStatus(id, status), { quiet: true })
+    if (r.ok) { putPage(r.result); setSuccess(status === 'PUBLISHED' ? 'Page published.' : 'Page status changed.') }
+    return r
+  }, [pageWrite, putPage])
+
+  const savePageSettingsFor = useCallback(async record => {
+    const r = await pageWrite(() => savePageSettings(record))
+    if (r.ok) putPage(r.result)
+    return r.ok
+  }, [pageWrite, putPage])
+
+  /** items: [{ id, headerPosition, headerOrder, footerColumn, footerOrder }] */
+  const reorderPageNavigation = useCallback(async items => {
+    const r = await pageWrite(() => reorderNavigation(items))
+    if (r.ok) {
+      const byId = Object.fromEntries(items.map(i => [i.id, i]))
+      setPageRegistry(list => list.map(p => (byId[p.id] ? { ...p, ...byId[p.id] } : p)))
+    }
+    return r.ok
+  }, [pageWrite])
+
+  const deletePage = useCallback(async id => {
+    const r = await pageWrite(() => removePage(id))
+    if (r.ok) setPageRegistry(list => list.filter(p => p.id !== id))
+    return r.ok
+  }, [pageWrite])
+
+  /** The registry entry (status, menu, settings) of one of the site's own pages, by dashboard page id. */
+  const systemPageRecord = useCallback(
+    pageId => pageRegistry.find(p => p.kind === 'SYSTEM' && p.slug === systemPageSlug(pageId)) || null,
+    [pageRegistry],
+  )
+
+  const isSectionHidden = useCallback(
+    (pageId, sectionId) => Boolean(systemPageRecord(pageId)?.hiddenSections.includes(pageSectionKey(pageId, sectionId))),
+    [systemPageRecord],
+  )
+
+  const setPageSectionVisible = useCallback(async (pageId, sectionId, visible) => {
+    const r = await pageWrite(() => setSectionVisible(pageId, sectionId, visible))
+    if (r.ok) putPage(r.result)
+    return r.ok
+  }, [pageWrite, putPage])
 
   // ── Blog ──────────────────────────────────────────────
   const upsertBlog = useCallback((r, k) => upsertInto(cols.blogs, r, k), [cols, upsertInto])
@@ -799,22 +873,21 @@ export function AdminProvider({ children }) {
     () => (countryOverrides ? resolveContent(pages, countryOverrides) : pages),
     [pages, countryOverrides],
   )
-  const resolvedSite = useMemo(
-    () => (countryOverrides ? resolveContent(site, countryOverrides) : site),
-    [site, countryOverrides],
-  )
+  // Footer & Global are the same in every country — no per-country copy.
+  const resolvedSite = site
 
   /**
    * Save a section. With no country selected this edits the shared copy; with
    * one selected it records an override for that country only, so shared copy
-   * stays editable in one place.
+   * stays editable in one place. Site-wide settings (footer, global) always
+   * edit the shared copy.
    */
   const saveSection = useCallback(async (scope, groupId, sectionId, patch) => {
     const baseTree = scope === 'site' ? site : pages
     const setTree = scope === 'site' ? setSite : setPages
     const persistBase = scope === 'site' ? persistSiteSection : persistPageSection
 
-    if (!activeCountry) {
+    if (!activeCountry || scope === 'site') {
       const prev = baseTree
       const merged = { ...prev[groupId]?.[sectionId], ...patch }
       setTree({ ...prev, [groupId]: { ...prev[groupId], [sectionId]: merged } })
@@ -947,7 +1020,9 @@ export function AdminProvider({ children }) {
     countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry, replaceCityInCountry,
     contacts, upsertContact, deleteContact,
     tellUs, tellUsError, saveTellUs,
-    customPages, customPagesError, upsertCustomPage, deleteCustomPage,
+    pageRegistry, customPages, customPagesError, saveBuiltPage, changePageStatus,
+    savePageSettings: savePageSettingsFor, reorderPageNavigation, deletePage,
+    systemPageRecord, isSectionHidden, setPageSectionVisible,
     blogs, blogCategories, blogsError, upsertBlog, deleteBlog, upsertBlogCategory, deleteBlogCategory,
     dataVersion,
     users, invites, saveUser, deleteUser, revokeInvite, refreshUsers,

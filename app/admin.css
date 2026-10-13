@@ -143,18 +143,6 @@
 .ad-reset:hover { border-color: var(--mid); color: var(--primary); }
 .ad-reset[disabled] { opacity: .55; cursor: default; }
 
-/* ── Publish (triggers a site rebuild) ──────────────────── */
-.ad-publish-btn {
-  width: 100%; background: var(--primary); border: 1px solid var(--primary);
-  color: #fff; font-family: var(--ff-b); font-size: 12px; font-weight: 600;
-  padding: 9px; border-radius: 9px; cursor: pointer;
-  transition: filter .15s, opacity .15s;
-}
-.ad-publish-btn:hover { filter: brightness(1.08); }
-.ad-publish-btn[disabled] { opacity: .6; cursor: default; }
-.ad-publish-msg { font-size: 11px; line-height: 1.45; color: var(--slate); margin: 6px 0 0; }
-.ad-publish-msg--error { color: #B23B3B; }
-
 .ad-main { display: flex; flex-direction: column; min-width: 0; }
 
 /* ── Topbar ────────────────────────────────────────────── */
@@ -497,6 +485,17 @@
 .ad-image-preview--doc { width: 100px; height: 150px; } /* 2:3, like the site's doctor photos */
 /* Logos and never-cropped images: show the whole file */
 .ad-image-preview--contain img { object-fit: contain; padding: 8px; }
+.ad-image-preview--focus { position: relative; cursor: crosshair; }
+.ad-image-focus-dot {
+  position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+  border: 2px solid #fff; background: rgba(110, 63, 152, .85); box-shadow: 0 0 0 1px rgba(0,0,0,.35);
+  pointer-events: none;
+}
+.ad-image-warning {
+  font-size: 11.5px; line-height: 1.45; color: #9A6B12; background: #FBF1DC;
+  border-radius: 8px; padding: 6px 9px; margin: 0 0 6px;
+}
+.ad-link-btn { background: none; border: 0; padding: 0; color: var(--primary); font: inherit; text-decoration: underline; cursor: pointer; }
 .ad-image-ph {
   width: 100%; height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 6px;
@@ -771,6 +770,8 @@
   padding: 10px 13px; border-radius: 9px;
 }
 .ad-cf-sections { display: flex; flex-direction: column; gap: 16px; }
+.ad-cf-sec-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.ad-cf-sec--off > :not(.ad-cf-sec-head) { opacity: .5; }
 .ad-cf-sec { padding: 18px 20px; }
 .ad-cf-sec--dirty { border-color: #E7CE93; box-shadow: 0 0 0 3px rgba(231,206,147,.18); }
 .ad-cf-sec-head {
@@ -1520,6 +1521,15 @@
 }
 .ad-pg-card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .ad-pg-card--hidden .ad-pg-card-main { opacity: .55; }
+.ad-view-head-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.ad-page-count--warn { color: #9A6B12; }
+.ad-pg-status { display: inline-flex; align-items: center; gap: 8px; }
+.ad-pg-status-select { width: auto; padding: 4px 8px; font-size: 12.5px; }
+.ad-pg-sub { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ad-pg-countries { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; }
+.ad-pg-countries .ad-field-hint { flex-basis: 100%; }
+.ad-pg-menus { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.ad-pg-menu { display: flex; flex-direction: column; gap: 8px; }
 .ad-pg-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--slate); cursor: pointer; }
 .ad-pg-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .ad-pg-switch-track {

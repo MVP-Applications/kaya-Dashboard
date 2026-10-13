@@ -4,7 +4,8 @@
  */
 export class ApiError extends Error {
   constructor(statusCode, code, message) {
-    super(message || 'Request failed.')
+    // Validation failures arrive as a list of messages — show them all.
+    super((Array.isArray(message) ? message.join(' ') : message) || 'Request failed.')
     this.name = 'ApiError'
     this.statusCode = statusCode
     this.code = code
