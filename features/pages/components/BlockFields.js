@@ -78,7 +78,9 @@ function Field({ field, data, locale, onChange, services, doctors }) {
         <div className="ad-field">
           <span className="ad-field-label">{label}</span>
           <ImagePicker value={value || ''} onChange={v => onChange(k, v)}
-            hint={field.hint} ratio={field.ratio} fit={field.fit} />
+            hint={field.hint} ratio={field.ratio} fit={field.fit} recommended={field.recommended}
+            focus={field.focusKey ? data[field.focusKey] || '' : ''}
+            onFocusChange={field.focusKey ? v => onChange(field.focusKey, v) : undefined} />
         </div>
       )
     case 'treatments':

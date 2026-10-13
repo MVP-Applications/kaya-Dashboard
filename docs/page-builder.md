@@ -1,122 +1,118 @@
-# Page builder: data format
+# Pages: data format
 
 **For:** the website team and the backend team.
-**Status:** live. Backend: `kaya-nest-api` `src/modules/custom-pages`.
-Dashboard: Pages → Your pages. Website: `app/[slug]` renders a page, and the
-header shows each visible page's link on the side the admin chose.
+**Status:** live. Backend: `kaya-nest-api` `src/modules/pages` (templates in
+`page-templates.ts`, block shapes in `section-types.ts`). Dashboard: **Pages**.
+Website: `shared/context/PagesContext.js` (menus, availability),
+`shared/hooks/usePageContent.js` (the site's own pages), `app/[slug]` → `features/custom-pages`
+(built pages).
 
-Admins create pages from blocks, at top-level addresses such as
-`kaya.ae/summer-glow`. When creating one they must pick **Position in the
-website menu**: **Left** (in the main menu, next to Treatments, Doctors,
-About…) or **Right** (next to the language and account buttons). The website's
-own pages (Homepage, About…) stay in "Website pages", where their copy is edited.
+Every website page is one record:
+
+- **The site's own pages** (`kind: SYSTEM`) — Homepage, About, Tell us, Treatments, Aesthetic,
+  Wellness, Men's, Surgery, Doctors, Indulgence, Find us. Their layout and address are built into
+  the website. Admins edit their copy, switch optional sections off, and set status, menu
+  placement and countries.
+- **Built pages** (`kind: CUSTOM`) — made in the dashboard from blocks, at `kaya.ae/<slug>`.
+
+Publishing never needs a website rebuild: the website reads everything below at runtime.
 
 ---
 
-## 1. Endpoints
+## 1. Status, menus and countries
+
+| Field | Values | Meaning |
+|---|---|---|
+| `status` | `DRAFT` · `PUBLISHED` · `ARCHIVED` | Only `PUBLISHED` pages exist for the public API and the website. The dashboard changes it only after the admin confirms a popup. |
+| `headerPosition` / `headerOrder` | `NONE` · `LEFT` · `RIGHT` | Header link: `LEFT` = main menu, `RIGHT` = next to the language/account buttons. |
+| `footerColumn` / `footerOrder` | `NONE` · `COMPANY` · `SUPPORT` | Footer link, after that column's own links. |
+| `allCountries` / `countries` | `true`, or a list of countries | Not offered in the visitor's country → the website sends them to the homepage and hides the page's links. |
+
+Locks: the homepage always stays published and offered everywhere. The site's own pages
+can't be archived, deleted, renamed or moved to another template.
+
+## 2. Endpoints
 
 | Who | Method | Route | Purpose |
 |---|---|---|---|
-| Dashboard | `GET` | `/api/v1/admin/custom-pages` | List every custom page, hidden ones included. Paginated like other admin lists (`?page=&pageSize=`, `meta.pagination.total`). |
-| Dashboard | `POST` | `/api/v1/admin/custom-pages` | Create one. Returns it with its `id`. |
-| Dashboard | `PUT` | `/api/v1/admin/custom-pages/:id` | Replace one. |
-| Dashboard | `DELETE` | `/api/v1/admin/custom-pages/:id` | Delete one. |
-| Website | `GET` | `/api/v1/public/custom-pages` | Header links for every **visible** page: `[{ slug, title, titleAr, navPosition }]`, oldest first. |
-| Website | `GET` | `/api/v1/public/custom-pages/:slug` | One **visible** page by slug, hidden blocks removed. 404 if it's hidden or doesn't exist. |
+| Dashboard | `GET` | `/api/v1/admin/pages` | Every page with status, menus, countries, translations, sections and `missingLocales`. |
+| Dashboard | `POST` | `/api/v1/admin/pages` | Create a built page (starts as `DRAFT`). |
+| Dashboard | `PUT` | `/api/v1/admin/pages/:id` | Settings: slug, template, titles/menu label/SEO per language, menus, countries. |
+| Dashboard | `PUT` | `/api/v1/admin/pages/:id/status` | `{ status }`. Publishing a built page checks its template's rules. |
+| Dashboard | `PUT` | `/api/v1/admin/pages/:id/sections` | Site's own pages: listed sections updated (copy, `visible`). Built pages: the whole block list. With `countryId`: that country's own copy. |
+| Dashboard | `PUT` | `/api/v1/admin/pages/navigation` | Menu placement and order of several pages. |
+| Dashboard | `GET` | `/api/v1/admin/pages/overrides` | Every country's own copy, by country → page → section. |
+| Dashboard | `DELETE` | `/api/v1/admin/pages/:id` | Delete a built page. |
+| Dashboard | `POST` | `/api/v1/admin/media/upload` | Upload an image (staff login; JPEG/PNG/WebP/GIF/AVIF/SVG, ≤ 10 MB). |
+| Website | `GET` | `/api/v1/public/pages` | Published pages: `{ slug, path, kind, navLabel: { EN, AR }, headerPosition, headerOrder, footerColumn, footerOrder, countries }` (`countries: null` = everywhere). |
+| Website | `GET` | `/api/v1/public/pages/:slug?locale=&country=` | One published page in one language; 404 when not published or not offered in `country`. |
 
-Set in `shared/lib/api/endpoints.js` under `customPages` in the dashboard and the
-website. Admin routes need a staff login; deleting needs ADMIN. The backend
-validates every block's `data` against its type, rejects unknown fields, and
-refuses reserved addresses and slugs already in use.
+Staff can read; every change needs a super admin. Public responses are
+cacheable for 60 s (`Cache-Control: public, max-age=60, stale-while-revalidate=300`), so a change
+shows on the website within about a minute.
 
-Images arrive already uploaded through `/public/media/upload`, the same as
-every other form. A page's image fields hold URLs.
+`/api/v1/public/custom-pages` and `/:slug` still answer in the old shape for one release, so a
+website build from before this change keeps working. Remove them once the new website is live.
 
----
-
-## 2. A custom page
+## 3. A public page
 
 ```jsonc
 {
-  "id": "summer-glow",            // backend id once saved
-  "slug": "summer-glow",          // the address: kaya.ae/summer-glow
-  "template": "campaign",         // which page type it started from — informational only
-  "navPosition": "LEFT",          // LEFT | RIGHT — which side of the header menu its link goes
-  "visible": true,                // false → the website must not serve it
-  "title": "Summer Glow",         "titleAr": "توهج الصيف",
-  "seoTitle": "Summer Glow offer | Kaya",  "seoTitleAr": "",
-  "seoDescription": "20% off laser resurfacing…", "seoDescriptionAr": "",
-  "updatedAt": "2026-09-10T09:00:00.000Z",
-  "blocks": [
-    { "id": "blk-1", "type": "hero", "hidden": false, "data": { /* see section 3 */ } }
-  ]
+  "id": "…", "slug": "summer-glow", "name": "Summer Glow",
+  "kind": "CUSTOM", "template": "campaign",
+  "title": "Summer Glow",                        // in the requested language (English if missing)
+  "seo": { "title": "Summer Glow | Kaya", "description": "" },   // empty = keep the site's default
+  "sections": { "<key>": { "key", "name", "content" } },          // shown sections by key
+  "hiddenSections": ["principles"],              // switched off — render nothing, not fallback copy
+  "blocks": [ { "id": "blk-1", "type": "hero", "content": { … } } ]  // built pages only, in order
 }
 ```
 
-- **`slug`** is lowercase `a-z`, `0-9` and `-`, and unique among custom pages.
-  The dashboard refuses the website's own routes and common reserved words
-  (`RESERVED_SLUGS` in `features/pages/lib/page-builder.js`): `about`, `aesthetic`,
-  `blog`, `blogs`, `booking`, `doctors`, `find-us`, `indulgence`, `login`,
-  `mens`, `profile`, `surgery`, `tell-us`, `treatments`, `wellness-longevity`,
-  `api`, `admin`, `app`, `assets`, `static`, `public`, `search`, `sitemap`,
-  `robots`, `favicon`, `manifest`, `404`, `500`, `ar`, `en`.
-  **If the website adds a new route, add it to that list too.** The backend
-  should enforce the same uniqueness.
-- **`template`** is one of `landing`, `campaign`, `info`, `legal`, `faq` or
-  `blank`. It only records which starting blocks were used. Rendering depends on the blocks alone.
-- **Arabic:** any `…Ar` field may be empty. In that case, fall back to the English value.
-- **SEO:** if `seoTitle` is empty, use `title`. If `seoDescription` is empty, leave the meta description out.
+- **The site's own pages** keep reading `sections[key].content` field by field (see
+  `kaya-nest-api/src/prisma/page-sections.data.ts`). A section missing in the requested language
+  falls back to English. Image sections may carry `bgImageAlt` (alt text) and `bgImageFocus`
+  (`"x% y%"`, used as `object-position`).
+- **Built pages**: `content` is one language, with every empty field already filled from English.
+- **A country's own copy** replaces a whole section in one language for visitors in that country.
 
----
+## 4. Templates
 
-## 3. Blocks
+| Template | Blocks allowed | Needs (visible) |
+|---|---|---|
+| `landing` | all | hero |
+| `campaign` | hero, text, imageText, image, features, treatments, doctors, faq, cta, spacer | hero |
+| `info` | hero, text, imageText, image, features, cta, spacer | — |
+| `legal` | text, spacer | text |
+| `faq` | hero, text, faq, cta, spacer | faq |
+| `flexible` (Blank page) | all | — |
 
-Every block is `{ id, type, hidden, data }`.
-- **Skip blocks with `hidden: true`.**
-- **Render blocks in array order.**
-- **Skip unknown `type`s** without failing, so older sites keep working if new block types appear.
+A page can't be published (or stay published) without an English title, at least one visible
+block, and the blocks its template needs.
 
-Localised fields store English under the key and Arabic under `<key>Ar`.
-**Headings** mark emphasised words with `*asterisks*`, like `"Your summer *glow*"`.
-Render the emphasised part as `<em>`, the same way the site's existing headings work.
+## 5. Blocks
 
-**Buttons:** `buttonAction` is one of:
-- `link` → go to `buttonLink`, either a site path or a full URL
-- `booking` → open the booking modal, the same as other "Book" buttons
-- `whatsapp` → open WhatsApp, using `resolveContact` as the concern finder does
+Each block is a section: `key` = block id, `type`, `visible`, one content object per language.
+Headings mark emphasis with `*asterisks*`. `buttonAction` is `link` (go to `buttonLink`),
+`booking` (open booking) or `whatsapp`. An empty `buttonLabel` means no button.
 
-An empty `buttonLabel` means no button.
+| `type` | content fields | Image |
+|---|---|---|
+| `hero` | `eyebrow`, `heading`, `sub`, `image`, `imageAlt`, `imageFocus`, `align`, `buttonLabel`, `buttonAction`, `buttonLink` | min 460 px tall: ≈ 3:1 desktop, taller on phones — **2400 × 900**, set the focal point |
+| `text` | `heading`, `body` (paragraphs split by a blank line) | — |
+| `imageText` | `image`, `imageAlt`, `imageFocus`, `imageSide`, `eyebrow`, `heading`, `body`, button fields | fixed 4:3 — **1600 × 1200** |
+| `image` | `image`, `alt`, `caption`, `width` (`contained` · `full`) | never cropped — ≥ 1600 px wide (2400 full width) |
+| `features` | `heading`, `sub`, `items[] { icon, title, text }` | — |
+| `treatments` | `heading`, `sub`, `treatments[]` (ids; missing ones skipped) | from the treatment |
+| `doctors` | `heading`, `sub`, `doctors[]` (ids) | from the doctor |
+| `faq` | `heading`, `items[] { question, answer }` | — |
+| `cta` | `heading`, `sub`, button fields | — |
+| `spacer` | `size` (`small` · `large` · `line`) | — |
 
-| `type` | `data` fields |
-|---|---|
-| `hero` | `eyebrow`\*, `heading`\*, `sub`\*, `image` (background, optional), `align` (`left` \| `center`), `buttonLabel`\*, `buttonAction`, `buttonLink` |
-| `text` | `heading`\*, `body`\*: paragraphs separated by a blank line |
-| `imageText` | `image`, `imageSide` (`left` \| `right`), `eyebrow`\*, `heading`\*, `body`\*, `buttonLabel`\*, `buttonAction`, `buttonLink` |
-| `image` | `image`, `caption`\*, `width` (`contained` \| `full`) |
-| `features` | `heading`\*, `sub`\*, `items[]` of `{ icon, title*, text* }`. `icon` is a short symbol or emoji. |
-| `treatments` | `heading`\*, `sub`\*, `treatments[]`: treatment **ids** in display order. Render them as the site's treatment cards, linking to each treatment page. Skip ids that no longer exist. |
-| `doctors` | `heading`\*, `sub`\*, `doctors[]`: doctor **ids** in display order. Render them as the site's doctor cards, linking to `/doctors/:slug`. Skip missing ones. |
-| `faq` | `heading`\*, `items[]` of `{ question*, answer* }`. Render as an accordion. |
-| `cta` | `heading`\*, `sub`\*, `buttonLabel`\*, `buttonAction`, `buttonLink`. Render as the site's closing call-to-action band. |
-| `spacer` | `size`: `small` (≈24px), `large` (≈72px) or `line` (a divider rule) |
+Unknown fields are rejected, and images must be uploaded URLs (never inline `data:`).
+Unknown block types are skipped by the website.
 
-\* localised: also has an `…Ar` twin.
+## 6. Reserved addresses
 
-For how each block should look, open **Pages → Summer Glow** in the dashboard.
-Its preview is a close guide to layout and hierarchy (`features/pages/components/PagePreview.js`).
-It isn't pixel-exact: use the site's own components and styles.
-
----
-
-## 4. Serving custom pages on the website
-
-- Add a top-level dynamic route, like `app/[slug]/page.js`. Next.js tries the site's own routes first, so they always win.
-- Fetch `/public/custom-pages/:slug`. On a 404, show the normal not-found page.
-- Send `seoTitle` / `seoDescription`, with the fallbacks above, as the page metadata.
-- **Header menu:** fetch `/public/custom-pages` and add each page's link on
-  its `navPosition` side — `LEFT` after the main menu links, `RIGHT` before the
-  language and account buttons — and in the mobile menu. Use `titleAr` in
-  Arabic when it's filled, else `title`.
-- If the site builds a sitemap, include only visible custom pages.
-
----
+A built page can't use the site's own routes or common reserved words — `RESERVED_SLUGS` in
+`kaya-nest-api/src/modules/pages/page-templates.ts` and `features/pages/lib/page-builder.js`.
+**If the website adds a route, add it to both lists.**

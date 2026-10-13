@@ -63,14 +63,6 @@ export const ApiEndpoints = {
     public: `${V1}/public/global`,
   },
 
-  // Page builder — pages the admin creates from blocks (kaya.ae/<slug>).
-  customPages: {
-    adminList: `${V1}/admin/custom-pages`,
-    adminById: id => `${V1}/admin/custom-pages/${id}`,
-    publicList: `${V1}/public/custom-pages`,
-    publicBySlug: slug => `${V1}/public/custom-pages/${slug}`,
-  },
-
   // Tell Us Everything questionnaire — one document, GET/PUT whole.
   tellUs: {
     admin: `${V1}/admin/tell-us`,
@@ -114,13 +106,17 @@ export const ApiEndpoints = {
   },
 
   media: {
-    upload: `${V1}/public/media/upload`,
+    upload: `${V1}/admin/media/upload`,
   },
 
+  // Every website page: the site's own (fixed layout) and those built from blocks.
   pages: {
     adminList: `${V1}/admin/pages`,
     adminById: id => `${V1}/admin/pages/${id}`,
     adminSections: id => `${V1}/admin/pages/${id}/sections`,
+    adminStatus: id => `${V1}/admin/pages/${id}/status`,
+    adminNavigation: `${V1}/admin/pages/navigation`,
+    adminOverrides: `${V1}/admin/pages/overrides`,
     publicBySlug: slug => `${V1}/public/pages/${slug}`,
   },
 

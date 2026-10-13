@@ -28,8 +28,8 @@ export default function CountryNotice() {
     <div className="ad-note ad-note--country">
       <span>
         <strong>Editing {activeCountryName} only.</strong>{' '}
-        Fields you change here stop following the shared copy. Anything you leave
-        alone keeps updating with it.
+        A section you change here gets its own {activeCountryName} copy in that
+        language; sections you leave alone keep following the shared copy.
       </span>
       <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => { setActiveCountry(''); set({ country: '' }) }}>
         Edit shared instead

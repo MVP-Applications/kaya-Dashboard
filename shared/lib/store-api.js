@@ -519,7 +519,11 @@ async function uploadImageIfNeeded(image) {
     const blob = await (await fetch(image)).blob()
     const form = new FormData()
     form.append('file', blob, 'photo.jpg')
-    response = await fetch(`${API_BASE_URL}${ApiEndpoints.media.upload}`, { method: 'POST', body: form })
+    response = await fetch(`${API_BASE_URL}${ApiEndpoints.media.upload}`, {
+      method: 'POST',
+      body: form,
+      headers: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {},
+    })
   } catch {
     // A 413 page from a proxy/gateway in front of the app almost never carries
     // CORS headers (the app itself never got a chance to add them), so the
@@ -541,6 +545,22 @@ async function uploadImageIfNeeded(image) {
     throw new Error(body?.error?.message || 'Could not upload the image — please try again.')
   }
   return body.data.url
+}
+
+/**
+ * Every picked image (`data:` value) anywhere inside a value — a section's
+ * fields, list items, nested objects — uploaded and replaced by its URL, so
+ * page and site copy never stores inline image data.
+ */
+async function uploadImagesDeep(value) {
+  if (typeof value === 'string') return value.startsWith('data:') ? uploadImageIfNeeded(value) : value
+  if (Array.isArray(value)) return Promise.all(value.map(uploadImagesDeep))
+  if (value && typeof value === 'object') {
+    const out = {}
+    for (const [k, v] of Object.entries(value)) out[k] = await uploadImagesDeep(v)
+    return out
+  }
+  return value
 }
 
 export const persistDoctors = async list => {
@@ -974,79 +994,172 @@ export const removeVoucher = async id => {
   voucherOfferIds.delete(id)
 }
 
-// ── Page builder (custom pages) ───────────────────────────────────────────
+// ── Pages: registry, built pages, status, menu ────────────────────────────
 //
-// Pages the admin builds from blocks, served at kaya.ae/<slug>. Each page has
-// a `navPosition` (LEFT / RIGHT) — which side of the website header its link
-// shows on. Contract: docs/page-builder.md. Treatments/doctors blocks store ids.
+// Every website page lives in /admin/pages: the site's own pages (kind
+// SYSTEM — fixed layout, copy edited below via PAGE_SECTIONS) and pages built
+// from blocks (kind CUSTOM). Each has a status (DRAFT / PUBLISHED / ARCHIVED —
+// only PUBLISHED is on the website), its menu placement, and the countries
+// it's offered in. Contract: docs/page-builder.md.
+//
+// Built pages store each block's content one language at a time on the
+// backend; the builder keeps English under `key` and Arabic under `keyAr`.
+// These are the text fields that have an Arabic version — they mirror the
+// `localized` fields in features/pages/lib/page-builder.js (BLOCK_TYPES).
+const LOCALIZED_BLOCK_FIELDS = new Set([
+  'eyebrow', 'heading', 'sub', 'body', 'caption', 'buttonLabel', 'title', 'text', 'question', 'answer', 'imageAlt', 'alt',
+])
 
-const customPageIds = new Map() // client id -> backend id
-const customPageSaved = new Map() // client id -> last-saved JSON, to skip unchanged pages
+/** One language of a block's data: English keeps `key`, Arabic reads `keyAr` into `key`. */
+function blockLocale(data, locale) {
+  const out = {}
+  for (const [k, v] of Object.entries(data || {})) {
+    if (k.endsWith('Ar') && LOCALIZED_BLOCK_FIELDS.has(k.slice(0, -2))) continue
+    if (Array.isArray(v)) out[k] = v.map(item => (item && typeof item === 'object' ? blockLocale(item, locale) : item))
+    else if (LOCALIZED_BLOCK_FIELDS.has(k)) out[k] = locale === 'AR' ? (data[`${k}Ar`] || '') : (v || '')
+    else out[k] = v
+  }
+  return out
+}
 
-function customPageToRecord(p) {
+/** The builder's shape back from both languages: English plus Arabic as `keyAr`. */
+function blockData(en = {}, ar = {}) {
+  const out = {}
+  for (const [k, v] of Object.entries(en)) {
+    if (Array.isArray(v)) {
+      const arList = Array.isArray(ar[k]) ? ar[k] : []
+      out[k] = v.map((item, i) => (item && typeof item === 'object' ? blockData(item, arList[i] || {}) : item))
+    } else {
+      out[k] = v
+      if (LOCALIZED_BLOCK_FIELDS.has(k)) out[`${k}Ar`] = ar[k] || ''
+    }
+  }
+  return out
+}
+
+const hasArabic = data => Object.entries(data || {}).some(([k, v]) =>
+  (Array.isArray(v) ? v.some(item => item && typeof item === 'object' && hasArabic(item))
+    : k.endsWith('Ar') && typeof v === 'string' && v.trim()))
+
+function pageRecord(p) {
+  const tr = locale => (p.translations || []).find(t => t.locale === locale) || {}
+  const en = tr('EN')
+  const ar = tr('AR')
   const record = {
     id: p.id,
     slug: p.slug,
-    navPosition: p.navPosition,
-    template: p.template || 'blank',
-    visible: !!p.visible,
-    title: p.title || '', titleAr: p.titleAr || '',
-    seoTitle: p.seoTitle || '', seoTitleAr: p.seoTitleAr || '',
-    seoDescription: p.seoDescription || '', seoDescriptionAr: p.seoDescriptionAr || '',
-    blocks: Array.isArray(p.blocks) ? p.blocks : [],
+    name: p.name,
+    kind: p.kind,
+    template: p.template,
+    path: p.path,
+    status: p.status,
+    publishedAt: p.publishedAt || '',
+    headerPosition: p.headerPosition,
+    headerOrder: p.headerOrder,
+    footerColumn: p.footerColumn,
+    footerOrder: p.footerOrder,
+    allCountries: p.allCountries,
+    countries: p.countryCodes || [],
+    title: en.title || '', titleAr: ar.title || '',
+    navLabel: en.navLabel || '', navLabelAr: ar.navLabel || '',
+    seoTitle: en.seoTitle || '', seoTitleAr: ar.seoTitle || '',
+    seoDescription: en.seoDescription || '', seoDescriptionAr: ar.seoDescription || '',
+    missingLocales: p.missingLocales || [],
+    hiddenSections: (p.sections || []).filter(sec => !sec.visible).map(sec => sec.key),
     updatedAt: p.updatedAt || '',
   }
-  customPageIds.set(record.id, record.id)
-  customPageSaved.set(record.id, JSON.stringify(record))
+  if (p.kind === 'CUSTOM') {
+    record.blocks = (p.sections || []).map(sec => {
+      const t = locale => (sec.translations || []).find(x => x.locale === locale)?.content || {}
+      return { id: sec.key, type: sec.type, hidden: !sec.visible, data: blockData(t('EN'), t('AR')) }
+    })
+  }
   return record
 }
 
-export async function fetchCustomPages() {
-  const items = await fetchAllPages(ApiEndpoints.customPages.adminList)
-  customPageIds.clear()
-  customPageSaved.clear()
-  return items.map(customPageToRecord)
+/** Every page except the hidden footer/global holder. */
+export async function fetchPageRegistry() {
+  const items = await fetchAllPages(ApiEndpoints.pages.adminList)
+  // An API from before page status existed sends pages without `status`/`kind`;
+  // say so instead of quietly showing pages with no status to change.
+  if (items.length && items.every(p => p.status === undefined)) {
+    throw new Error('The connected API doesn’t support page status and menus yet — it needs the latest kaya-nest-api (pages registry) deployed.')
+  }
+  return items.filter(p => p.kind !== 'GLOBAL').map(pageRecord)
 }
 
-/** Saves the pages that changed (the list is persisted whole, like every collection). */
-export const persistCustomPages = async list => {
-  for (const p of list) {
-    const existingId = customPageIds.get(p.id)
-    if (existingId && customPageSaved.get(p.id) === JSON.stringify(p)) continue
-    const blocks = []
-    for (const b of p.blocks) {
-      const data = { ...b.data }
-      if (typeof data.image === 'string') data.image = await uploadImageIfNeeded(data.image)
-      blocks.push({ id: b.id, type: b.type, hidden: !!b.hidden, data })
-    }
-    // Exactly the fields the backend accepts — it rejects anything else.
-    const body = {
-      slug: p.slug,
-      navPosition: p.navPosition,
-      template: p.template || 'blank',
-      visible: !!p.visible,
-      title: p.title,
-      titleAr: p.titleAr || '',
-      seoTitle: p.seoTitle || '',
-      seoTitleAr: p.seoTitleAr || '',
-      seoDescription: p.seoDescription || '',
-      seoDescriptionAr: p.seoDescriptionAr || '',
-      blocks,
-    }
-    const { data } = existingId
-      ? await apiRequest(ApiEndpoints.customPages.adminById(existingId), { method: 'PUT', body })
-      : await apiRequest(ApiEndpoints.customPages.adminList, { method: 'POST', body })
-    customPageIds.set(p.id, data.id)
-    customPageSaved.set(p.id, JSON.stringify(p))
+function settingsBody(r, countryIds) {
+  const translations = [{
+    locale: 'EN', title: r.title || '', navLabel: r.navLabel || '', seoTitle: r.seoTitle || '', seoDescription: r.seoDescription || '',
+  }]
+  if ([r.titleAr, r.navLabelAr, r.seoTitleAr, r.seoDescriptionAr].some(v => (v || '').trim())) {
+    translations.push({
+      locale: 'AR', title: r.titleAr || '', navLabel: r.navLabelAr || '', seoTitle: r.seoTitleAr || '', seoDescription: r.seoDescriptionAr || '',
+    })
+  }
+  return {
+    translations,
+    headerPosition: r.headerPosition || 'NONE',
+    footerColumn: r.footerColumn || 'NONE',
+    allCountries: r.allCountries !== false,
+    ...(r.allCountries === false ? { countryIds } : {}),
   }
 }
 
-export const removeCustomPage = async id => {
-  const backendId = customPageIds.get(id)
-  if (!backendId) throw new Error('Could not delete this page — it wasn\'t found.')
-  await apiRequest(ApiEndpoints.customPages.adminById(backendId), { method: 'DELETE' })
-  customPageIds.delete(id)
-  customPageSaved.delete(id)
+async function blockSections(blocks) {
+  const out = []
+  for (const b of blocks || []) {
+    const data = await uploadImagesDeep(b.data)
+    const translations = [{ locale: 'EN', content: blockLocale(data, 'EN') }]
+    if (hasArabic(data)) translations.push({ locale: 'AR', content: blockLocale(data, 'AR') })
+    out.push({ key: b.id, type: b.type, visible: !b.hidden, translations })
+  }
+  return out
+}
+
+/**
+ * Creates or updates a built page (settings + blocks). Status isn't saved
+ * here — it changes only through setPageStatus, after the admin confirms.
+ */
+export async function saveCustomPage(record, { isNew }) {
+  const countryIds = record.allCountries === false ? await countryIdsFor(record.countries || []) : []
+  const settings = settingsBody(record, countryIds)
+  const sections = await blockSections(record.blocks)
+  if (isNew) {
+    const { data } = await apiRequest(ApiEndpoints.pages.adminList, {
+      method: 'POST',
+      body: { ...settings, template: record.template, ...(record.slug ? { slug: record.slug } : {}), sections },
+    })
+    return pageRecord(data)
+  }
+  await apiRequest(ApiEndpoints.pages.adminById(record.id), {
+    method: 'PUT', body: { ...settings, slug: record.slug, template: record.template },
+  })
+  const { data } = await apiRequest(ApiEndpoints.pages.adminSections(record.id), { method: 'PUT', body: { sections } })
+  return pageRecord(data)
+}
+
+/** Menu label, titles/SEO, menu placement and countries of any page. */
+export async function savePageSettings(record) {
+  const countryIds = record.allCountries === false ? await countryIdsFor(record.countries || []) : []
+  const { data } = await apiRequest(ApiEndpoints.pages.adminById(record.id), {
+    method: 'PUT', body: settingsBody(record, countryIds),
+  })
+  return pageRecord(data)
+}
+
+export async function setPageStatus(id, status) {
+  const { data } = await apiRequest(ApiEndpoints.pages.adminStatus(id), { method: 'PUT', body: { status } })
+  return pageRecord(data)
+}
+
+/** Menu placement + order of several pages: [{ id, headerPosition, headerOrder, footerColumn, footerOrder }]. */
+export async function reorderNavigation(items) {
+  await apiRequest(ApiEndpoints.pages.adminNavigation, { method: 'PUT', body: { items } })
+}
+
+export async function removePage(id) {
+  await apiRequest(ApiEndpoints.pages.adminById(id), { method: 'DELETE' })
 }
 
 // ── Blog (posts + topics) ─────────────────────────────────────────────────
@@ -1634,8 +1747,9 @@ export async function persistSiteSection(groupId, sectionId, sectionValue) {
   if (!cfg) return notConnected('Site content')
 
   const translations = await getSiteGroupTranslations(cfg)
-  const nextEn = { ...siteGroupSections(cfg, translations, 'EN'), [sectionId]: sectionValue.EN || {} }
-  const nextAr = { ...siteGroupSections(cfg, translations, 'AR'), [sectionId]: sectionValue.AR || {} }
+  const uploaded = await uploadImagesDeep(sectionValue)
+  const nextEn = { ...siteGroupSections(cfg, translations, 'EN'), [sectionId]: uploaded.EN || {} }
+  const nextAr = { ...siteGroupSections(cfg, translations, 'AR'), [sectionId]: uploaded.AR || {} }
 
   const nextTranslations = [
     { locale: 'EN', content: cfg.toContent(nextEn) },
@@ -1717,8 +1831,8 @@ const PAGE_SECTIONS = {
     sections: {
       announcement: { key: 'announcement-bar', fields: { enabled: 'show', text: 'message', linkLabel: 'linkLabel', href: 'linkUrl' } },
       hero: { key: 'bento-hero-heading', fields: { heading: 'heading', headingEm: 'headingEmphasis' } },
-      bannerPrimary: { key: 'primary-banner', fields: { image: 'bgImageUrl', eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', stats: 'statLine', ctaLabel: 'buttonLabel' } },
-      bannerTellUs: { key: 'tell-us-banner', fields: { image: 'bgImageUrl', eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle', ctaLabel: 'buttonLabel', href: 'linkUrl' } },
+      bannerPrimary: { key: 'primary-banner', fields: { image: 'bgImageUrl', imageAlt: 'bgImageAlt', imageFocus: 'bgImageFocus', eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', stats: 'statLine', ctaLabel: 'buttonLabel' } },
+      bannerTellUs: { key: 'tell-us-banner', fields: { image: 'bgImageUrl', imageAlt: 'bgImageAlt', imageFocus: 'bgImageFocus', eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle', ctaLabel: 'buttonLabel', href: 'linkUrl' } },
       popularTreatments: { key: 'popular-treatments-row', fields: { title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle', linkLabel: 'seeAllLink' } },
       indulgenceRow: { key: 'indulgence-row', fields: { title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle', linkLabel: 'seeAllLink' } },
       doctorsBanner: { key: 'doctors-banner', fields: { eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle', ctaLabel: 'buttonLabel', linkLabel: 'seeAllLink' } },
@@ -1733,7 +1847,7 @@ const PAGE_SECTIONS = {
       hero: {
         key: 'hero',
         fields: {
-          image: 'bgImageUrl', eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle',
+          image: 'bgImageUrl', imageAlt: 'bgImageAlt', imageFocus: 'bgImageFocus', eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle',
           stats: { key: 'stats', list: { value: 'value', label: 'label' } },
         },
       },
@@ -1768,7 +1882,7 @@ const PAGE_SECTIONS = {
   aesthetic: {
     slug: 'aesthetic',
     sections: {
-      hero: { key: 'hero', fields: { image: 'bgImageUrl', eyebrow: 'eyebrow', headline: 'headline', headlineEm: 'headlineEmphasis', headlineEnd: 'headlineAfterEmphasis', sub: 'subtitle', primaryCta: 'primaryButton', secondaryCta: 'secondaryLink' } },
+      hero: { key: 'hero', fields: { image: 'bgImageUrl', imageAlt: 'bgImageAlt', imageFocus: 'bgImageFocus', eyebrow: 'eyebrow', headline: 'headline', headlineEm: 'headlineEmphasis', headlineEnd: 'headlineAfterEmphasis', sub: 'subtitle', primaryCta: 'primaryButton', secondaryCta: 'secondaryLink' } },
       pillarsIntro: { key: 'pathways-heading', fields: { eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle' } },
       pillars: { key: 'pathway-cards', fields: { items: { key: 'pathways', list: { label: 'label', href: 'linkUrl', hint: 'hint', image: 'imageUrl' } } } },
       featuredIntro: { key: 'featured-treatments-heading', fields: { eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle' } },
@@ -1779,7 +1893,7 @@ const PAGE_SECTIONS = {
   wellness: {
     slug: 'wellness-longevity',
     sections: {
-      hero: { key: 'hero', fields: { image: 'bgImageUrl', eyebrow: 'eyebrow', headline: 'headline', headlineEm: 'headlineEmphasis', headlineEnd: 'headlineAfterEmphasis', sub: 'subtitle', primaryCta: 'primaryButton', secondaryCta: 'secondaryLink' } },
+      hero: { key: 'hero', fields: { image: 'bgImageUrl', imageAlt: 'bgImageAlt', imageFocus: 'bgImageFocus', eyebrow: 'eyebrow', headline: 'headline', headlineEm: 'headlineEmphasis', headlineEnd: 'headlineAfterEmphasis', sub: 'subtitle', primaryCta: 'primaryButton', secondaryCta: 'secondaryLink' } },
       pillarsIntro: { key: 'approach-heading', fields: { eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle' } },
       pillars: { key: 'approach-pillars', fields: { items: { key: 'pillars', list: { icon: 'icon', label: 'label', hint: 'hint' } } } },
       featuredIntro: { key: 'protocols-heading', fields: { eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle' } },
@@ -1789,7 +1903,7 @@ const PAGE_SECTIONS = {
   mens: {
     slug: 'mens',
     sections: {
-      hero: { key: 'hero', fields: { image: 'bgImageUrl', eyebrow: 'eyebrow', headline: 'headline', headlineEm: 'headlineEmphasis', headlineEnd: 'headlineAfterEmphasis', sub: 'subtitle', primaryCta: 'primaryButton', secondaryCta: 'secondaryLink' } },
+      hero: { key: 'hero', fields: { image: 'bgImageUrl', imageAlt: 'bgImageAlt', imageFocus: 'bgImageFocus', eyebrow: 'eyebrow', headline: 'headline', headlineEm: 'headlineEmphasis', headlineEnd: 'headlineAfterEmphasis', sub: 'subtitle', primaryCta: 'primaryButton', secondaryCta: 'secondaryLink' } },
       trust: { key: 'trust-points', fields: { items: { key: 'points', list: { icon: 'icon', label: 'label', hint: 'hint' } } } },
       featuredIntro: { key: 'featured-treatments-heading', fields: { eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle' } },
       cta: { key: 'closing-cta', fields: { headline: 'headline', headlineEm: 'headlineEmphasis', sub: 'subtitle' } },
@@ -1798,7 +1912,7 @@ const PAGE_SECTIONS = {
   surgery: {
     slug: 'plastic-surgery',
     sections: {
-      hero: { key: 'hero', fields: { image: 'bgImageUrl', eyebrow: 'eyebrow', headline: 'headline', headlineEm: 'headlineEmphasis', headlineEnd: 'headlineAfterEmphasis', sub: 'subtitle', primaryCta: 'primaryButton', secondaryCta: 'secondaryLink' } },
+      hero: { key: 'hero', fields: { image: 'bgImageUrl', imageAlt: 'bgImageAlt', imageFocus: 'bgImageFocus', eyebrow: 'eyebrow', headline: 'headline', headlineEm: 'headlineEmphasis', headlineEnd: 'headlineAfterEmphasis', sub: 'subtitle', primaryCta: 'primaryButton', secondaryCta: 'secondaryLink' } },
       trust: { key: 'trust-points', fields: { items: { key: 'points', list: { icon: 'icon', label: 'label', hint: 'hint' } } } },
       featuredIntro: { key: 'procedures-heading', fields: { eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle' } },
       cta: { key: 'closing-cta', fields: { headline: 'headline', headlineEm: 'headlineEmphasis', sub: 'subtitle' } },
@@ -1807,13 +1921,13 @@ const PAGE_SECTIONS = {
   doctorsPage: {
     slug: 'doctors',
     sections: {
-      hero: { key: 'hero', fields: { image: 'bgImageUrl', eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle' } },
+      hero: { key: 'hero', fields: { image: 'bgImageUrl', imageAlt: 'bgImageAlt', imageFocus: 'bgImageFocus', eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle' } },
     },
   },
   indulgencePage: {
     slug: 'indulgence',
     sections: {
-      hero: { key: 'hero', fields: { image: 'bgImageUrl', eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle' } },
+      hero: { key: 'hero', fields: { image: 'bgImageUrl', imageAlt: 'bgImageAlt', imageFocus: 'bgImageFocus', eyebrow: 'eyebrow', title: 'title', titleEm: 'titleEmphasis', sub: 'subtitle' } },
     },
   },
   findUsPage: {
@@ -1882,14 +1996,37 @@ export async function persistPageSection(pageId, sectionId, sectionValue) {
   if (!cfg) throw new Error(`"${pageId}/${sectionId}" isn't mapped to a backend page section.`)
 
   const backendPageId = await ensurePageId(pageId)
-  const translations = [{ locale: 'EN', content: mapSection(sectionValue.EN || {}, cfg.fields, 'toContent') }]
-  if (!isBlank(sectionValue.AR)) {
-    translations.push({ locale: 'AR', content: mapSection(sectionValue.AR, cfg.fields, 'toContent') })
+  const value = await uploadImagesDeep(sectionValue)
+  const translations = [{ locale: 'EN', content: mapSection(value.EN || {}, cfg.fields, 'toContent') }]
+  if (!isBlank(value.AR)) {
+    translations.push({ locale: 'AR', content: mapSection(value.AR, cfg.fields, 'toContent') })
   }
   await apiRequest(ApiEndpoints.pages.adminSections(backendPageId), {
     method: 'PUT',
     body: { sections: [{ key: cfg.key, translations }] },
   })
+}
+
+/** The backend slug of one of the site's own pages (dashboard page id → slug). */
+export function systemPageSlug(pageId) {
+  return PAGE_SECTIONS[pageId]?.slug || ''
+}
+
+/** The backend key of a fixed page's section (dashboard ids → key). */
+export function pageSectionKey(pageId, sectionId) {
+  return PAGE_SECTIONS[pageId]?.sections[sectionId]?.key || ''
+}
+
+/** Show or hide one of a fixed page's optional sections on the website. */
+export async function setSectionVisible(pageId, sectionId, visible) {
+  const key = pageSectionKey(pageId, sectionId)
+  if (!key) throw new Error(`"${pageId}/${sectionId}" isn't mapped to a backend page section.`)
+  const backendPageId = await ensurePageId(pageId)
+  const { data } = await apiRequest(ApiEndpoints.pages.adminSections(backendPageId), {
+    method: 'PUT',
+    body: { sections: [{ key, visible, translations: [] }] },
+  })
+  return pageRecord(data)
 }
 
 // ── Everything else — not connected yet ───────────────────────────────────
@@ -2046,10 +2183,52 @@ export async function exportRequestsCsv(filters) {
   return response.text()
 }
 
+// ── Country copies of page copy ──────────────────────────────────────────
+//
+// A country's own version of a fixed page's section, per language, replacing
+// the shared copy for visitors there. The backend keys them by country code →
+// page slug → section key; the dashboard by country → page id → section id.
+// Footer/Global are the same in every country.
+
 export async function fetchOverrides() {
-  return notConnected('Country overrides')
+  const { data } = await apiRequest(ApiEndpoints.pages.adminOverrides)
+  const out = {}
+  for (const [country, bySlug] of Object.entries(data || {})) {
+    for (const [feId, cfg] of Object.entries(PAGE_SECTIONS)) {
+      const page = bySlug[cfg.slug]
+      if (!page) continue
+      for (const [sectionId, sectionCfg] of Object.entries(cfg.sections)) {
+        const copy = page[sectionCfg.key]
+        if (!copy) continue
+        const section = {}
+        for (const locale of ['EN', 'AR']) {
+          if (copy[locale]) section[locale] = mapSection(copy[locale], sectionCfg.fields, 'toDashboard')
+        }
+        out[country] ??= {}
+        out[country][feId] ??= {}
+        out[country][feId][sectionId] = section
+      }
+    }
+  }
+  return out
 }
-export const persistOverrideSection = () => notConnected('Country overrides')
+
+/** Saves one country's copy of one section; a language left out (or `{}`) goes back to the shared copy. */
+export async function persistOverrideSection(country, groupId, sectionId, data) {
+  const cfg = PAGE_SECTIONS[groupId]?.sections[sectionId]
+  if (!cfg) return notConnected('Country copies of site-wide settings')
+  const [countryId] = await countryIdsFor([country])
+  const backendPageId = await ensurePageId(groupId)
+  const value = await uploadImagesDeep(data || {})
+  const translations = ['EN', 'AR'].map(locale => ({
+    locale,
+    content: value[locale] && !isBlank(value[locale]) ? mapSection(value[locale], cfg.fields, 'toContent') : {},
+  }))
+  await apiRequest(ApiEndpoints.pages.adminSections(backendPageId), {
+    method: 'PUT',
+    body: { countryId, sections: [{ key: cfg.key, translations }] },
+  })
+}
 
 // ── Users & Roles (staff accounts) ──────────────────────────────────────
 //
@@ -2155,14 +2334,4 @@ export async function submitRequest() {
   return { ok: false, error: "Enquiry submission isn't connected to a backend yet." }
 }
 
-/**
- * TODO: no backend endpoint exists yet for triggering a real site rebuild
- * (kaya-nest-api has nothing resembling one — see the search that confirmed
- * this). Reports success anyway, on request, so staff see the same
- * reassuring "it's on its way" message the old Supabase-backed version gave
- * rather than a raw error — but nothing actually rebuilds the site yet.
- * Replace this with a real call once a rebuild/revalidate endpoint exists.
- */
-export async function triggerPublish() {
-  return { ok: true }
-}
+

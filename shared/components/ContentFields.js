@@ -16,6 +16,8 @@ import { emptyListItem } from '@/shared/lib/content'
  *   (for a list item, `values` is that item)
  * - `validate(value, values)`: returns an error message, or '' when valid.
  *   Errors show inline, and ContentEditor blocks Save while any remain.
+ * - images: `ratio`, `fit`, `recommended` ({ width, height }) and `focusKey`
+ *   (the field that stores the focal point the website crops around).
  */
 
 /** The fields that apply to these values — see `showIf` above. */
@@ -61,19 +63,19 @@ export function SectionFields({ fields, values, onChange, disabled }) {
           <div className="ad-grid2" key={row[0].key}>
             {row.map(f => (
               <Field key={f.key} field={f} value={values?.[f.key]} values={values}
-                onChange={v => onChange(f.key, v)} disabled={disabled} />
+                onChange={v => onChange(f.key, v)} setValue={onChange} disabled={disabled} />
             ))}
           </div>
         ) : (
           <Field key={row[0].key} field={row[0]} value={values?.[row[0].key]} values={values}
-            onChange={v => onChange(row[0].key, v)} disabled={disabled} />
+            onChange={v => onChange(row[0].key, v)} setValue={onChange} disabled={disabled} />
         )
       ))}
     </>
   )
 }
 
-function Field({ field, value, values, onChange, disabled }) {
+function Field({ field, value, values, onChange, setValue, disabled }) {
   const error = field.validate?.(value, values || {}) || ''
   const hint = field.hint ? <span className="ad-field-hint ad-cf-hint">{field.hint}</span> : null
   const errorNote = error ? <span className="ad-field-error" role="alert">{error}</span> : null
@@ -127,7 +129,9 @@ function Field({ field, value, values, onChange, disabled }) {
         <div className="ad-field">
           <span className="ad-field-label">{field.label}</span>
           <ImagePicker value={value || ''} onChange={disabled ? () => {} : onChange}
-            hint={field.hint} ratio={field.ratio} fit={field.fit} />
+            hint={field.hint} ratio={field.ratio} fit={field.fit} recommended={field.recommended}
+            focus={field.focusKey ? values?.[field.focusKey] || '' : ''}
+            onFocusChange={field.focusKey && !disabled && setValue ? v => setValue(field.focusKey, v) : undefined} />
         </div>
       )
 
