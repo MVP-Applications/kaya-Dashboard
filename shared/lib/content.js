@@ -15,6 +15,8 @@
  * strings (list of plain strings) · list (repeater of objects, with a nested
  * `fields` array). `width: 'half'` pairs consecutive fields into a two-column
  * row; `hint`, `showIf` and `validate` are described in ContentFields.js.
+ * A section with `hideable: true` can be switched off on the website (the
+ * same list as `hideable` in kaya-nest-api src/modules/pages/page-templates.ts).
  */
 
 import {
@@ -24,9 +26,12 @@ import { CONTENT_ICON_OPTIONS } from '@/shared/lib/content-icons'
 
 // ── Homepage ─────────────────────────────────────────────
 // Upload hints for content images — the shape the website shows each one at.
-const BANNER_HINT = 'Homepage banner, text over the left half. Landscape 4:3 — use about 1440 × 1080 px with the person in the right half and plain background on the left. Desktop trims a little off the top and bottom.'
-const PAGE_HERO_HINT = 'Full-width background behind the page title, about 2:1 on desktop. Phones show only the right-hand part, so keep the subject on the right. Use about 1920 × 960 px.'
-const VERTICAL_HERO_HINT = 'Full-screen background behind the headline, about 16:9 on desktop; phones crop it to a tall middle strip. Use about 1920 × 1080 px with the subject in the centre and calm space bottom-left for the text.'
+// Sizes measured from the website's CSS (kaya-website app/globals.css).
+const BANNER_HINT = 'Homepage banner, text over the left half. Shown about 1.9:1 on desktop (top and bottom trimmed) and exactly 4:3 on phones. Use 2160 × 1612 px with the person in the right half, then set the focal point.'
+const PAGE_HERO_HINT = 'Full-width background behind the page title — about 2.2:1 on desktop and wider on big screens; phones show only the right-hand third. Use 2560 × 1100 px with the subject at the right edge.'
+const VERTICAL_HERO_HINT = 'Fills the screen behind the headline — about 1.8–2:1 on desktop, a tall 2:3 strip on phones. Use 2400 × 1350 px with the subject in the centre third and calm space bottom-left for the text, then set the focal point.'
+const ALT_HINT = 'Describes the picture for screen readers and search engines. Leave empty for purely decorative images.'
+const altField = { key: 'imageAlt', label: 'Image description (alt text)', type: 'text', default: '', hint: ALT_HINT }
 
 const HOME = {
   id: 'home',
@@ -61,7 +66,8 @@ const HOME = {
       hint: 'The brand banner that opens the booking modal.',
       fields: [
         { key: 'image', label: 'Background image', type: 'image',
-          ratio: 4 / 3, hint: BANNER_HINT },
+          ratio: 1080 / 806, recommended: { width: 2160, height: 1612 }, focusKey: 'imageFocus', hint: BANNER_HINT },
+        altField,
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Kaya Clinic' },
         { key: 'title', label: 'Title', type: 'text', default: 'Where beauty meets', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'medicine', width: 'half' },
@@ -75,7 +81,8 @@ const HOME = {
       hint: 'The second banner, linking to the concern finder.',
       fields: [
         { key: 'image', label: 'Background image', type: 'image',
-          ratio: 4 / 3, hint: BANNER_HINT },
+          ratio: 1080 / 806, recommended: { width: 2160, height: 1612 }, focusKey: 'imageFocus', hint: BANNER_HINT },
+        altField,
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Just for you' },
         { key: 'title', label: 'Title', type: 'text', default: 'Personalised', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'treatments', width: 'half' },
@@ -89,6 +96,7 @@ const HOME = {
     },
     {
       id: 'popularTreatments',
+      hideable: true,
       label: 'Popular treatments row',
       hint: 'Heading for the featured-treatments carousel. The cards themselves come from Treatments & Services.',
       fields: [
@@ -103,6 +111,7 @@ const HOME = {
     },
     {
       id: 'indulgenceRow',
+      hideable: true,
       label: 'Indulgence row',
       hint: 'Heading for the voucher carousel. The cards come from the Indulgence section.',
       fields: [
@@ -117,6 +126,7 @@ const HOME = {
     },
     {
       id: 'doctorsBanner',
+      hideable: true,
       label: 'Doctors banner',
       hint: 'Heading above the doctor carousel. The cards come from the Doctors section.',
       fields: [
@@ -133,6 +143,7 @@ const HOME = {
     },
     {
       id: 'tellUsPromo',
+      hideable: true,
       label: 'Tell-us promo block',
       hint: 'The split promo with the vertical carousel on the right.',
       fields: [
@@ -149,6 +160,7 @@ const HOME = {
     },
     {
       id: 'reviews',
+      hideable: true,
       label: 'Reviews section',
       hint: 'Heading above the before/after grid. The cards come from the Reviews section.',
       fields: [
@@ -192,7 +204,8 @@ const ABOUT = {
       id: 'hero',
       label: 'Hero',
       fields: [
-        { key: 'image', label: 'Background image', type: 'image', default: '', ratio: 2, hint: PAGE_HERO_HINT },
+        { key: 'image', label: 'Background image', type: 'image', default: '', ratio: 2560 / 1100, recommended: { width: 2560, height: 1100 }, focusKey: 'imageFocus', hint: PAGE_HERO_HINT },
+        altField,
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Our story' },
         { key: 'title', label: 'Title', type: 'text', default: 'Doctor-led wellness,', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'built for the GCC', width: 'half' },
@@ -217,13 +230,14 @@ const ABOUT = {
     },
     {
       id: 'story',
+      hideable: true,
       label: 'Our story',
       hint: 'Long-form brand narrative and the pull quote beside it.',
       fields: [
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Founded 2001' },
         { key: 'title', label: 'Title', type: 'text', default: 'Born in the region,', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'built for it', width: 'half' },
-        { key: 'image', label: 'Story image', type: 'image', default: '', ratio: 1, hint: 'Shown square beside the story text. Use about 1000 × 1000 px.' },
+        { key: 'image', label: 'Story image', type: 'image', default: '', ratio: 4 / 5, recommended: { width: 1200, height: 1500 }, hint: 'Shown beside the story text, as tall as the text on desktop and square on phones. Use 1200 × 1500 px with the subject centred, a little above the middle.' },
         {
           key: 'paragraphs', label: 'Body paragraphs', type: 'strings', itemLabel: 'Paragraph',
           default: [
@@ -242,6 +256,7 @@ const ABOUT = {
     },
     {
       id: 'principles',
+      hideable: true,
       label: 'Principles',
       fields: [
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'What we believe' },
@@ -280,6 +295,7 @@ const ABOUT = {
     },
     {
       id: 'reach',
+      hideable: true,
       label: 'Regional reach',
       hint: 'The map shows every clinic from the Clinics screen. The country cards follow the Countries screen — flag, name and display order — and each card’s clinic count and cities are counted from the clinics automatically.',
       fields: [
@@ -335,6 +351,7 @@ const TREATMENTS = {
     },
     {
       id: 'trust',
+      hideable: true,
       label: 'Trust pillars',
       fields: [
         {
@@ -411,7 +428,8 @@ const TREATMENTS = {
 /** Hero fields are identical across the four vertical landing pages. */
 function heroFields({ eyebrow, headline, headlineEm, headlineEnd = '', sub, image, primaryCta, secondaryCta }) {
   return [
-    { key: 'image', label: 'Background image', type: 'image', default: image, ratio: 16 / 9, hint: VERTICAL_HERO_HINT },
+    { key: 'image', label: 'Background image', type: 'image', default: image, ratio: 16 / 9, recommended: { width: 2400, height: 1350 }, focusKey: 'imageFocus', hint: VERTICAL_HERO_HINT },
+    altField,
     { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: eyebrow },
     { key: 'headline', label: 'Headline', type: 'text', default: headline, width: 'half' },
     { key: 'headlineEm', label: 'Headline — emphasis', type: 'text', default: headlineEm, width: 'half' },
@@ -478,6 +496,7 @@ const AESTHETIC = {
     },
     {
       id: 'pillars',
+      hideable: true,
       label: 'Pathway cards',
       fields: [
         {
@@ -486,7 +505,7 @@ const AESTHETIC = {
             { key: 'label', label: 'Label', type: 'text', width: 'half' },
             { key: 'href', label: 'Link URL', type: 'text', width: 'half' },
             { key: 'hint', label: 'Hint', type: 'text' },
-            { key: 'image', label: 'Image', type: 'image', ratio: 3 / 4, hint: 'Shown as a portrait 3:4 card with the label over the bottom. Use about 900 × 1200 px.' },
+            { key: 'image', label: 'Image', type: 'image', ratio: 3 / 4, recommended: { width: 1200, height: 1600 }, hint: 'Shown as a portrait 3:4 card with the label over the bottom. Use 1200 × 1600 px.' },
           ],
           default: [
             {
@@ -517,6 +536,7 @@ const AESTHETIC = {
     },
     {
       id: 'trustStats',
+      hideable: true,
       label: 'Trust bar',
       fields: [
         {
@@ -582,6 +602,7 @@ const WELLNESS = {
     },
     {
       id: 'pillars',
+      hideable: true,
       label: 'Approach pillars',
       fields: [
         pointsField('Pillars', 'Pillar', [
@@ -695,6 +716,7 @@ const SURGERY = {
     },
     {
       id: 'trust',
+      hideable: true,
       label: 'Trust points',
       fields: [
         pointsField('Trust points', 'Point', [
@@ -742,7 +764,8 @@ const DOCTORS_PAGE = {
       id: 'hero',
       label: 'Hero',
       fields: [
-        { key: 'image', label: 'Background image', type: 'image', default: '', ratio: 2, hint: PAGE_HERO_HINT },
+        { key: 'image', label: 'Background image', type: 'image', default: '', ratio: 2560 / 1100, recommended: { width: 2560, height: 1100 }, focusKey: 'imageFocus', hint: PAGE_HERO_HINT },
+        altField,
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Meet our doctors' },
         { key: 'title', label: 'Title', type: 'text', default: 'Meet Our', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'Experts', width: 'half' },
@@ -766,7 +789,8 @@ const INDULGENCE_PAGE = {
       id: 'hero',
       label: 'Hero',
       fields: [
-        { key: 'image', label: 'Background image', type: 'image', default: '', ratio: 2, hint: PAGE_HERO_HINT },
+        { key: 'image', label: 'Background image', type: 'image', default: '', ratio: 2560 / 1100, recommended: { width: 2560, height: 1100 }, focusKey: 'imageFocus', hint: PAGE_HERO_HINT },
+        altField,
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Gift Cards & Vouchers' },
         { key: 'title', label: 'Title', type: 'text', default: 'The Kaya', width: 'half' },
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'Indulgence', width: 'half' },

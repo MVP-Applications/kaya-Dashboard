@@ -18,6 +18,7 @@ import { toCsv } from '@/shared/lib/csv'
 import { ROLE_LABELS } from '@/shared/lib/roles'
 import { seedTellUs } from '@/shared/lib/tell-us'
 import { CUSTOM_PAGES } from '@/shared/lib/seed-data/custom-pages'
+import { PAGES } from '@/shared/lib/content'
 import { VOUCHER_STATUS_FLOW, voucherStatusLabel } from '@/shared/lib/voucher-status'
 import { toSummary, toMedical, matchesCustomerFilters, buildCustomerCsvColumns, dialCodesFrom } from '@/shared/lib/customers'
 
@@ -32,6 +33,8 @@ const KEYS = {
   voucherRequests: 'kaya_admin_voucher_requests_v1',
   tellUs: 'kaya_admin_tell_us_v1',
   customPages: 'kaya_admin_custom_pages_v1',
+  // The site's own pages' status, menu placement and settings, by page id.
+  pageRegistry: 'kaya_admin_page_registry_v1',
   blogs: 'kaya_admin_blogs_v1',
   blogCategories: 'kaya_admin_blog_categories_v1',
   locations: 'kaya_admin_locations_v3', // v3: Oman's code is OMAN, as on the backend
@@ -423,7 +426,6 @@ export const persistCategories = persist('categories')
 export const persistDoctors = persist('doctors')
 export const persistReviews = persist('reviews')
 export const persistVouchers = persist('vouchers')
-export const persistCustomPages = persist('customPages')
 export const persistBlogs = persist('blogs')
 export const persistBlogCategories = persist('blogCategories')
 export const persistLocations = persist('locations')
@@ -460,7 +462,6 @@ export const removeCategory = remove('categories', 'slug')
 export const removeDoctor = remove('doctors', 'slug')
 export const removeReview = remove('reviews', 'id')
 export const removeVoucher = remove('vouchers', 'id')
-export const removeCustomPage = remove('customPages', 'id')
 export const removeBlog = remove('blogs', 'id')
 export const removeBlogCategory = remove('blogCategories', 'id')
 export const removeLocation = remove('locations', 'id')
@@ -646,9 +647,133 @@ function filteredVoucherRequests({ search, status, customerId, country } = {}) {
     .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
 }
 
-/** Pages built in the page builder — one sample page in preview mode. */
-export async function fetchCustomPages() {
-  return settle(load('customPages', () => JSON.parse(JSON.stringify(CUSTOM_PAGES))))
+// ── Pages registry (preview mode) ─────────────────────────────────────────
+// The same records as store-api's fetchPageRegistry: the site's own pages
+// (from PAGES, with any status/menu/settings changes kept by page id) and the
+// pages built in the page builder.
+
+// The website's original menu — where each of its own pages' links start.
+const SYSTEM_MENU = {
+  '/tell-us': ['LEFT', 1], '/treatments': ['LEFT', 2], '/doctors': ['LEFT', 3],
+  '/about': ['LEFT', 4], '/indulgence': ['LEFT', 5], '/find-us': ['RIGHT', 1],
+}
+
+const SETTINGS_KEYS = [
+  'headerPosition', 'headerOrder', 'footerColumn', 'footerOrder', 'allCountries', 'countries',
+  'title', 'titleAr', 'navLabel', 'navLabelAr', 'seoTitle', 'seoTitleAr', 'seoDescription', 'seoDescriptionAr',
+]
+
+const pickSettings = r => Object.fromEntries(SETTINGS_KEYS.filter(k => r[k] !== undefined).map(k => [k, r[k]]))
+
+function systemRecords() {
+  const saved = read(KEYS.pageRegistry, null) || {}
+  return PAGES.map(p => ({
+    id: p.id, slug: p.id, name: p.label, kind: 'SYSTEM', template: `system.${p.id}`, path: p.path,
+    status: 'PUBLISHED', publishedAt: '',
+    headerPosition: SYSTEM_MENU[p.path]?.[0] || 'NONE', headerOrder: SYSTEM_MENU[p.path]?.[1] || 0,
+    footerColumn: 'NONE', footerOrder: 0, allCountries: true, countries: [],
+    title: p.label, titleAr: '', navLabel: p.label, navLabelAr: '',
+    seoTitle: '', seoTitleAr: '', seoDescription: '', seoDescriptionAr: '',
+    missingLocales: [], hiddenSections: [], updatedAt: '',
+    ...saved[p.id],
+  }))
+}
+
+/** A built page in the current shape (older saved copies used visible / navPosition). */
+function customRecord(p) {
+  const { visible, navPosition, ...rest } = p
+  return {
+    kind: 'CUSTOM', name: p.title, path: `/${p.slug}`, publishedAt: '',
+    status: p.status || (visible ? 'PUBLISHED' : 'DRAFT'),
+    headerPosition: p.headerPosition || navPosition || 'NONE', headerOrder: p.headerOrder || 0,
+    footerColumn: p.footerColumn || 'NONE', footerOrder: p.footerOrder || 0,
+    allCountries: p.allCountries !== false, countries: p.countries || [],
+    navLabel: p.navLabel || '', navLabelAr: p.navLabelAr || '',
+    hiddenSections: [],
+    ...rest,
+    template: rest.template === 'blank' ? 'flexible' : rest.template,
+    missingLocales: p.titleAr ? [] : ['AR'],
+  }
+}
+
+function loadCustom() {
+  return load('customPages', () => JSON.parse(JSON.stringify(CUSTOM_PAGES))).map(customRecord)
+}
+
+function saveSystem(id, patch) {
+  const saved = read(KEYS.pageRegistry, null) || {}
+  write(KEYS.pageRegistry, { ...saved, [id]: { ...saved[id], ...patch } })
+}
+
+export async function fetchPageRegistry() {
+  return settle([...systemRecords(), ...loadCustom()])
+}
+
+export async function saveCustomPage(record, { isNew }) {
+  const list = loadCustom()
+  const saved = customRecord({
+    ...record,
+    id: isNew ? `page-${Date.now().toString(36)}` : record.id,
+    status: isNew ? 'DRAFT' : (list.find(p => p.id === record.id)?.status || 'DRAFT'),
+    updatedAt: new Date().toISOString(),
+  })
+  write(KEYS.customPages, isNew ? [...list, saved] : list.map(p => (p.id === saved.id ? saved : p)))
+  return settle(saved)
+}
+
+export async function savePageSettings(record) {
+  if (record.kind === 'SYSTEM') {
+    saveSystem(record.id, pickSettings(record))
+    return settle(systemRecords().find(p => p.id === record.id))
+  }
+  const list = loadCustom()
+  const next = list.map(p => (p.id === record.id ? customRecord({ ...p, ...pickSettings(record) }) : p))
+  write(KEYS.customPages, next)
+  return settle(next.find(p => p.id === record.id))
+}
+
+export async function setPageStatus(id, status) {
+  const system = systemRecords().find(p => p.id === id)
+  if (system) {
+    if (status === 'ARCHIVED') throw new Error("The website's own pages can't be archived.")
+    if (status !== 'PUBLISHED' && system.path === '/') throw new Error('The homepage must always stay published.')
+    saveSystem(id, { status })
+    return settle(systemRecords().find(p => p.id === id))
+  }
+  const list = loadCustom()
+  const page = list.find(p => p.id === id)
+  if (!page) throw new Error('Page not found.')
+  if (status === 'PUBLISHED') {
+    const problems = []
+    if (!page.title?.trim()) problems.push('Add an English title.')
+    if (!page.blocks.some(b => !b.hidden)) problems.push('Add at least one visible section.')
+    if (problems.length) throw new Error(problems.join(' '))
+  }
+  const next = { ...page, status, updatedAt: new Date().toISOString() }
+  write(KEYS.customPages, list.map(p => (p.id === id ? next : p)))
+  return settle(next)
+}
+
+export async function reorderNavigation(items) {
+  const byId = Object.fromEntries(items.map(i => [i.id, i]))
+  for (const p of systemRecords()) if (byId[p.id]) saveSystem(p.id, pickSettings(byId[p.id]))
+  write(KEYS.customPages, loadCustom().map(p => (byId[p.id] ? { ...p, ...pickSettings(byId[p.id]) } : p)))
+  return settle(undefined)
+}
+
+export async function removePage(id) {
+  write(KEYS.customPages, loadCustom().filter(p => p.id !== id))
+  return settle(undefined)
+}
+
+export const systemPageSlug = pageId => pageId
+export const pageSectionKey = (pageId, sectionId) => sectionId
+
+export async function setSectionVisible(pageId, sectionId, visible) {
+  const current = systemRecords().find(p => p.id === pageId)?.hiddenSections || []
+  const hiddenSections = visible ? current.filter(k => k !== sectionId) : [...new Set([...current, sectionId])]
+  saveSystem(pageId, { hiddenSections })
+  return settle(systemRecords().find(p => p.id === pageId))
 }
 
 /** Blog posts and their topics — the sample posts in preview mode. */

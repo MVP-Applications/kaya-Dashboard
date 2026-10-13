@@ -10,22 +10,47 @@
  * BLOCK_TYPES is the contract with the website: it must know how to render
  * every type listed here. The format is written up in docs/page-builder.md.
  *
- * Every page also has a `navPosition` — which side of the website's header
- * menu its link appears on. Treatments and doctors blocks store ids.
+ * A page's template decides which block types it may use (`allowedTypes`)
+ * and which must be on the page before it can be published (`required`) —
+ * mirrored from kaya-nest-api src/modules/pages/page-templates.ts.
+ *
+ * Every page also has a status (draft / published / archived — only
+ * published pages are on the website), a place in the header and footer
+ * menus, and the countries it's offered in. Treatments and doctors blocks
+ * store ids.
  */
 
-/** Where a page's link goes in the website header — asked when creating a page. */
-export const NAV_POSITIONS = [
+/** Where a page's link goes in the website header. */
+export const HEADER_POSITIONS = [
+  { value: 'NONE', label: 'Not in the header' },
   { value: 'LEFT', label: 'Left — in the main menu' },
   { value: 'RIGHT', label: 'Right — next to the language and account buttons' },
 ]
-export const NAV_POSITION_LABELS = { LEFT: 'Left', RIGHT: 'Right' }
+export const HEADER_POSITION_LABELS = { LEFT: 'Header left', RIGHT: 'Header right' }
+
+/** Which footer column a page's link goes in. */
+export const FOOTER_COLUMNS = [
+  { value: 'NONE', label: 'Not in the footer' },
+  { value: 'COMPANY', label: 'Company column' },
+  { value: 'SUPPORT', label: 'Support column' },
+]
+export const FOOTER_COLUMN_LABELS = { COMPANY: 'Footer · Company', SUPPORT: 'Footer · Support' }
+
+export const PAGE_STATUSES = [
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'PUBLISHED', label: 'Published' },
+  { value: 'ARCHIVED', label: 'Archived' },
+]
+export const PAGE_STATUS_LABELS = Object.fromEntries(PAGE_STATUSES.map(s => [s.value, s.label]))
 
 // ── Field helpers ────────────────────────────────────────────
 
 const text = (key, label, extra = {}) => ({ key, label, type: 'text', localized: true, ...extra })
 const area = (key, label, extra = {}) => ({ key, label, type: 'textarea', localized: true, ...extra })
 const image = (key, label, extra = {}) => ({ key, label, type: 'image', ...extra })
+const altText = (key = 'imageAlt') => text(key, 'Image description (alt text)', {
+  hint: 'Describes the picture for screen readers and search engines. Leave empty for purely decorative images.',
+})
 const link = (key, label, extra = {}) => ({ key, label, type: 'text', placeholder: '/booking or https://…', ...extra })
 const select = (key, label, options, extra = {}) => ({ key, label, type: 'select', options, ...extra })
 
@@ -51,15 +76,18 @@ export const BLOCK_TYPES = {
       text('heading', 'Heading', { hint: 'Wrap highlighted words in *asterisks*.' }),
       area('sub', 'Subtitle'),
       image('image', 'Background image', {
-        ratio: 2,
-        hint: 'Full-width background behind the headline — about 2:1 on desktop; phones crop it to a taller middle part. Use about 1920 × 960 px with the subject in the centre.',
+        ratio: 8 / 3,
+        recommended: { width: 2400, height: 900 },
+        focusKey: 'imageFocus',
+        hint: 'Full-width background behind the headline, at least 460 px tall — about 3:1 on desktop, while phones show a taller middle part. Use 2400 × 900 px and set the focal point on the subject.',
       }),
+      altText(),
       select('align', 'Text alignment', [{ value: 'left', label: 'Left' }, { value: 'center', label: 'Centre' }]),
       text('buttonLabel', 'Button label'),
       select('buttonAction', 'Button does', BUTTON_ACTIONS),
       link('buttonLink', 'Button link', { showIf: d => d.buttonAction === 'link' }),
     ],
-    defaults: { eyebrow: '', heading: 'Your *headline* here', sub: '', image: '', align: 'left', buttonLabel: 'Book a consultation', buttonAction: 'booking', buttonLink: '' },
+    defaults: { eyebrow: '', heading: 'Your *headline* here', sub: '', image: '', imageAlt: '', imageFocus: '', align: 'left', buttonLabel: 'Book a consultation', buttonAction: 'booking', buttonLink: '' },
   },
   text: {
     label: 'Text',
@@ -78,8 +106,11 @@ export const BLOCK_TYPES = {
     fields: [
       image('image', 'Image', {
         ratio: 4 / 3,
-        hint: 'Shown beside the text at 4:3 (above it on phones). Use about 1200 × 900 px.',
+        recommended: { width: 1600, height: 1200 },
+        focusKey: 'imageFocus',
+        hint: 'Shown beside the text, cropped to 4:3 (above it on phones). Use 1600 × 1200 px.',
       }),
+      altText(),
       select('imageSide', 'Image on the', [{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }]),
       text('eyebrow', 'Eyebrow'),
       text('heading', 'Heading', { hint: 'Wrap highlighted words in *asterisks*.' }),
@@ -88,7 +119,7 @@ export const BLOCK_TYPES = {
       select('buttonAction', 'Button does', BUTTON_ACTIONS),
       link('buttonLink', 'Button link', { showIf: d => d.buttonAction === 'link' }),
     ],
-    defaults: { image: '', imageSide: 'left', eyebrow: '', heading: '', body: '', buttonLabel: '', buttonAction: 'link', buttonLink: '' },
+    defaults: { image: '', imageAlt: '', imageFocus: '', imageSide: 'left', eyebrow: '', heading: '', body: '', buttonLabel: '', buttonAction: 'link', buttonLink: '' },
   },
   image: {
     label: 'Image',
@@ -97,12 +128,14 @@ export const BLOCK_TYPES = {
     fields: [
       image('image', 'Image', {
         fit: 'contain',
+        recommended: { width: 1600, height: 0 },
         hint: 'Shown in its own shape — never cropped. Use at least 1600 px wide (2400 px for full screen width).',
       }),
+      altText('alt'),
       text('caption', 'Caption'),
       select('width', 'Width', [{ value: 'contained', label: 'Page width' }, { value: 'full', label: 'Full screen width' }]),
     ],
-    defaults: { image: '', caption: '', width: 'contained' },
+    defaults: { image: '', alt: '', caption: '', width: 'contained' },
   },
   features: {
     label: 'Feature cards',
@@ -229,6 +262,8 @@ export const PAGE_TEMPLATES = [
     label: 'Landing page',
     hint: 'Introduce a treatment area or service and drive bookings.',
     icon: '◭',
+    allowedTypes: BLOCK_ORDER,
+    required: ['hero'],
     blocks: () => [
       newBlock('hero', { eyebrow: 'New at Kaya', heading: 'Look and feel your *best*', sub: 'One sentence on what this page offers and who it is for.' }),
       newBlock('features', {
@@ -249,6 +284,8 @@ export const PAGE_TEMPLATES = [
     label: 'Campaign / offer',
     hint: 'A limited-time offer or seasonal promotion.',
     icon: '✺',
+    allowedTypes: ['hero', 'text', 'imageText', 'image', 'features', 'treatments', 'doctors', 'faq', 'cta', 'spacer'],
+    required: ['hero'],
     blocks: () => [
       newBlock('hero', { eyebrow: 'Limited time', heading: 'This season’s *offer*', sub: 'Say what the offer is, and until when.', align: 'center', buttonLabel: 'Claim the offer' }),
       newBlock('text', { heading: 'The offer', body: 'Explain exactly what is included and how to redeem it.' }),
@@ -262,6 +299,8 @@ export const PAGE_TEMPLATES = [
     label: 'Information page',
     hint: 'Explain something in depth — a guide, an announcement, opening hours.',
     icon: '▤',
+    allowedTypes: ['hero', 'text', 'imageText', 'image', 'features', 'cta', 'spacer'],
+    required: [],
     blocks: () => [
       newBlock('hero', { heading: 'Page *title*', sub: 'A one-line summary of the page.', buttonLabel: '', image: '' }),
       newBlock('text', { heading: 'Overview', body: 'Start writing here.' }),
@@ -274,6 +313,8 @@ export const PAGE_TEMPLATES = [
     label: 'Legal page',
     hint: 'Privacy policy, terms of use, cookie policy — plain text.',
     icon: '§',
+    allowedTypes: ['text', 'spacer'],
+    required: ['text'],
     blocks: () => [
       newBlock('text', { heading: 'Introduction', body: 'Last updated: [date]\n\nExplain what this policy covers.' }),
       newBlock('text', { heading: '1. Information we collect', body: '' }),
@@ -286,6 +327,8 @@ export const PAGE_TEMPLATES = [
     label: 'FAQ page',
     hint: 'Answers to common questions.',
     icon: '?',
+    allowedTypes: ['hero', 'text', 'faq', 'cta', 'spacer'],
+    required: ['faq'],
     blocks: () => [
       newBlock('hero', { heading: 'How can we *help*?', sub: 'Answers to the questions we hear most.', buttonLabel: '', align: 'center' }),
       newBlock('faq', { heading: '', items: [faqItem('Question one', 'Answer.'), faqItem('Question two', 'Answer.'), faqItem('Question three', 'Answer.')] }),
@@ -293,30 +336,41 @@ export const PAGE_TEMPLATES = [
     ],
   },
   {
-    id: 'blank',
+    id: 'flexible',
     label: 'Blank page',
-    hint: 'Start from nothing and add the blocks you need.',
+    hint: 'Start from nothing and add any blocks you need.',
     icon: '□',
+    allowedTypes: BLOCK_ORDER,
+    required: [],
     blocks: () => [],
   },
 ]
 
 export const TEMPLATE_LABELS = Object.fromEntries(PAGE_TEMPLATES.map(t => [t.id, t.label]))
 
+export function templateOf(id) {
+  return PAGE_TEMPLATES.find(t => t.id === id) || PAGE_TEMPLATES.at(-1)
+}
+
 export function newCustomPage(templateId) {
-  const template = PAGE_TEMPLATES.find(t => t.id === templateId) || PAGE_TEMPLATES.at(-1)
+  const template = templateOf(templateId)
   return {
     id: '',
     slug: '',
+    kind: 'CUSTOM',
     template: template.id,
-    // New pages start hidden, so nothing half-written goes live by accident.
-    visible: false,
-    // Chosen by the admin — no default, so it's always a deliberate choice.
-    navPosition: '',
+    // New pages start as drafts, so nothing half-written goes live by accident.
+    status: 'DRAFT',
+    headerPosition: 'NONE',
+    footerColumn: 'NONE',
+    allCountries: true,
+    countries: [],
     title: '', titleAr: '',
+    navLabel: '', navLabelAr: '',
     seoTitle: '', seoTitleAr: '',
     seoDescription: '', seoDescriptionAr: '',
     blocks: template.blocks(),
+    missingLocales: [],
     updatedAt: '',
   }
 }
@@ -335,7 +389,7 @@ export const RESERVED_SLUGS = [
   'about', 'aesthetic', 'blog', 'blogs', 'booking', 'doctors', 'find-us', 'indulgence', 'login', 'mens',
   'profile', 'surgery', 'tell-us', 'treatments', 'wellness-longevity',
   'api', 'admin', 'app', 'assets', 'static', 'public', 'search', 'sitemap', 'sitemap-xml', 'robots', 'robots-txt',
-  'favicon', 'manifest', '404', '500', 'ar', 'en',
+  'favicon', 'manifest', '404', '500', 'ar', 'en', 'global', 'homepage',
 ]
 
 /**
@@ -345,12 +399,32 @@ export const RESERVED_SLUGS = [
 export function validateCustomPage(page, { otherPages = [], builtInPaths = [] } = {}) {
   const problems = []
   if (!page.title.trim()) problems.push('Give the page a title.')
-  if (!NAV_POSITION_LABELS[page.navPosition]) problems.push('Choose where the page’s link appears in the website menu (Left or Right).')
+  if (page.allCountries === false && !(page.countries || []).length) problems.push('Choose at least one country, or offer the page in every country.')
+  const template = templateOf(page.template)
+  const misfits = [...new Set(page.blocks.map(b => b.type))].filter(t => !template.allowedTypes.includes(t))
+  if (misfits.length) problems.push(`A ${template.label} can’t have ${misfits.map(t => BLOCK_TYPES[t]?.label || t).join(', ')} blocks — remove them.`)
+  if (page.status === 'PUBLISHED') problems.push(...publishProblems(page))
   const slug = page.slug
   const reserved = new Set([...RESERVED_SLUGS, ...builtInPaths.map(p => p.replace(/^\//, '').split('/')[0]).filter(Boolean)])
   if (!slug) problems.push('The page needs an address (URL).')
   else if (reserved.has(slug)) problems.push(`“/${slug}” is already used by the website. Choose another address.`)
   else if (otherPages.some(p => p.slug === slug)) problems.push(`Another page already uses “/${slug}”.`)
+  return problems
+}
+
+/**
+ * What a page still needs before it can be published — the same rules the
+ * backend enforces: an English title, a visible block, and each block type
+ * its template requires.
+ */
+export function publishProblems(page) {
+  const problems = []
+  if (!(page.title || '').trim()) problems.push('Add an English title.')
+  const shown = (page.blocks || []).filter(b => !b.hidden)
+  if (!shown.length) problems.push('Add at least one visible block.')
+  for (const type of templateOf(page.template).required) {
+    if (!shown.some(b => b.type === type)) problems.push(`This page type needs a visible ${BLOCK_TYPES[type]?.label || type} block.`)
+  }
   return problems
 }
 
