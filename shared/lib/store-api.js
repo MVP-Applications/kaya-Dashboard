@@ -1080,6 +1080,11 @@ function pageRecord(p) {
 /** Every page except the hidden footer/global holder. */
 export async function fetchPageRegistry() {
   const items = await fetchAllPages(ApiEndpoints.pages.adminList)
+  // An API from before page status existed sends pages without `status`/`kind`;
+  // say so instead of quietly showing pages with no status to change.
+  if (items.length && items.every(p => p.status === undefined)) {
+    throw new Error('The connected API doesn’t support page status and menus yet — it needs the latest kaya-nest-api (pages registry) deployed.')
+  }
   return items.filter(p => p.kind !== 'GLOBAL').map(pageRecord)
 }
 
