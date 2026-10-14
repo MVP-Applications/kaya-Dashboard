@@ -1,16 +1,23 @@
 'use client'
+import RichTextEditor from '@/shared/components/RichTextEditor'
+import { richTextToPlain } from '@/shared/lib/rich-text'
 import { BLOCK_TYPES, readingStats } from '@/features/blog/lib/blog'
 
 /**
  * The article body as an ordered list of blocks — paragraphs, headings and
- * pull quotes, the three things the website's article page renders. Plain
- * text only: no HTML is stored, so nothing needs sanitising downstream.
+ * pull quotes, the three things the website's article page renders.
+ * Paragraphs use the text editor (bold, italic, lists, links — sanitised by
+ * the API on save); headings and quotes stay plain text.
  */
 export default function BlogBlocksEditor({ blocks, onChange, dir }) {
   const list = blocks || []
   const stats = readingStats(list)
 
   const update = (i, patch) => onChange(list.map((b, j) => (j === i ? { ...b, ...patch } : b)))
+  // A paragraph turned into a heading or quote keeps its words, not its markup.
+  const setType = (i, type) => update(i, list[i].type === 'p' && type !== 'p'
+    ? { type, text: richTextToPlain(list[i].text) }
+    : { type })
   const remove = i => onChange(list.filter((_, j) => j !== i))
   const add = type => onChange([...list, { type, text: '' }])
   const move = (i, d) => {
@@ -25,7 +32,7 @@ export default function BlogBlocksEditor({ blocks, onChange, dir }) {
         <div key={i} className={`ad-blog-block ad-blog-block--${b.type}`}>
           <div className="ad-blog-block-bar">
             <select className="ad-input ad-blog-block-type" value={b.type}
-              onChange={e => update(i, { type: e.target.value })} aria-label="Block type">
+              onChange={e => setType(i, e.target.value)} aria-label="Block type">
               {BLOCK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
             <span className="ad-reorder">
@@ -38,12 +45,17 @@ export default function BlogBlocksEditor({ blocks, onChange, dir }) {
               Remove
             </button>
           </div>
-          {b.type === 'h2'
-            ? <input className="ad-input" dir={dir} value={b.text}
-                onChange={e => update(i, { text: e.target.value })} placeholder="Section heading" />
-            : <textarea className="ad-input ad-textarea" dir={dir} rows={b.type === 'quote' ? 2 : 5}
-                value={b.text} onChange={e => update(i, { text: e.target.value })}
-                placeholder={b.type === 'quote' ? 'A line worth pulling out' : 'Paragraph text'} />}
+          {b.type === 'h2' ? (
+            <input className="ad-input" dir={dir} value={b.text}
+              onChange={e => update(i, { text: e.target.value })} placeholder="Section heading" />
+          ) : b.type === 'quote' ? (
+            <textarea className="ad-input ad-textarea" dir={dir} rows={2}
+              value={b.text} onChange={e => update(i, { text: e.target.value })}
+              placeholder="A line worth pulling out" />
+          ) : (
+            <RichTextEditor dir={dir} value={b.text} label={`Paragraph ${i + 1}`}
+              onChange={text => update(i, { text })} placeholder="Paragraph text" />
+          )}
         </div>
       ))}
       <div className="ad-blog-blocks-add">

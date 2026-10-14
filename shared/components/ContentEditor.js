@@ -35,6 +35,8 @@ export default function ContentEditor({
    */
   renderSectionExtra = null,
   isSectionOff = null,
+  /** Two sections per row on wide screens (the website pages), one below that. */
+  paired = false,
 }) {
   const [draft, setDraft] = useState(values || {})
   const [saved, setSaved] = useState(false)
@@ -249,7 +251,7 @@ export default function ContentEditor({
       )}
 
       {panels ? renderPanels() : (
-        <div className="ad-cf-sections">
+        <div className={`ad-cf-sections${paired ? ' ad-cf-sections--pair' : ''}`}>
           {group.sections.map(section => (
             <section key={section.id}
               className={`ad-fieldset ad-cf-sec${changed.includes(section.id) ? ' ad-cf-sec--dirty' : ''}${isSectionOff?.(section.id) ? ' ad-cf-sec--off' : ''}`}>

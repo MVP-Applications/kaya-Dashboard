@@ -186,6 +186,7 @@ export default function PagesView() {
         {!canManage && <div className="ad-note">Only a super admin can change these settings.</div>}
 
         <ContentEditor
+          paired
           scopeKey={activeCountry}
           group={page}
           values={pages[page.id]}
