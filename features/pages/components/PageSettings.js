@@ -63,38 +63,40 @@ export function PageSettingsFields({ value, onChange, locale, disabled, withTitl
         </fieldset>
       </div>
 
-      <fieldset className="ad-fieldset">
-        <legend>Countries</legend>
-        <label className="ad-check">
-          <input type="checkbox" checked={value.allCountries !== false} disabled={disabled}
-            onChange={e => onChange({ allCountries: e.target.checked })} />
-          <span><strong>Offered in every country</strong></span>
-        </label>
-        {value.allCountries === false && (
-          <div className="ad-pg-countries">
-            {accessibleCountries.map(c => (
-              <label key={c.code} className={`ad-check${countries.includes(c.code) ? ' active' : ''}`}>
-                <input type="checkbox" checked={countries.includes(c.code)} disabled={disabled} onChange={() => toggleCountry(c.code)} />
-                <span>{c.name}</span>
-              </label>
-            ))}
-            <span className="ad-field-hint">Visitors in other countries are sent to the homepage, and the page’s menu links are hidden for them.</span>
-          </div>
-        )}
-      </fieldset>
+      <div className="ad-pair">
+        <fieldset className="ad-fieldset">
+          <legend>Countries</legend>
+          <label className="ad-check">
+            <input type="checkbox" checked={value.allCountries !== false} disabled={disabled}
+              onChange={e => onChange({ allCountries: e.target.checked })} />
+            <span><strong>Offered in every country</strong></span>
+          </label>
+          {value.allCountries === false && (
+            <div className="ad-pg-countries">
+              {accessibleCountries.map(c => (
+                <label key={c.code} className={`ad-check${countries.includes(c.code) ? ' active' : ''}`}>
+                  <input type="checkbox" checked={countries.includes(c.code)} disabled={disabled} onChange={() => toggleCountry(c.code)} />
+                  <span>{c.name}</span>
+                </label>
+              ))}
+              <span className="ad-field-hint">Visitors in other countries are sent to the homepage, and the page’s menu links are hidden for them.</span>
+            </div>
+          )}
+        </fieldset>
 
-      <fieldset className="ad-fieldset">
-        <legend>Search engines</legend>
-        <label className="ad-field ad-w-xl">
-          <span className="ad-field-label">{ar ? 'SEO title (Arabic)' : 'SEO title'}</span>
-          <input {...text('seoTitle', { placeholder: value.title ? `${value.title} | Kaya` : 'Empty = the site’s default title' })} />
-        </label>
-        <label className="ad-field ad-w-xl">
-          <span className="ad-field-label">{ar ? 'Description (Arabic)' : 'Description'}</span>
-          <textarea rows={3} {...text('seoDescription')} className="ad-input ad-textarea" />
-          <span className="ad-field-hint">{(value[field('seoDescription')] || '').length} / 160 characters recommended</span>
-        </label>
-      </fieldset>
+        <fieldset className="ad-fieldset">
+          <legend>Search engines</legend>
+          <label className="ad-field ad-w-xl">
+            <span className="ad-field-label">{ar ? 'SEO title (Arabic)' : 'SEO title'}</span>
+            <input {...text('seoTitle', { placeholder: value.title ? `${value.title} | Kaya` : 'Empty = the site’s default title' })} />
+          </label>
+          <label className="ad-field ad-w-xl">
+            <span className="ad-field-label">{ar ? 'Description (Arabic)' : 'Description'}</span>
+            <textarea rows={3} {...text('seoDescription')} className="ad-input ad-textarea" />
+            <span className="ad-field-hint">{(value[field('seoDescription')] || '').length} / 160 characters recommended</span>
+          </label>
+        </fieldset>
+      </div>
     </>
   )
 }

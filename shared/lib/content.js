@@ -239,7 +239,7 @@ const ABOUT = {
         { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'built for it', width: 'half' },
         { key: 'image', label: 'Story image', type: 'image', default: '', ratio: 4 / 5, recommended: { width: 1200, height: 1500 }, hint: 'Shown beside the story text, as tall as the text on desktop and square on phones. Use 1200 × 1500 px with the subject centred, a little above the middle.' },
         {
-          key: 'paragraphs', label: 'Body paragraphs', type: 'strings', itemLabel: 'Paragraph',
+          key: 'paragraphs', label: 'Body paragraphs', type: 'strings', itemLabel: 'Paragraph', rich: true,
           default: [
             'Kaya was founded in Dubai in 2001 with a simple but radical idea: that medical-grade skin care should be accessible, doctor-led, and designed specifically for people living in the Gulf. At a time when the regional aesthetic industry was largely unregulated, Kaya built a clinical model that put physicians at the centre of every patient interaction.',
             'Over the following two decades, that model proved itself — not through marketing, but through results. Clients returned. Families trusted us with their children. Referrals outnumbered advertising. Today, with 35 clinics across the UAE, Saudi Arabia, and Oman, we remain independent, physician-owned, and clinically led.',

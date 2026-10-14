@@ -1,6 +1,7 @@
 'use client'
 import { useRef, useState } from 'react'
 import ImagePicker from '@/shared/components/ImagePicker'
+import RichTextEditor from '@/shared/components/RichTextEditor'
 import { emptyListItem } from '@/shared/lib/content'
 
 /**
@@ -169,7 +170,10 @@ function Field({ field, value, values, onChange, setValue, disabled }) {
   }
 }
 
-/** Repeater of plain strings — used for long-form body paragraphs. */
+/**
+ * Repeater of strings — used for long-form body paragraphs. With `rich: true`
+ * each item is written in the text editor (stored as HTML) instead of a textarea.
+ */
 function StringList({ field, value, onChange, disabled }) {
   function update(i, next) {
     onChange(value.map((v, j) => (j === i ? next : v)))
@@ -193,8 +197,13 @@ function StringList({ field, value, onChange, disabled }) {
             <ItemControls index={i} total={value.length} disabled={disabled}
               onMove={move} onRemove={() => onChange(value.filter((_, j) => j !== i))} />
           </div>
-          <textarea className="ad-input ad-textarea" rows={4} value={item} disabled={disabled}
-            onChange={e => update(i, e.target.value)} />
+          {field.rich ? (
+            <RichTextEditor value={item} disabled={disabled} onChange={next => update(i, next)}
+              label={`${field.itemLabel || 'Item'} ${i + 1}`} />
+          ) : (
+            <textarea className="ad-input ad-textarea" rows={4} value={item} disabled={disabled}
+              onChange={e => update(i, e.target.value)} />
+          )}
         </div>
       ))}
       {!disabled && (
