@@ -251,10 +251,11 @@ export default function ContentEditor({
       )}
 
       {panels ? renderPanels() : (
+        <div className={paired ? 'ad-cf-pair-wrap' : undefined}>
         <div className={`ad-cf-sections${paired ? ' ad-cf-sections--pair' : ''}`}>
           {group.sections.map(section => (
             <section key={section.id}
-              className={`ad-fieldset ad-cf-sec${changed.includes(section.id) ? ' ad-cf-sec--dirty' : ''}${isSectionOff?.(section.id) ? ' ad-cf-sec--off' : ''}`}>
+              className={`ad-fieldset ad-cf-sec${paired && isWideSection(section) ? ' ad-cf-sec--wide' : ''}${changed.includes(section.id) ? ' ad-cf-sec--dirty' : ''}${isSectionOff?.(section.id) ? ' ad-cf-sec--off' : ''}`}>
               <div className="ad-cf-sec-head">
                 <div>
                   <h2 className="ad-cf-sec-title">{section.label}</h2>
@@ -282,9 +283,15 @@ export default function ContentEditor({
             </section>
           ))}
         </div>
+        </div>
       )}
     </div>
   )
+}
+
+/** Sections with paragraphs or lists take a full row when sections are paired. */
+function isWideSection(section) {
+  return section.fields.some(f => f.type === 'strings' || f.type === 'list')
 }
 
 /** The fields a panel shows: its `keys`, or the whole section. */

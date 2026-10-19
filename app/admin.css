@@ -770,11 +770,30 @@
   padding: 10px 13px; border-radius: 9px;
 }
 .ad-cf-sections { display: flex; flex-direction: column; gap: 16px; }
-/* Website pages: two sections share a row from 1024px (same breakpoint as
-   .ad-pair), one per row below that. */
-@media (min-width: 1024px) {
+/* Website pages: two sections share a row once the editor itself is wide
+   enough (measured on the editor, not the screen, so the sidebar counts), one
+   per row below that. Sections with paragraphs or lists always take the full
+   row. Fields paired with `width: 'half'` sit side by side only while their
+   section is wide enough, and stack otherwise. */
+.ad-cf-pair-wrap { container: cf-sections / inline-size; }
+@container cf-sections (min-width: 880px) {
   .ad-cf-sections--pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .ad-cf-sections--pair > .ad-cf-sec--wide { grid-column: 1 / -1; }
 }
+.ad-cf-sections--pair > .ad-cf-sec { container: cf-section / inline-size; padding: 14px 16px; }
+@container cf-section (max-width: 419px) {
+  .ad-grid2 { grid-template-columns: minmax(0, 1fr); }
+}
+/* Tighter spacing so more of the page fits on screen. */
+.ad-cf-sections--pair { gap: 14px; }
+.ad-cf-sections--pair .ad-cf-sec-head { padding-bottom: 10px; margin-bottom: 12px; }
+.ad-cf-sections--pair .ad-field { margin-bottom: 10px; gap: 4px; }
+.ad-cf-sections--pair .ad-field:last-child { margin-bottom: 0; }
+.ad-cf-sections--pair .ad-grid2 { gap: 10px; }
+.ad-cf-sections--pair .ad-grid2 > .ad-field { margin-bottom: 0; }
+.ad-cf-sections--pair .ad-grid2 + * { margin-top: 10px; }
+.ad-cf-sections--pair .ad-field-label { font-size: 11.5px; }
+.ad-cf-sections--pair .ad-input { padding: 7px 10px; font-size: 13px; }
 /* Short fields stop at a readable width instead of running edge to edge;
    paragraphs, lists and images keep the section's full width. */
 .ad-cf-sections--pair .ad-field > input.ad-input:not(.ad-input--icon) { max-width: 560px; }
