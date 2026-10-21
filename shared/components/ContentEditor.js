@@ -37,14 +37,42 @@ export default function ContentEditor({
   isSectionOff = null,
   /** Two sections per row on wide screens (the website pages), one below that. */
   paired = false,
+  /**
+   * Sections start collapsed and open on a click of their header. Display
+   * only: a collapsed section's fields stay mounted and keep their draft.
+   */
+  collapsible = false,
 }) {
   const [draft, setDraft] = useState(values || {})
   const [saved, setSaved] = useState(false)
   const [locale, setLocale] = useState('EN')
+  const [openSections, setOpenSections] = useState(() => new Set())
 
   // Re-seed the draft when the editor is pointed at a different group, or at
   // the same group in a different market.
   useEffect(() => { setDraft(values || {}); setSaved(false) }, [group.id, scopeKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Another page starts with every section collapsed again.
+  useEffect(() => { setOpenSections(new Set()) }, [group.id])
+
+  function toggleSection(id) {
+    setOpenSections(open => {
+      const next = new Set(open)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  /** Failing fields in one section, across locales — flagged on its collapsed header. */
+  function sectionErrorCount(section) {
+    let count = 0
+    for (const loc of ['EN', 'AR']) {
+      const v = draft[section.id]?.[loc]
+      if (v) count += countFieldErrors(section.fields, v)
+    }
+    return count
+  }
 
   // The editor can open before the content has loaded (straight after sign-in,
   // a refresh, a link opened in a new tab). When the stored content arrives or
@@ -252,15 +280,54 @@ export default function ContentEditor({
 
       {panels ? renderPanels() : (
         <div className={paired ? 'ad-cf-pair-wrap' : undefined}>
+        {collapsible && (
+          <div className="ad-cf-expand-all">
+            <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
+              onClick={() => setOpenSections(new Set(group.sections.map(s => s.id)))}>
+              Expand all
+            </button>
+            <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm"
+              onClick={() => setOpenSections(new Set())}>
+              Collapse all
+            </button>
+          </div>
+        )}
         <div className={`ad-cf-sections${paired ? ' ad-cf-sections--pair' : ''}`}>
-          {group.sections.map(section => (
+          {group.sections.map(section => {
+            const isOpen = !collapsible || openSections.has(section.id)
+            const sectionErrors = collapsible ? sectionErrorCount(section) : 0
+            const bodyId = `ad-cf-body-${section.id}`
+            const heading = (
+              <>
+                <h2 className="ad-cf-sec-title">{section.label}</h2>
+                {section.hint && <p className="ad-cf-sec-hint">{section.hint}</p>}
+              </>
+            )
+            return (
             <section key={section.id}
-              className={`ad-fieldset ad-cf-sec${paired && isWideSection(section) ? ' ad-cf-sec--wide' : ''}${changed.includes(section.id) ? ' ad-cf-sec--dirty' : ''}${isSectionOff?.(section.id) ? ' ad-cf-sec--off' : ''}`}>
+              className={`ad-fieldset ad-cf-sec${paired && isWideSection(section) ? ' ad-cf-sec--wide' : ''}${isOpen ? '' : ' ad-cf-sec--collapsed'}${changed.includes(section.id) ? ' ad-cf-sec--dirty' : ''}${isSectionOff?.(section.id) ? ' ad-cf-sec--off' : ''}`}>
               <div className="ad-cf-sec-head">
-                <div>
-                  <h2 className="ad-cf-sec-title">{section.label}</h2>
-                  {section.hint && <p className="ad-cf-sec-hint">{section.hint}</p>}
-                </div>
+                {collapsible ? (
+                  <button type="button" className="ad-cf-sec-toggle" aria-expanded={isOpen} aria-controls={bodyId}
+                    onClick={() => toggleSection(section.id)}>
+                    <span className="ad-cf-sec-chevron" aria-hidden="true">▸</span>
+                    <span className="ad-cf-sec-toggle-text">
+                      {heading}
+                      {!isOpen && (changed.includes(section.id) || sectionErrors > 0) && (
+                        <span className="ad-cf-sec-flags">
+                          {changed.includes(section.id) && <span className="ad-cf-dirty">Unsaved changes</span>}
+                          {sectionErrors > 0 && (
+                            <span className="ad-cf-invalid">
+                              {sectionErrors} {sectionErrors === 1 ? 'field needs' : 'fields need'} fixing
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                ) : (
+                  <div>{heading}</div>
+                )}
                 <div className="ad-cf-sec-actions">
                   {renderSectionExtra?.(section)}
                   {canEdit && seed?.[section.id] && !same(draft[section.id], seed[section.id]) && (
@@ -271,8 +338,9 @@ export default function ContentEditor({
                   )}
                 </div>
               </div>
-              {/* Arabic copy is typed right-to-left. */}
-              <div dir={locale === 'AR' ? 'rtl' : undefined}>
+              {/* Arabic copy is typed right-to-left. A collapsed section's
+                  fields stay mounted, only hidden, so nothing in them is lost. */}
+              <div id={bodyId} className="ad-cf-sec-body" dir={locale === 'AR' ? 'rtl' : undefined} hidden={!isOpen}>
                 <SectionFields
                   fields={section.fields}
                   values={draft[section.id]?.[locale]}
@@ -281,7 +349,8 @@ export default function ContentEditor({
                 />
               </div>
             </section>
-          ))}
+            )
+          })}
         </div>
         </div>
       )}

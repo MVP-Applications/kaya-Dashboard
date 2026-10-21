@@ -187,6 +187,7 @@ export default function PagesView() {
 
         <ContentEditor
           paired
+          collapsible
           scopeKey={activeCountry}
           group={page}
           values={pages[page.id]}
