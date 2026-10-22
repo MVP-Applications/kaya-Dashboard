@@ -96,9 +96,9 @@ export default function ReviewsView() {
               <tr key={r.id}>
                 <td>
                   <div className="ad-cell-name">{r.name}</div>
-                  <div className="ad-cell-slug">{r.location || '—'}</div>
+                  <div className="ad-cell-slug">{r.location || '-'}</div>
                 </td>
-                <td>{treatmentName[r.treatment] || <span className="ad-muted">—</span>}</td>
+                <td>{treatmentName[r.treatment] || <span className="ad-muted">-</span>}</td>
                 <td>{'★'.repeat(r.rating || 0)}{'☆'.repeat(5 - (r.rating || 0))}</td>
                 <td>
                   {r.consentGiven

@@ -48,7 +48,7 @@ function useOverviewCounts(loadRequestsPage, dataVersion) {
   return counts
 }
 
-const show = n => (n == null ? '—' : n)
+const show = n => (n == null ? '-' : n)
 
 export default function Overview() {
   const { user, services, doctors, requestStatusCounts, loadRequestsPage, dataVersion } = useAdmin()
@@ -108,7 +108,7 @@ export default function Overview() {
             ))}
           </div>
         ) : (
-          <p className="ad-ov-clear">✓ All caught up — nothing is waiting on you.</p>
+          <p className="ad-ov-clear">✓ All caught up, nothing is waiting on you.</p>
         )}
       </div>
 

@@ -49,7 +49,7 @@ export function emptyQuestion() {
     sub: '', subAr: '',
     multiple: false,
     options: [],
-    notSure: false, notSureLabel: 'Not sure — show all', notSureLabelAr: 'لست متأكدًا — عرض الكل',
+    notSure: false, notSureLabel: 'Not sure, show all', notSureLabelAr: 'لست متأكدًا، عرض الكل',
   }
 }
 
@@ -97,11 +97,11 @@ function concernQuestion(areaId, concerns) {
     id: `concerns-${areaId}`,
     eyebrow: 'Refine your concerns', eyebrowAr: 'حدد اهتماماتك',
     heading: 'What specifically *bothers* you?', headingAr: 'ما الذي *يزعجك* تحديدًا؟',
-    sub: 'Select one or more concerns — this filters the most effective treatments for you.',
-    subAr: 'اختر اهتمامًا واحدًا أو أكثر — لتصفية أنسب العلاجات لك.',
+    sub: 'Select one or more concerns. This filters the most effective treatments for you.',
+    subAr: 'اختر اهتمامًا واحدًا أو أكثر، لتصفية أنسب العلاجات لك.',
     multiple: true,
     options: concerns.map(c => ({ id: c.id, label: c.label, labelAr: c.labelAr, treatments: [...c.treatments] })),
-    notSure: true, notSureLabel: 'Not sure — show all', notSureLabelAr: 'لست متأكدًا — عرض الكل',
+    notSure: true, notSureLabel: 'Not sure, show all', notSureLabelAr: 'لست متأكدًا، عرض الكل',
   }
 }
 

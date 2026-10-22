@@ -81,7 +81,7 @@ function MenuChips({ page }) {
     <>
       {chips.map(c => <span key={c} className="ad-page-count">{c}</span>)}
       {page.allCountries === false && <span className="ad-page-count">{(page.countries || []).join(', ') || 'No country'} only</span>}
-      {page.missingLocales?.includes('AR') && <span className="ad-page-count ad-page-count--warn" title="Some copy has no Arabic version yet — Arabic visitors see English there.">Arabic incomplete</span>}
+      {page.missingLocales?.includes('AR') && <span className="ad-page-count ad-page-count--warn" title="Some copy has no Arabic version yet. Arabic visitors see English there.">Arabic incomplete</span>}
     </>
   )
 }
@@ -187,6 +187,7 @@ export default function PagesView() {
 
         <ContentEditor
           paired
+          collapsible
           scopeKey={activeCountry}
           group={page}
           values={pages[page.id]}
@@ -273,7 +274,7 @@ export default function PagesView() {
         ) : sortedCustom.length === 0 ? (
           <div className="ad-panel ad-pg-empty">
             <strong>{customPages.length ? 'No pages match.' : 'No pages yet.'}</strong>
-            <span>Create a landing page, a campaign, an FAQ or a legal page — no code needed.</span>
+            <span>Create a landing page, a campaign, an FAQ or a legal page. No code needed.</span>
             {canCreate && <button type="button" className="ad-btn ad-btn--soft" onClick={() => setPicking(true)}>+ New page</button>}
           </div>
         ) : (

@@ -324,7 +324,7 @@ export function AdminProvider({ children }) {
       try {
         await remove(originalKey)
       } catch (e) {
-        setError(`Could not rename to "${newKey}" — the previous record could not be removed. ${e.message}`)
+        setError(`Could not rename to "${newKey}": the previous record could not be removed. ${e.message}`)
         setSaving(false)
         return false
       }

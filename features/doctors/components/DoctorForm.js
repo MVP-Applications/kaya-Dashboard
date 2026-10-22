@@ -138,7 +138,7 @@ export default function DoctorForm({ initial, isNew, onClose }) {
           <legend>Name, title &amp; bio</legend>
           <p className="ad-fieldset-hint">
             English is required. Fill in all three Arabic fields to add an
-            Arabic translation — leave any one blank and the doctor stays
+            Arabic translation. Leave any one blank and the doctor stays
             English-only.
           </p>
           <LocaleToggle locale={locale} onChange={setLocale} />
@@ -211,7 +211,7 @@ export default function DoctorForm({ initial, isNew, onClose }) {
               )}
               <p className="ad-fieldset-hint ad-image-hint">
                 Portrait 2:3 on doctor cards and the profile page (taller on desktop), plus a small circle when
-                booking. Every view crops from the top — use about 800 × 1200 px with the face in the upper third
+                booking. Every view crops from the top. Use about 800 × 1200 px with the face in the upper third
                 and a little space above the head.
               </p>
               <label className="ad-field ad-image-url">

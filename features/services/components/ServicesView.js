@@ -207,9 +207,9 @@ export default function ServicesView() {
                         </span>
                       ))}
                     </span>
-                  ) : <span className="ad-muted">—</span>}
+                  ) : <span className="ad-muted">-</span>}
                 </td>
-                <td>{s.badge ? <span className="ad-badge">{s.badge}</span> : <span className="ad-muted">—</span>}</td>
+                <td>{s.badge ? <span className="ad-badge">{s.badge}</span> : <span className="ad-muted">-</span>}</td>
                 <td className="ad-td-actions">
                   <Link className="ad-btn ad-btn--soft ad-btn--sm"
                     href={href({ edit: groupId, tab: activeCountry || countries[0] })}>Edit</Link>

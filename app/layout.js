@@ -2,7 +2,7 @@ import './globals.css'
 import AdminApp from '@/features/shell/components/AdminApp'
 
 export const metadata = {
-  title: 'Kaya CMS — Content Dashboard',
+  title: 'Kaya CMS | Content Dashboard',
   description: 'Manage treatments, doctors, enquiries and page content for the Kaya site.',
   // A staff tool has no business appearing in search results.
   robots: { index: false, follow: false },
@@ -105,7 +105,7 @@ const DIAGNOSTIC = `
     for (var j = 0; j < document.body.children.length && j < 6; j++) {
       var c = document.body.children[j];
       var cr = c.getBoundingClientRect();
-      kids.push(c.tagName + '.' + (c.className || '—').toString().slice(0, 28) +
+      kids.push(c.tagName + '.' + (c.className || '-').toString().slice(0, 28) +
         ' ' + Math.round(cr.width) + 'x' + Math.round(cr.height));
     }
 
@@ -131,7 +131,7 @@ const DIAGNOSTIC = `
     box.innerHTML =
       '<div style="font-size:15px;font-weight:700;margin-bottom:4px">The dashboard has not started</div>' +
       '<div style="font-size:12.5px;line-height:1.55;color:#665F7A;margin-bottom:16px">' +
-      'Please send a screenshot of this panel — it says what this browser is doing.</div>' +
+      'Please send a screenshot of this panel. It says what this browser is doing.</div>' +
       rows.map(function (r) {
         return '<div style="margin-bottom:11px">' +
           '<div style="font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;' +

@@ -183,7 +183,7 @@ export default function PagePreview({ page, locale, device, selectedId, onSelect
             role="button"
             tabIndex={0}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(b.id) } }}
-            aria-label={`${BLOCK_TYPES[b.type]?.label || b.type} block${b.hidden ? ' (hidden)' : ''} — select to edit`}
+            aria-label={`${BLOCK_TYPES[b.type]?.label || b.type} block${b.hidden ? ' (hidden)' : ''}, select to edit`}
           >
             <span className="ad-pp-tag">{BLOCK_TYPES[b.type]?.label || b.type}{b.hidden ? ' · hidden' : ''}</span>
             <Block block={b} locale={locale} services={services} doctors={doctors} />

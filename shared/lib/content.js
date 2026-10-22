@@ -28,8 +28,8 @@ import { CONTENT_ICON_OPTIONS } from '@/shared/lib/content-icons'
 // Upload hints for content images — the shape the website shows each one at.
 // Sizes measured from the website's CSS (kaya-website app/globals.css).
 const BANNER_HINT = 'Homepage banner, text over the left half. Shown about 1.9:1 on desktop (top and bottom trimmed) and exactly 4:3 on phones. Use 2160 × 1612 px with the person in the right half, then set the focal point.'
-const PAGE_HERO_HINT = 'Full-width background behind the page title — about 2.2:1 on desktop and wider on big screens; phones show only the right-hand third. Use 2560 × 1100 px with the subject at the right edge.'
-const VERTICAL_HERO_HINT = 'Fills the screen behind the headline — about 1.8–2:1 on desktop, a tall 2:3 strip on phones. Use 2400 × 1350 px with the subject in the centre third and calm space bottom-left for the text, then set the focal point.'
+const PAGE_HERO_HINT = 'Full-width background behind the page title, about 2.2:1 on desktop and wider on big screens; phones show only the right-hand third. Use 2560 × 1100 px with the subject at the right edge.'
+const VERTICAL_HERO_HINT = 'Fills the screen behind the headline, about 1.8–2:1 on desktop, a tall 2:3 strip on phones. Use 2400 × 1350 px with the subject in the centre third and calm space bottom-left for the text, then set the focal point.'
 const ALT_HINT = 'Describes the picture for screen readers and search engines. Leave empty for purely decorative images.'
 const altField = { key: 'imageAlt', label: 'Image description (alt text)', type: 'text', default: '', hint: ALT_HINT }
 
@@ -46,7 +46,7 @@ const HOME = {
       hint: 'The thin dismissible strip above the header.',
       fields: [
         { key: 'enabled', label: 'Show the announcement bar', type: 'toggle', default: true },
-        { key: 'text', label: 'Message', type: 'text', default: 'Now open in Riyadh —', width: 'half' },
+        { key: 'text', label: 'Message', type: 'text', default: 'Now open in Riyadh.', width: 'half' },
         { key: 'linkLabel', label: 'Link label', type: 'text', default: 'Book your first visit →', width: 'half' },
         { key: 'href', label: 'Link URL', type: 'text', default: '#' },
       ],
@@ -57,7 +57,7 @@ const HOME = {
       hint: 'The large headline above the banners. The emphasis half renders in italic serif.',
       fields: [
         { key: 'heading', label: 'Heading', type: 'text', default: "The care you've always", width: 'half' },
-        { key: 'headingEm', label: 'Heading — emphasis', type: 'text', default: 'deserved', width: 'half' },
+        { key: 'headingEm', label: 'Heading: emphasis', type: 'text', default: 'deserved', width: 'half' },
       ],
     },
     {
@@ -70,7 +70,7 @@ const HOME = {
         altField,
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Kaya Clinic' },
         { key: 'title', label: 'Title', type: 'text', default: 'Where beauty meets', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'medicine', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'medicine', width: 'half' },
         { key: 'stats', label: 'Stat line', type: 'text', default: '23 yrs experience · 600K+ clients · 35 clinics' },
         { key: 'ctaLabel', label: 'Button label', type: 'text', default: 'Book consultation' },
       ],
@@ -85,10 +85,10 @@ const HOME = {
         altField,
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Just for you' },
         { key: 'title', label: 'Title', type: 'text', default: 'Personalised', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'treatments', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'treatments', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: "Answer 3 quick questions — we'll match you to the right treatment.",
+          default: "Answer 3 quick questions and we'll match you to the right treatment.",
         },
         { key: 'ctaLabel', label: 'Button label', type: 'text', default: 'Tell us everything', width: 'half' },
         { key: 'href', label: 'Link URL', type: 'text', default: '/tell-us', width: 'half' },
@@ -101,10 +101,10 @@ const HOME = {
       hint: 'Heading for the featured-treatments carousel. The cards themselves come from Treatments & Services.',
       fields: [
         { key: 'title', label: 'Title', type: 'text', default: 'Popular', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'treatments', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'treatments', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: "Handpicked by our specialists — what's getting booked most this month.",
+          default: "Handpicked by our specialists: what's getting booked most this month.",
         },
         { key: 'linkLabel', label: 'See-all link', type: 'text', default: 'See all treatments →' },
       ],
@@ -116,7 +116,7 @@ const HOME = {
       hint: 'Heading for the voucher carousel. The cards come from the Indulgence section.',
       fields: [
         { key: 'title', label: 'Title', type: 'text', default: 'The Kaya', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'Indulgence', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'Indulgence', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
           default: 'Gift cards and credit bundles, ready to gift or redeem.',
@@ -132,10 +132,10 @@ const HOME = {
       fields: [
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Meet our doctors' },
         { key: 'title', label: 'Title', type: 'text', default: 'Care led by', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'experts', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'experts', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: 'Board-certified specialists across every treatment area — trusted by thousands across the GCC.',
+          default: 'Board-certified specialists across every treatment area, trusted by thousands across the GCC.',
         },
         { key: 'ctaLabel', label: 'Button label', type: 'text', default: 'Book consultation', width: 'half' },
         { key: 'linkLabel', label: 'See-all link', type: 'text', default: 'View all doctors →', width: 'half' },
@@ -149,10 +149,10 @@ const HOME = {
       fields: [
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Personalised for you' },
         { key: 'headline', label: 'Headline', type: 'text', default: 'Not sure where to start?', width: 'half' },
-        { key: 'headlineEm', label: 'Headline — emphasis', type: 'text', default: 'Tell us everything.', width: 'half' },
+        { key: 'headlineEm', label: 'Headline: emphasis', type: 'text', default: 'Tell us everything.', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: "Answer a few quick questions and we'll match you to the right treatments — no medical jargon, no guesswork. Just a clear path forward.",
+          default: "Answer a few quick questions and we'll match you to the right treatments. No medical jargon, no guesswork. Just a clear path forward.",
         },
         { key: 'ctaLabel', label: 'Button label', type: 'text', default: 'Tell us Everything', width: 'half' },
         { key: 'pickerLabel', label: 'Carousel label', type: 'text', default: "Or pick where you'd like to begin", width: 'half' },
@@ -166,11 +166,11 @@ const HOME = {
       fields: [
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Real results' },
         { key: 'title', label: 'Title', type: 'text', default: 'Trusted by', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: '600K+', width: 'half' },
-        { key: 'titleEnd', label: 'Title — after emphasis', type: 'text', default: 'across the GCC' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: '600K+', width: 'half' },
+        { key: 'titleEnd', label: 'Title: after emphasis', type: 'text', default: 'across the GCC' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: 'Real clients, real outcomes — shared with consent.',
+          default: 'Real clients, real outcomes, shared with consent.',
         },
       ],
     },
@@ -192,11 +192,11 @@ const ABOUT = {
       fields: [
         {
           key: 'title', label: 'Page title', type: 'text',
-          default: 'About Kaya — 23 Years of Doctor-Led Care in the GCC',
+          default: 'About Kaya | 23 Years of Doctor-Led Care in the GCC',
         },
         {
           key: 'description', label: 'Meta description', type: 'textarea',
-          default: "Founded in 2001, Kaya is the GCC's largest doctor-led wellness network — dermatology, body slimming, longevity medicine, and plastic surgery across the UAE, KSA, and Oman.",
+          default: "Founded in 2001, Kaya is the GCC's largest doctor-led wellness network: dermatology, body slimming, longevity medicine, and plastic surgery across the UAE, KSA, and Oman.",
         },
       ],
     },
@@ -208,10 +208,10 @@ const ABOUT = {
         altField,
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Our story' },
         { key: 'title', label: 'Title', type: 'text', default: 'Doctor-led wellness,', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'built for the GCC', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'built for the GCC', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: "For over two decades, Kaya has been the region's most trusted name in physician-led skin, body, and longevity care — growing from a single clinic to 35 locations across three countries.",
+          default: "For over two decades, Kaya has been the region's most trusted name in physician-led skin, body, and longevity care, growing from a single clinic to 35 locations across three countries.",
         },
         {
           key: 'stats', label: 'Stat row', type: 'list', itemLabel: 'Stat',
@@ -236,21 +236,21 @@ const ABOUT = {
       fields: [
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Founded 2001' },
         { key: 'title', label: 'Title', type: 'text', default: 'Born in the region,', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'built for it', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'built for it', width: 'half' },
         { key: 'image', label: 'Story image', type: 'image', default: '', ratio: 4 / 5, recommended: { width: 1200, height: 1500 }, hint: 'Shown beside the story text, as tall as the text on desktop and square on phones. Use 1200 × 1500 px with the subject centred, a little above the middle.' },
         {
           key: 'paragraphs', label: 'Body paragraphs', type: 'strings', itemLabel: 'Paragraph', rich: true,
           default: [
             'Kaya was founded in Dubai in 2001 with a simple but radical idea: that medical-grade skin care should be accessible, doctor-led, and designed specifically for people living in the Gulf. At a time when the regional aesthetic industry was largely unregulated, Kaya built a clinical model that put physicians at the centre of every patient interaction.',
-            'Over the following two decades, that model proved itself — not through marketing, but through results. Clients returned. Families trusted us with their children. Referrals outnumbered advertising. Today, with 35 clinics across the UAE, Saudi Arabia, and Oman, we remain independent, physician-owned, and clinically led.',
-            'In 2022 we expanded our scope from dermatology into longevity medicine, body contouring, and plastic surgery — bringing the same rigour that made our skin clinic the region’s most trusted into categories that had never seen it.',
+            'Over the following two decades, that model proved itself, not through marketing, but through results. Clients returned. Families trusted us with their children. Referrals outnumbered advertising. Today, with 35 clinics across the UAE, Saudi Arabia, and Oman, we remain independent, physician-owned, and clinically led.',
+            'In 2022 we expanded our scope from dermatology into longevity medicine, body contouring, and plastic surgery, bringing the same rigour that made our skin clinic the region’s most trusted into categories that had never seen it.',
           ],
         },
         {
           key: 'quote', label: 'Pull quote', type: 'textarea',
           default: 'We built Kaya because patients in the GCC deserved better than what existed.',
         },
-        { key: 'quoteEm', label: 'Pull quote — emphasis', type: 'text', default: 'They still do.', width: 'half' },
+        { key: 'quoteEm', label: 'Pull quote: emphasis', type: 'text', default: 'They still do.', width: 'half' },
         { key: 'attribution', label: 'Attribution', type: 'text', default: 'Kaya Founding Team, Dubai 2001', width: 'half' },
       ],
     },
@@ -261,10 +261,10 @@ const ABOUT = {
       fields: [
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'What we believe' },
         { key: 'title', label: 'Title', type: 'text', default: 'Three principles that', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'guide everything', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'guide everything', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: 'Every decision at Kaya — clinical, operational, cultural — runs through the same filter.',
+          default: 'Every decision at Kaya (clinical, operational, cultural) runs through the same filter.',
         },
         {
           key: 'items', label: 'Principles', type: 'list', itemLabel: 'Principle',
@@ -277,17 +277,17 @@ const ABOUT = {
             {
               icon: 'medical',
               title: 'Doctor-first, always',
-              desc: "Every diagnosis, treatment plan, and procedure is led by a licensed physician. We've never delegated clinical decisions to technicians — and never will.",
+              desc: "Every diagnosis, treatment plan, and procedure is led by a licensed physician. We've never delegated clinical decisions to technicians, and never will.",
             },
             {
               icon: 'circle',
               title: 'Holistic by design',
-              desc: 'Skin, body, mind, and longevity under one roof. We treat the whole person, not just a concern — connecting specialties that most clinics keep apart.',
+              desc: 'Skin, body, mind, and longevity under one roof. We treat the whole person, not just a concern, connecting specialties that most clinics keep apart.',
             },
             {
               icon: 'infinity',
               title: 'GCC expertise, globally trained',
-              desc: 'Our doctors understand GCC skin types, climates, and cultural expectations — combined with international training across Europe, the US, and Asia.',
+              desc: 'Our doctors understand GCC skin types, climates, and cultural expectations, combined with international training across Europe, the US, and Asia.',
             },
           ],
         },
@@ -297,30 +297,30 @@ const ABOUT = {
       id: 'reach',
       hideable: true,
       label: 'Regional reach',
-      hint: 'The map shows every clinic from the Clinics screen. The country cards follow the Countries screen — flag, name and display order — and each card’s clinic count and cities are counted from the clinics automatically.',
+      hint: 'The map shows every clinic from the Clinics screen. The country cards follow the Countries screen (flag, name and display order) and each card’s clinic count and cities are counted from the clinics automatically.',
       fields: [
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Where we are' },
         { key: 'title', label: 'Title', type: 'text', default: 'Across the GCC,', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'close to you', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'close to you', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          hint: 'Write {clinics} and {countries} where the live counts should appear — the website fills them in from the Clinics and Countries data.',
+          hint: 'Write {clinics} and {countries} where the live counts should appear. The website fills them in from the Clinics and Countries data.',
           default: '{clinics} clinics, {countries} countries, one standard of care. Wherever you are in the region, a Kaya physician is nearby.',
         },
         {
-          key: 'clinicLabel', label: 'Clinic — one', type: 'text', default: 'clinic', width: 'half',
+          key: 'clinicLabel', label: 'Clinic: one', type: 'text', default: 'clinic', width: 'half',
           hint: 'After a count of 1: “1 clinic”.',
         },
         {
-          key: 'clinicsLabel', label: 'Clinics — several', type: 'text', default: 'clinics', width: 'half',
+          key: 'clinicsLabel', label: 'Clinics: several', type: 'text', default: 'clinics', width: 'half',
           hint: 'After other counts: “20 clinics” (country cards and map badge).',
         },
         {
-          key: 'countryLabel', label: 'Country — one', type: 'text', default: 'country', width: 'half',
+          key: 'countryLabel', label: 'Country: one', type: 'text', default: 'country', width: 'half',
           hint: 'After a count of 1: “1 country”.',
         },
         {
-          key: 'countriesLabel', label: 'Countries — several', type: 'text', default: 'countries', width: 'half',
+          key: 'countriesLabel', label: 'Countries: several', type: 'text', default: 'countries', width: 'half',
           hint: 'After other counts: “3 countries” (map badge).',
         },
       ],
@@ -342,10 +342,10 @@ const TREATMENTS = {
       fields: [
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'All Treatments' },
         { key: 'title', label: 'Title', type: 'text', default: 'Six specialties.', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'One standard.', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'One standard.', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: 'Face & skin, body, hair, energy & wellness, mens, and surgery — all physician-led, all under one medical roof in the GCC.',
+          default: 'Face & skin, body, hair, energy & wellness, mens, and surgery. All physician-led, all under one medical roof in the GCC.',
         },
       ],
     },
@@ -365,7 +365,7 @@ const TREATMENTS = {
             {
               icon: '⚕',
               title: 'Physician-only care',
-              desc: 'Every treatment across every specialty is performed or directly supervised by a licensed physician — not a technician working alone.',
+              desc: 'Every treatment across every specialty is performed or directly supervised by a licensed physician, not a technician working alone.',
             },
             {
               icon: '◎',
@@ -375,7 +375,7 @@ const TREATMENTS = {
             {
               icon: '✦',
               title: 'Medical-grade technology',
-              desc: 'FDA-cleared devices and evidence-based interventions only — the same standards used in leading medical centres worldwide.',
+              desc: 'FDA-cleared devices and evidence-based interventions only, the same standards used in leading medical centres worldwide.',
             },
           ],
         },
@@ -395,23 +395,23 @@ const TREATMENTS = {
           default: [
             {
               vertical: 'face-skin',
-              desc: 'From pigmentation and fine lines to acne scarring, our dermatologists combine medical-grade lasers, peels, and injectables — calibrated specifically for GCC skin types — to deliver visible, lasting results.',
+              desc: 'From pigmentation and fine lines to acne scarring, our dermatologists combine medical-grade lasers, peels, and injectables, calibrated specifically for GCC skin types, to deliver visible, lasting results.',
             },
             {
               vertical: 'body',
-              desc: 'Non-surgical contouring and skin-tightening technologies target stubborn fat and improve tone, with no surgery and no downtime — every protocol supervised by a physician from consultation to result.',
+              desc: 'Non-surgical contouring and skin-tightening technologies target stubborn fat and improve tone, with no surgery and no downtime, every protocol supervised by a physician from consultation to result.',
             },
             {
               vertical: 'hair',
-              desc: 'PRP restoration and advanced laser hair removal address thinning, hair loss, and unwanted hair — safe and effective across all skin tones common in the region.',
+              desc: 'PRP restoration and advanced laser hair removal address thinning, hair loss, and unwanted hair, safe and effective across all skin tones common in the region.',
             },
             {
               vertical: 'wellness',
-              desc: 'Comprehensive biomarker testing, IV therapy, and hormonal optimisation build a personalised longevity protocol — designed to extend your healthspan, not just treat symptoms.',
+              desc: 'Comprehensive biomarker testing, IV therapy, and hormonal optimisation build a personalised longevity protocol, designed to extend your healthspan, not just treat symptoms.',
             },
             {
               vertical: 'mens',
-              desc: 'A dedicated specialty spanning hair, skin, body, and anti-ageing — built around the specific concerns and physiology of male patients, from hairlines to hormones.',
+              desc: 'A dedicated specialty spanning hair, skin, body, and anti-ageing, built around the specific concerns and physiology of male patients, from hairlines to hormones.',
             },
             {
               vertical: 'surgery',
@@ -432,8 +432,8 @@ function heroFields({ eyebrow, headline, headlineEm, headlineEnd = '', sub, imag
     altField,
     { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: eyebrow },
     { key: 'headline', label: 'Headline', type: 'text', default: headline, width: 'half' },
-    { key: 'headlineEm', label: 'Headline — emphasis', type: 'text', default: headlineEm, width: 'half' },
-    { key: 'headlineEnd', label: 'Headline — after emphasis', type: 'text', default: headlineEnd },
+    { key: 'headlineEm', label: 'Headline: emphasis', type: 'text', default: headlineEm, width: 'half' },
+    { key: 'headlineEnd', label: 'Headline: after emphasis', type: 'text', default: headlineEnd },
     { key: 'sub', label: 'Subtitle', type: 'textarea', default: sub },
     { key: 'primaryCta', label: 'Primary button', type: 'text', default: primaryCta, width: 'half' },
     { key: 'secondaryCta', label: 'Secondary link', type: 'text', default: secondaryCta, width: 'half' },
@@ -445,7 +445,7 @@ function introFields({ eyebrow, title, titleEm, sub }) {
   return [
     { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: eyebrow },
     { key: 'title', label: 'Title', type: 'text', default: title, width: 'half' },
-    { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: titleEm, width: 'half' },
+    { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: titleEm, width: 'half' },
     { key: 'sub', label: 'Subtitle', type: 'textarea', default: sub },
   ]
 }
@@ -491,7 +491,7 @@ const AESTHETIC = {
         eyebrow: 'What we offer',
         title: 'Three paths to your',
         titleEm: 'best self',
-        sub: "Whether you're treating your skin, reshaping your body, or restoring your hair — Kaya has a specialist pathway for you.",
+        sub: "Whether you're treating your skin, reshaping your body, or restoring your hair, Kaya has a specialist pathway for you.",
       }),
     },
     {
@@ -531,7 +531,7 @@ const AESTHETIC = {
         eyebrow: 'Popular treatments',
         title: 'Where most clients',
         titleEm: 'start',
-        sub: 'Our most-requested aesthetic treatments — each delivered by a certified Kaya specialist.',
+        sub: 'Our most-requested aesthetic treatments, each delivered by a certified Kaya specialist.',
       }),
     },
     {
@@ -561,7 +561,7 @@ const AESTHETIC = {
         { key: 'headline', label: 'Headline', type: 'text', default: 'Ready to start your aesthetic journey?' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: "Book a consultation — we'll build a treatment plan around your goals.",
+          default: "Book a consultation and we'll build a treatment plan around your goals.",
         },
         { key: 'primaryCta', label: 'Primary button', type: 'text', default: 'Book consultation', width: 'half' },
         { key: 'secondaryCta', label: 'Secondary link', type: 'text', default: 'Find my treatment', width: 'half' },
@@ -597,7 +597,7 @@ const WELLNESS = {
         eyebrow: 'Our approach',
         title: 'Wellness that',
         titleEm: 'works',
-        sub: 'We combine advanced diagnostics with precision protocols — built around your biology, not a generic programme.',
+        sub: 'We combine advanced diagnostics with precision protocols, built around your biology, not a generic programme.',
       }),
     },
     {
@@ -619,7 +619,7 @@ const WELLNESS = {
         eyebrow: 'Protocols & Programmes',
         title: 'Where clients',
         titleEm: 'begin',
-        sub: 'Our most-requested wellness protocols — each backed by science and delivered by Kaya specialists.',
+        sub: 'Our most-requested wellness protocols, each backed by science and delivered by Kaya specialists.',
       }),
     },
     {
@@ -627,10 +627,10 @@ const WELLNESS = {
       label: 'Closing CTA',
       fields: [
         { key: 'headline', label: 'Headline', type: 'text', default: 'Ready to start?', width: 'half' },
-        { key: 'headlineEm', label: 'Headline — emphasis', type: 'text', default: "Let's build your protocol.", width: 'half' },
+        { key: 'headlineEm', label: 'Headline: emphasis', type: 'text', default: "Let's build your protocol.", width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: "Book a wellness consultation — we'll build a protocol designed around your health goals.",
+          default: "Book a wellness consultation and we'll build a protocol designed around your health goals.",
         },
       ],
     },
@@ -652,7 +652,7 @@ const MENS = {
         eyebrow: "Men's Treatments",
         headline: 'Built for men.',
         headlineEm: 'Backed by medicine.',
-        sub: "Hair, skin, and body treatments designed around men's specific needs — delivered with complete discretion by board-certified specialists.",
+        sub: "Hair, skin, and body treatments designed around men's specific needs, delivered with complete discretion by board-certified specialists.",
         primaryCta: 'Book consultation',
         secondaryCta: 'Find my treatment',
       }),
@@ -676,7 +676,7 @@ const MENS = {
         eyebrow: 'Popular with men',
         title: 'Treatments built',
         titleEm: 'around you',
-        sub: 'A curated selection of hair, skin, and body treatments — each delivered by a specialist, tailored to your goals.',
+        sub: 'A curated selection of hair, skin, and body treatments, each delivered by a specialist, tailored to your goals.',
       }),
     },
     {
@@ -684,10 +684,10 @@ const MENS = {
       label: 'Closing CTA',
       fields: [
         { key: 'headline', label: 'Headline', type: 'text', default: 'Ready to start?', width: 'half' },
-        { key: 'headlineEm', label: 'Headline — emphasis', type: 'text', default: "Let's talk, discreetly.", width: 'half' },
+        { key: 'headlineEm', label: 'Headline: emphasis', type: 'text', default: "Let's talk, discreetly.", width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: 'Schedule a private consultation with one of our specialists — no commitment, just clarity.',
+          default: 'Schedule a private consultation with one of our specialists. No commitment, just clarity.',
         },
       ],
     },
@@ -742,10 +742,10 @@ const SURGERY = {
       label: 'Closing CTA',
       fields: [
         { key: 'headline', label: 'Headline', type: 'text', default: 'Ready to start?', width: 'half' },
-        { key: 'headlineEm', label: 'Headline — emphasis', type: 'text', default: "Let's discuss your goals.", width: 'half' },
+        { key: 'headlineEm', label: 'Headline: emphasis', type: 'text', default: "Let's discuss your goals.", width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: 'Schedule a private consultation with one of our surgical specialists — no commitment, just clarity.',
+          default: 'Schedule a private consultation with one of our surgical specialists. No commitment, just clarity.',
         },
       ],
     },
@@ -758,7 +758,7 @@ const DOCTORS_PAGE = {
   label: 'Doctors listing',
   path: '/doctors',
   icon: '⚕',
-  hint: 'Hero copy only — the doctor records are managed under Doctors.',
+  hint: 'Hero copy only. The doctor records are managed under Doctors.',
   sections: [
     {
       id: 'hero',
@@ -768,10 +768,10 @@ const DOCTORS_PAGE = {
         altField,
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Meet our doctors' },
         { key: 'title', label: 'Title', type: 'text', default: 'Meet Our', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'Experts', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'Experts', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: "They see what makes you unique — and that's exactly what sets them apart. Meet the region's largest team of physicians, trusted by thousands across the GCC.",
+          default: "They see what makes you unique, and that's exactly what sets them apart. Meet the region's largest team of physicians, trusted by thousands across the GCC.",
         },
       ],
     },
@@ -783,7 +783,7 @@ const INDULGENCE_PAGE = {
   label: 'Indulgence page',
   path: '/indulgence',
   icon: '🎁',
-  hint: 'Hero copy only — the vouchers themselves are managed under Indulgence.',
+  hint: 'Hero copy only. The vouchers themselves are managed under Indulgence.',
   sections: [
     {
       id: 'hero',
@@ -793,10 +793,10 @@ const INDULGENCE_PAGE = {
         altField,
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Gift Cards & Vouchers' },
         { key: 'title', label: 'Title', type: 'text', default: 'The Kaya', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'Indulgence', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'Indulgence', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: "Give the extraordinary. Exclusive vouchers for Kaya's world-class treatments — delivered instantly to email or WhatsApp.",
+          default: "Give the extraordinary. Exclusive vouchers for Kaya's world-class treatments, delivered instantly to email or WhatsApp.",
         },
       ],
     },
@@ -808,7 +808,7 @@ const FIND_US_PAGE = {
   label: 'Find a clinic',
   path: '/find-us',
   icon: '⌖',
-  hint: 'Section heading only — the clinic records are managed under Locations.',
+  hint: 'Section heading only. The clinic records are managed under Locations.',
   sections: [
     {
       id: 'header',
@@ -816,7 +816,7 @@ const FIND_US_PAGE = {
       fields: [
         { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: 'Locations' },
         { key: 'title', label: 'Title', type: 'text', default: 'Find your nearest', width: 'half' },
-        { key: 'titleEm', label: 'Title — emphasis', type: 'text', default: 'Kaya clinic', width: 'half' },
+        { key: 'titleEm', label: 'Title: emphasis', type: 'text', default: 'Kaya clinic', width: 'half' },
       ],
     },
   ],
@@ -830,7 +830,7 @@ function stepSection(id, label, { eyebrow, heading, headingEm, sub }) {
     fields: [
       { key: 'eyebrow', label: 'Eyebrow', type: 'text', default: eyebrow },
       { key: 'heading', label: 'Heading', type: 'text', default: heading, width: 'half' },
-      { key: 'headingEm', label: 'Heading — emphasis', type: 'text', default: headingEm, width: 'half' },
+      { key: 'headingEm', label: 'Heading: emphasis', type: 'text', default: headingEm, width: 'half' },
       { key: 'sub', label: 'Subtitle', type: 'textarea', default: sub },
     ],
   }
@@ -846,11 +846,11 @@ const TELL_US_PAGE = {
   // rename or remove them per pillar.
   hint: 'Headings for the first step and the results. The questions themselves are in Tell Us Everything.',
   sections: [
-    stepSection('step1', 'Step 1 — Treatment area', {
+    stepSection('step1', 'Step 1: Treatment area', {
       eyebrow: 'Tell us everything',
       heading: 'What would you like to',
       headingEm: 'address',
-      sub: "Choose one area — we'll guide you to the right treatments.",
+      sub: "Choose one area and we'll guide you to the right treatments.",
     }),
     stepSection('step5', 'Results', {
       eyebrow: 'Your matched treatments',
@@ -881,8 +881,8 @@ export const PAGES = [
 // so the website never has to guess from the label or the url. Only Website
 // page and External link carry a url; Call and WhatsApp use the visitor's
 // country numbers from Contacts.
-const ROUTE_HINT = 'Open the page on the website, copy only the part of the address after the domain and paste it here — e.g. /about or /find-us. Don’t include https:// or www.'
-const EXTERNAL_HINT = 'The full address of the other site, starting with https:// — e.g. https://www.instagram.com/kaya. Opens in a new tab.'
+const ROUTE_HINT = 'Open the page on the website, copy only the part of the address after the domain and paste it here, e.g. /about or /find-us. Don’t include https:// or www.'
+const EXTERNAL_HINT = 'The full address of the other site, starting with https://, e.g. https://www.instagram.com/kaya. Opens in a new tab.'
 const EMPTY_HIDES = 'Leave empty to hide it on the website.'
 
 const requiredLabel = v => (String(v || '').trim() ? '' : 'Add the text visitors will see.')
@@ -919,7 +919,7 @@ const FOOTER_GROUP = {
       fields: [
         {
           key: 'tagline', label: 'Tagline', type: 'textarea', hint: EMPTY_HIDES,
-          default: 'Doctor-led care across the GCC — skin, body, longevity, and surgery under one roof.',
+          default: 'Doctor-led care across the GCC: skin, body, longevity, and surgery under one roof.',
         },
         {
           key: 'socials', label: 'Social links', type: 'list', itemLabel: 'Social',
@@ -934,7 +934,7 @@ const FOOTER_GROUP = {
     {
       id: 'columns',
       label: 'Link columns',
-      hint: 'The Treatments column lists the Verticals automatically, with Tell us Everything at the top — only its heading is edited here. A column with no heading and no links is hidden.',
+      hint: 'The Treatments column lists the Verticals automatically, with Tell us Everything at the top. Only its heading is edited here. A column with no heading and no links is hidden.',
       fields: [
         { key: 'treatmentsHeading', label: 'Treatments heading', type: 'text', default: 'Treatments', width: 'half' },
         { key: 'companyHeading', label: 'Company heading', type: 'text', default: 'Company', width: 'half' },
@@ -1003,7 +1003,7 @@ const GLOBAL_GROUP = {
         { key: 'name', label: 'Brand name', type: 'text', default: 'Kaya Wellness & Longevity' },
         {
           key: 'logo', label: 'Logo', type: 'image', default: '/Assets/kaya-logo.svg', fit: 'contain',
-          hint: 'Shown 34 px tall in the header and 28 px in the footer, recoloured white or purple — the file’s own colours aren’t kept. Use an SVG, or a PNG with a transparent background.',
+          hint: 'Shown 34 px tall in the header and 28 px in the footer, recoloured white or purple, so the file’s own colours aren’t kept. Use an SVG, or a PNG with a transparent background.',
         },
       ],
     },
@@ -1022,10 +1022,10 @@ const GLOBAL_GROUP = {
       hint: 'Used by any page that does not override the closing CTA.',
       fields: [
         { key: 'headline', label: 'Headline', type: 'text', default: 'Start with', width: 'half' },
-        { key: 'headlineEm', label: 'Headline — emphasis', type: 'text', default: 'a conversation.', width: 'half' },
+        { key: 'headlineEm', label: 'Headline: emphasis', type: 'text', default: 'a conversation.', width: 'half' },
         {
           key: 'sub', label: 'Subtitle', type: 'textarea',
-          default: 'No pressure — just the right doctor for what you need.\n23 years · 600,000+ clients · one message away.',
+          default: 'No pressure, just the right doctor for what you need.\n23 years · 600,000+ clients · one message away.',
         },
         { key: 'buttonLabel', label: 'Button label', type: 'text', default: 'Book consultation' },
       ],

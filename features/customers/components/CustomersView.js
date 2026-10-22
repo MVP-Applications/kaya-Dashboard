@@ -106,7 +106,7 @@ export default function CustomersView() {
           <p className="ad-view-sub">Accounts people create on the website to manage their profile. Medical details stay hidden until you choose to view them, and every view is recorded.</p>
         </div>
         <button type="button" className="ad-btn ad-btn--primary" onClick={exportCsv} disabled={exporting || !total || Boolean(error)}
-          title="Exports contact and profile details — never medical information">
+          title="Exports contact and profile details, never medical information">
           {exporting ? 'Exporting…' : `↓ Export ${isFiltered ? `${total} matching` : 'all'}`}
         </button>
       </div>
@@ -187,7 +187,7 @@ export default function CustomersView() {
                     </div>
                   </td>
                   <td>
-                    <div>{formatPhone(c.phone, dialCodes) || <span className="ad-muted">—</span>}</div>
+                    <div>{formatPhone(c.phone, dialCodes) || <span className="ad-muted">-</span>}</div>
                     {countryFromPhone(c.phone, dialCodes) && <div className="ad-cell-slug">{countryFromPhone(c.phone, dialCodes)}</div>}
                   </td>
                   <td><ProviderBadges providers={c.authProviders} /></td>
@@ -208,7 +208,7 @@ export default function CustomersView() {
             {!loading && items.length === 0 && (
               <tr><td colSpan={7} className="ad-empty">
                 {error
-                  ? `Could not load customers — ${error}`
+                  ? `Could not load customers: ${error}`
                   : isFiltered ? 'No customers match your filters.' : 'No customers yet. Accounts appear here when people sign up on the website.'}
               </td></tr>
             )}

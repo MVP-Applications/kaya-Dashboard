@@ -237,7 +237,7 @@ export const reorderCategories = async list => {
 
 export const removeCategory = async slug => {
   const id = categoryIds.get(slug)
-  if (!id) throw new Error(`Could not delete "${slug}" — it wasn't found.`)
+  if (!id) throw new Error(`Could not delete "${slug}": it wasn't found.`)
   await apiRequest(ApiEndpoints.categories.adminById(id), { method: 'DELETE' })
   categoryIds.delete(slug)
 }
@@ -332,7 +332,7 @@ export const persistVerticals = async list => {
 
 export const removeVertical = async slug => {
   const id = pillarIds.get(slug)
-  if (!id) throw new Error(`Could not delete "${slug}" — it wasn't found.`)
+  if (!id) throw new Error(`Could not delete "${slug}": it wasn't found.`)
   await apiRequest(ApiEndpoints.pillars.adminById(id), { method: 'DELETE' })
   pillarIds.delete(slug)
 }
@@ -384,7 +384,7 @@ async function serviceToVersionBody(s, countryIds) {
     })
   }
   const countryId = countryIds.get(String(s.country).toUpperCase())
-  if (!countryId) throw new Error(`Country "${s.country}" wasn't found — refresh and try again.`)
+  if (!countryId) throw new Error(`Country "${s.country}" wasn't found. Refresh and try again.`)
   return {
     countryId,
     slug: s.slug,
@@ -422,7 +422,7 @@ export async function persistTreatment({ groupId, versions }) {
 export async function removeTreatmentCountry(groupId, countryCode) {
   const countryIds = await ensureCountryIds([countryCode])
   const countryId = countryIds.get(String(countryCode).toUpperCase())
-  if (!countryId) throw new Error(`Country "${countryCode}" wasn't found — refresh and try again.`)
+  if (!countryId) throw new Error(`Country "${countryCode}" wasn't found. Refresh and try again.`)
   await apiRequest(ApiEndpoints.treatments.adminCountry(groupId, countryId), { method: 'DELETE' })
 }
 
@@ -542,7 +542,7 @@ async function uploadImageIfNeeded(image) {
   }
   const body = await response.json().catch(() => null)
   if (!response.ok || body?.success === false) {
-    throw new Error(body?.error?.message || 'Could not upload the image — please try again.')
+    throw new Error(body?.error?.message || 'Could not upload the image. Please try again.')
   }
   return body.data.url
 }
@@ -621,7 +621,7 @@ export const reorderDoctors = async list => {
 
 export const removeDoctor = async slug => {
   const id = doctorIds.get(slug)
-  if (!id) throw new Error(`Could not delete "${slug}" — it wasn't found.`)
+  if (!id) throw new Error(`Could not delete "${slug}": it wasn't found.`)
   await apiRequest(ApiEndpoints.doctors.adminById(id), { method: 'DELETE' })
   doctorIds.delete(slug)
 }
@@ -746,7 +746,7 @@ export const persistLocations = async list => {
 
 export const removeLocation = async id => {
   const backendId = clinicRecordIds.get(id)
-  if (!backendId) throw new Error('Could not delete this clinic — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this clinic: it wasn\'t found.')
   await apiRequest(ApiEndpoints.clinics.adminById(backendId), { method: 'DELETE' })
   clinicRecordIds.delete(id)
 }
@@ -810,7 +810,7 @@ export const persistCountries = async list => {
 
 export const removeCountry = async id => {
   const backendId = countryRecordIds.get(id)
-  if (!backendId) throw new Error('Could not delete this country — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this country: it wasn\'t found.')
   await apiRequest(ApiEndpoints.locations.adminCountryById(backendId), { method: 'DELETE' })
   countryRecordIds.delete(id)
   countryIdByCode = null
@@ -868,7 +868,7 @@ export const persistContacts = async list => {
 
 export const removeContact = async id => {
   const backendId = contactRecordIds.get(id)
-  if (!backendId) throw new Error('Could not delete this contact — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this contact: it wasn\'t found.')
   await apiRequest(ApiEndpoints.contacts.adminById(backendId), { method: 'DELETE' })
   contactRecordIds.delete(id)
 }
@@ -989,7 +989,7 @@ export const reorderVouchers = async list => {
 
 export const removeVoucher = async id => {
   const backendId = voucherOfferIds.get(id)
-  if (!backendId) throw new Error('Could not delete this voucher — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this voucher: it wasn\'t found.')
   await apiRequest(ApiEndpoints.indulgence.adminById(backendId), { method: 'DELETE' })
   voucherOfferIds.delete(id)
 }
@@ -1083,7 +1083,7 @@ export async function fetchPageRegistry() {
   // An API from before page status existed sends pages without `status`/`kind`;
   // say so instead of quietly showing pages with no status to change.
   if (items.length && items.every(p => p.status === undefined)) {
-    throw new Error('The connected API doesn’t support page status and menus yet — it needs the latest kaya-nest-api (pages registry) deployed.')
+    throw new Error('The connected API doesn’t support page status and menus yet. It needs the latest kaya-nest-api (pages registry) deployed.')
   }
   return items.filter(p => p.kind !== 'GLOBAL').map(pageRecord)
 }
@@ -1283,7 +1283,7 @@ export const persistBlogs = async list => {
 
 export const removeBlog = async id => {
   const backendId = blogIds.get(id)
-  if (!backendId) throw new Error('Could not delete this post — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this post: it wasn\'t found.')
   await apiRequest(ApiEndpoints.blogs.adminById(backendId), { method: 'DELETE' })
   blogIds.delete(id)
   blogSaved.delete(id)
@@ -1330,7 +1330,7 @@ export const persistBlogCategories = async list => {
 
 export const removeBlogCategory = async id => {
   const backendId = blogCategoryIds.get(id)
-  if (!backendId) throw new Error('Could not delete this topic — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this topic: it wasn\'t found.')
   await apiRequest(ApiEndpoints.blogCategories.adminById(backendId), { method: 'DELETE' })
   blogCategoryIds.delete(id)
   blogCategorySaved.delete(id)
@@ -1521,7 +1521,7 @@ export async function exportCustomersCsv(filters) {
     credentials: 'include',
     headers: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {},
   })
-  if (!response.ok) throw new Error('Could not export customers — please try again.')
+  if (!response.ok) throw new Error('Could not export customers. Please try again.')
   return response.text()
 }
 
@@ -1600,7 +1600,7 @@ export const persistReviews = async list => {
 
 export const removeReview = async id => {
   const backendId = reviewIds.get(id)
-  if (!backendId) throw new Error('Could not delete this review — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this review: it wasn\'t found.')
   await apiRequest(ApiEndpoints.testimonials.adminById(backendId), { method: 'DELETE' })
   reviewIds.delete(id)
 }
@@ -2179,7 +2179,7 @@ export async function exportRequestsCsv(filters) {
     credentials: 'include',
     headers: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {},
   })
-  if (!response.ok) throw new Error('Could not export enquiries — please try again.')
+  if (!response.ok) throw new Error('Could not export enquiries. Please try again.')
   return response.text()
 }
 
@@ -2256,7 +2256,7 @@ async function countryIdsFor(codes = []) {
   const ids = await ensureCountryIds(codes)
   return codes.map(code => {
     const id = ids.get(String(code).toUpperCase())
-    if (!id) throw new Error(`Country "${code}" wasn't found — refresh and try again.`)
+    if (!id) throw new Error(`Country "${code}" wasn't found. Refresh and try again.`)
     return id
   })
 }

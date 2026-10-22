@@ -18,9 +18,9 @@ function initials(name) {
 }
 
 function formatDate(iso) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 /** Countries + clinics cells, shared by the people and invites tables. */
@@ -40,7 +40,7 @@ function AccessCells({ person, clinicName }) {
       <td>
         {countries.length
           ? <span className="ad-users-codes">{countries.join(', ')}</span>
-          : <span className="ad-muted">—</span>}
+          : <span className="ad-muted">-</span>}
       </td>
       <td>
         {clinics.length
@@ -214,7 +214,7 @@ export default function UsersView() {
                         </button>
                       </div>
                     ) : (
-                      <span className="ad-muted">{isSelf ? 'Your account' : '—'}</span>
+                      <span className="ad-muted">{isSelf ? 'Your account' : '-'}</span>
                     )}
                   </td>
                 </tr>
@@ -272,7 +272,7 @@ export default function UsersView() {
                           >
                             Revoke
                           </button>
-                        ) : <span className="ad-muted">—</span>}
+                        ) : <span className="ad-muted">-</span>}
                       </td>
                     </tr>
                   )
@@ -291,7 +291,7 @@ export default function UsersView() {
           {ROLE_ORDER.map(r => <RoleCard key={r} role={r} />)}
         </div>
         <p className="ad-role-foot">
-          Permissions are enforced by the API, not just hidden in this interface — a
+          Permissions are enforced by the API, not just hidden in this interface. A
           staff member&apos;s delete is refused even outside the dashboard. Admins can only
           invite and manage staff in their own countries and clinics.
         </p>

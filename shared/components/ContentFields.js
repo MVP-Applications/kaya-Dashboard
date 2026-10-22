@@ -103,7 +103,7 @@ function Field({ field, value, values, onChange, setValue, disabled }) {
             {!value && <option value="">Choose…</option>}
             {/* A saved value that's no longer offered stays visible rather than silently showing option 1. */}
             {value && !(field.options || []).some(o => o.value === value) && (
-              <option value={value}>{value} (not in the list — choose another)</option>
+              <option value={value}>{value} (not in the list, choose another)</option>
             )}
             {(field.options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -517,7 +517,7 @@ export function FieldsCard({
                 <dd className={text ? '' : 'ad-cf-view-empty'}>
                   {f.type === 'image' && values?.[f.key]
                     ? <img src={values[f.key]} alt="" className="ad-cf-view-img" />
-                    : text || 'Not set — hidden on the website'}
+                    : text || 'Not set, hidden on the website'}
                   {error && <span className="ad-field-error">{error}</span>}
                 </dd>
               </div>

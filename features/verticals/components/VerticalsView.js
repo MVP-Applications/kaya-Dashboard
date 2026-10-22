@@ -120,7 +120,7 @@ export default function VerticalsView() {
             <span className="ad-vert-swatch" style={{ background: v.color }} />
             <div className="ad-vert-body">
               <div className="ad-vert-label">{v.label}</div>
-              <div className="ad-vert-hint">{v.hint || '—'}</div>
+              <div className="ad-vert-hint">{v.hint || '-'}</div>
               <div className="ad-vert-meta">
                 <span className="ad-vert-id">{v.id}</span>
                 <span className="ad-vert-count">{countFor(v.id)} services</span>
@@ -194,7 +194,7 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
       const ratio = img.naturalWidth / img.naturalHeight
       if (ratio < HERO_MIN_RATIO || ratio > HERO_MAX_RATIO) {
         setHeroImageWarning(
-          `This image is ${ratio.toFixed(2)}:1 — the hero banner shows best around 2:1 `
+          `This image is ${ratio.toFixed(2)}:1. The hero banner shows best around 2:1 `
           + `(e.g. 1920×1000px). It'll still save, but may look cropped or squeezed on the site.`
         )
       } else {

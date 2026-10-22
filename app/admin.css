@@ -770,11 +770,30 @@
   padding: 10px 13px; border-radius: 9px;
 }
 .ad-cf-sections { display: flex; flex-direction: column; gap: 16px; }
-/* Website pages: two sections share a row from 1024px (same breakpoint as
-   .ad-pair), one per row below that. */
-@media (min-width: 1024px) {
+/* Website pages: two sections share a row once the editor itself is wide
+   enough (measured on the editor, not the screen, so the sidebar counts), one
+   per row below that. Sections with paragraphs or lists always take the full
+   row. Fields paired with `width: 'half'` sit side by side only while their
+   section is wide enough, and stack otherwise. */
+.ad-cf-pair-wrap { container: cf-sections / inline-size; }
+@container cf-sections (min-width: 880px) {
   .ad-cf-sections--pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .ad-cf-sections--pair > .ad-cf-sec--wide { grid-column: 1 / -1; }
 }
+.ad-cf-sections--pair > .ad-cf-sec { container: cf-section / inline-size; padding: 14px 16px; }
+@container cf-section (max-width: 419px) {
+  .ad-grid2 { grid-template-columns: minmax(0, 1fr); }
+}
+/* Tighter spacing so more of the page fits on screen. */
+.ad-cf-sections--pair { gap: 14px; }
+.ad-cf-sections--pair .ad-cf-sec-head { padding-bottom: 10px; margin-bottom: 12px; }
+.ad-cf-sections--pair .ad-field { margin-bottom: 10px; gap: 4px; }
+.ad-cf-sections--pair .ad-field:last-child { margin-bottom: 0; }
+.ad-cf-sections--pair .ad-grid2 { gap: 10px; }
+.ad-cf-sections--pair .ad-grid2 > .ad-field { margin-bottom: 0; }
+.ad-cf-sections--pair .ad-grid2 + * { margin-top: 10px; }
+.ad-cf-sections--pair .ad-field-label { font-size: 11.5px; }
+.ad-cf-sections--pair .ad-input { padding: 7px 10px; font-size: 13px; }
 /* Short fields stop at a readable width instead of running edge to edge;
    paragraphs, lists and images keep the section's full width. */
 .ad-cf-sections--pair .ad-field > input.ad-input:not(.ad-input--icon) { max-width: 560px; }
@@ -794,6 +813,27 @@
   color: var(--primary);
 }
 .ad-cf-sec-hint { font-size: 12.5px; line-height: 1.5; color: var(--slate); margin-top: 5px; }
+
+/* Collapsible sections (website pages): the header opens and closes the fields. */
+.ad-cf-expand-all { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 10px; }
+.ad-cf-sec-toggle {
+  display: flex; align-items: flex-start; gap: 10px; flex: 1 1 auto; min-width: 0;
+  background: none; border: 0; padding: 0; margin: 0; cursor: pointer;
+  font: inherit; color: inherit; text-align: start;
+}
+.ad-cf-sec-toggle:focus-visible { outline: 2px solid var(--mid); outline-offset: 4px; border-radius: 6px; }
+.ad-cf-sec-toggle:hover .ad-cf-sec-title { color: var(--deep); }
+.ad-cf-sec-toggle-text { display: flex; flex-direction: column; min-width: 0; }
+.ad-cf-sec-chevron {
+  flex-shrink: 0; width: 14px; margin-top: 1px; font-size: 11px; line-height: 1.2;
+  color: var(--slate); transition: transform .15s;
+}
+.ad-cf-sec-toggle[aria-expanded="true"] .ad-cf-sec-chevron { transform: rotate(90deg); }
+[dir="rtl"] .ad-cf-sec-toggle[aria-expanded="false"] .ad-cf-sec-chevron { transform: scaleX(-1); }
+.ad-cf-sec-flags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ad-cf-sec-body[hidden] { display: none; }
+.ad-cf-sec--collapsed .ad-cf-sec-head,
+.ad-cf-sections--pair .ad-cf-sec--collapsed .ad-cf-sec-head { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
 
 /* Toggle field */
 .ad-cf-toggle { width: fit-content; margin-bottom: 12px; font-weight: 500; }

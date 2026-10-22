@@ -22,7 +22,7 @@ export const THUMB_OPTIONS = ['laser', 'filler', 'antiage', 'hair', 'bodyc', 'iv
 // shows. The website resolves each key to a localized (EN/AR) display
 // label itself; this dropdown only ever deals in the raw key.
 export const BADGE_OPTIONS = [
-  { value: '', label: '— none —' },
+  { value: '', label: 'None' },
   { value: 'TRENDING', label: 'Trending' },
   { value: 'POPULAR', label: 'Popular' },
   { value: 'NEW', label: 'New' },

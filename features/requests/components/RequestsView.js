@@ -79,9 +79,9 @@ function StatusPill({ status }) {
 
 // "23 Jul 2026, 08:12" — compact and locale-stable enough for the demo.
 function formatDate(iso) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
+  if (Number.isNaN(d.getTime())) return '-'
   return d.toLocaleDateString('en-GB', {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
@@ -427,12 +427,12 @@ export default function RequestsView() {
                     {r.source === 'consultation' ? 'Consultation' : 'Concern finder'}
                   </span>
                   <div className="ad-req-interest">
-                    {r.treatment || r.treatmentArea || <span className="ad-muted">—</span>}
+                    {r.treatment || r.treatmentArea || <span className="ad-muted">-</span>}
                     {r.doctor && <span className="ad-req-doc"> · {r.doctor}</span>}
                   </div>
                 </td>
                 <td>
-                  <div>{r.city || <span className="ad-muted">—</span>}</div>
+                  <div>{r.city || <span className="ad-muted">-</span>}</div>
                   <div className="ad-cell-slug">{r.country}</div>
                 </td>
                 <td>
@@ -454,7 +454,7 @@ export default function RequestsView() {
             {!loading && items.length === 0 && (
               <tr><td colSpan={6} className="ad-empty">
                 {loadError
-                  ? `Could not load enquiries — ${loadError}`
+                  ? `Could not load enquiries: ${loadError}`
                   : total === 0 && !isFiltered
                     ? 'No enquiries yet. They arrive here from the booking form and the concern finder.'
                     : 'No enquiries match your filters.'}
@@ -538,7 +538,7 @@ export default function RequestsView() {
                 </div>
                 <div className="ad-req-row">
                   <span className="ad-req-key">Location</span>
-                  <span className="ad-req-val">{[open.city, open.country].filter(Boolean).join(', ') || '—'}</span>
+                  <span className="ad-req-val">{[open.city, open.country].filter(Boolean).join(', ') || '-'}</span>
                 </div>
               </div>
 
@@ -546,7 +546,7 @@ export default function RequestsView() {
               <div className="ad-req-detail">
                 <div className="ad-req-row">
                   <span className="ad-req-key">Area</span>
-                  <span className="ad-req-val">{open.treatmentArea || '—'}</span>
+                  <span className="ad-req-val">{open.treatmentArea || '-'}</span>
                 </div>
                 <div className="ad-req-row">
                   <span className="ad-req-key">Treatment</span>
@@ -576,7 +576,7 @@ export default function RequestsView() {
                     {open.answers.map(a => (
                       <div key={a.questionId || a.question} className="ad-req-row">
                         <span className="ad-req-key">{a.question}</span>
-                        <span className="ad-req-val">{(a.answers || []).join(', ') || '—'}</span>
+                        <span className="ad-req-val">{(a.answers || []).join(', ') || '-'}</span>
                       </div>
                     ))}
                   </div>

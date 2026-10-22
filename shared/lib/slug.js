@@ -9,7 +9,7 @@
  */
 export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 export const SLUG_MAX_LENGTH = 100
-export const SLUG_HINT = 'Lowercase letters, numbers and hyphens only — used in the page address.'
+export const SLUG_HINT = 'Lowercase letters, numbers and hyphens only, used in the page address.'
 
 /** Any text → a valid slug: "Dr. Sara Al-Mansoori" → "dr-sara-al-mansoori". Can return ''. */
 export function slugify(str, maxLength = SLUG_MAX_LENGTH) {
@@ -45,7 +45,7 @@ export function slugInput(str, maxLength = SLUG_MAX_LENGTH) {
  */
 export function resolveSlug(typed, source, taken = []) {
   const slug = slugify(typed) || slugify(source)
-  if (!slug) return { slug, error: 'Add an English name or a slug — it becomes the page address.' }
+  if (!slug) return { slug, error: 'Add an English name or a slug. It becomes the page address.' }
   if (!SLUG_PATTERN.test(slug) || slug.length > SLUG_MAX_LENGTH) {
     return { slug, error: `The slug "${slug}" isn't valid. ${SLUG_HINT}` }
   }
