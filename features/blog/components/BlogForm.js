@@ -67,14 +67,14 @@ export default function BlogForm({ initial, isNew, onClose }) {
     e.preventDefault()
     const title = form.title.trim()
     if (!title) return setError('Title is required.')
-    if (!form.excerpt.trim()) return setError('Excerpt is required — it shows on the blog cards.')
+    if (!form.excerpt.trim()) return setError('Excerpt is required. It shows on the blog cards.')
     if (!filledBlocks(form.body).length) return setError('Write at least one paragraph.')
     const authorName = form.authorName.trim()
     if (!form.authorDoctorId && !authorName) return setError('Pick a doctor or enter the writer’s name.')
 
     const arParts = [form.titleAr.trim(), form.excerptAr.trim(), filledBlocks(form.bodyAr).length > 0]
     if (arParts.some(Boolean) && !arParts.every(Boolean)) {
-      return setError('For the Arabic version, fill in the title, excerpt and article — or leave all three empty.')
+      return setError('For the Arabic version, fill in the title, excerpt and article, or leave all three empty.')
     }
     if (!isSuperAdmin(user) && form.countries.length === 0) {
       return setError('Pick at least one country for this post.')
@@ -137,7 +137,7 @@ export default function BlogForm({ initial, isNew, onClose }) {
             <span className="ad-field-label">{isAr ? 'المقتطف (Excerpt)' : 'Excerpt *'}</span>
             <textarea className="ad-input ad-textarea" rows={2} dir={dir} value={form[field('excerpt')]}
               onChange={e => set(field('excerpt'), e.target.value)}
-              placeholder={isAr ? '' : 'One or two sentences — shown on the blog cards and under the title.'} />
+              placeholder={isAr ? '' : 'One or two sentences, shown on the blog cards and under the title.'} />
           </label>
           <div className="ad-field">
             <span className="ad-field-label">{isAr ? 'المقال (Article)' : 'Article *'}</span>
@@ -151,14 +151,14 @@ export default function BlogForm({ initial, isNew, onClose }) {
           <div className="ad-field">
             <span className="ad-field-label">Cover image</span>
             <ImagePicker value={form.image} onChange={v => set('image', v)} ratio={16 / 9}
-              hint="Shown 4:3 on blog cards, 16:9 as the featured post and 16:7 atop the article. Use a landscape 16:9 image about 1600 × 900 px and keep the subject in the centre — the edges get trimmed." />
+              hint="Shown 4:3 on blog cards, 16:9 as the featured post and 16:7 atop the article. Use a landscape 16:9 image about 1600 × 900 px and keep the subject in the centre, as the edges get trimmed." />
           </div>
           <div className="ad-grid2">
             <label className="ad-field">
               <span className="ad-field-label">Writer *</span>
               <select className="ad-input" value={otherWriter ? OTHER_WRITER : form.authorDoctorId}
                 onChange={e => setWriter(e.target.value)}>
-                <option value="">— pick a doctor —</option>
+                <option value="">Pick a doctor</option>
                 {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 <option value={OTHER_WRITER}>Someone else…</option>
               </select>
@@ -174,7 +174,7 @@ export default function BlogForm({ initial, isNew, onClose }) {
             <label className="ad-field">
               <span className="ad-field-label">Topic</span>
               <select className="ad-input" value={form.categoryId} onChange={e => set('categoryId', e.target.value)}>
-                <option value="">— none —</option>
+                <option value="">None</option>
                 {blogCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <span className="ad-field-hint">The website’s filter chips. Manage them under Topics.</span>
@@ -224,7 +224,7 @@ export default function BlogForm({ initial, isNew, onClose }) {
         <fieldset className="ad-fieldset">
           <legend>Search engines</legend>
           <p className="ad-fieldset-hint">
-            All optional — anything left empty falls back to the title, excerpt and cover image.
+            All optional. Anything left empty falls back to the title, excerpt and cover image.
             Text fields follow the English / العربية switch above.
           </p>
           <label className="ad-field ad-w-xl">

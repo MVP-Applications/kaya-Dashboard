@@ -274,7 +274,7 @@ export default function ContentEditor({
 
       {!canEdit && (
         <p className="ad-cf-readonly">
-          Your role can’t edit website content — fields are read-only.
+          Your role can’t edit website content, so fields are read-only.
         </p>
       )}
 

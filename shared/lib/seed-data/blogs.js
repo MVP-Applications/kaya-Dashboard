@@ -37,12 +37,12 @@ export const BLOGS = [
       },
       {
         type: 'quote',
-        text: 'Sunscreen is not a beach product here. It is a daily, indoor-and-outdoor product — reapplied at midday.',
+        text: 'Sunscreen is not a beach product here. It is a daily, indoor-and-outdoor product, reapplied at midday.',
       },
       { type: 'h2', text: 'The routine we recommend' },
       {
         type: 'p',
-        text: 'Morning: a gentle cleanser, a vitamin C or niacinamide serum, a light gel moisturiser and a broad-spectrum SPF 50 with iron oxides — tinted formulas protect against visible light as well as UV. Evening: cleanse twice, then alternate a retinoid with a hydrating serum.',
+        text: 'Morning: a gentle cleanser, a vitamin C or niacinamide serum, a light gel moisturiser and a broad-spectrum SPF 50 with iron oxides, as tinted formulas protect against visible light as well as UV. Evening: cleanse twice, then alternate a retinoid with a hydrating serum.',
       },
       {
         type: 'p',
@@ -51,11 +51,11 @@ export const BLOGS = [
       { type: 'h2', text: 'When to see a dermatologist' },
       {
         type: 'p',
-        text: 'Book a consultation if dark patches keep spreading, if over-the-counter brighteners irritate your skin, or if you are planning laser treatment — settings for darker skin must be chosen by a physician.',
+        text: 'Book a consultation if dark patches keep spreading, if over-the-counter brighteners irritate your skin, or if you are planning laser treatment, as settings for darker skin must be chosen by a physician.',
       },
     ],
     metaTitle: 'Summer Skincare for GCC Skin | Dermatologist Guide',
-    metaDescription: 'How to prevent pigmentation and protect Fitzpatrick III–VI skin through a GCC summer — the SPF, serums and in-clinic treatments dermatologists recommend.',
+    metaDescription: 'How to prevent pigmentation and protect Fitzpatrick III–VI skin through a GCC summer: the SPF, serums and in-clinic treatments dermatologists recommend.',
     keywords: ['summer skincare UAE', 'pigmentation', 'melasma', 'sunscreen', 'dark skin'],
   },
   {
@@ -68,12 +68,12 @@ export const BLOGS = [
     featured: false,
     title: 'What your biological age really says about you',
     titleAr: 'ماذا يخبرك عمرك البيولوجي عنك حقًا',
-    excerpt: 'Your passport says one number, your cells say another. How biomarker testing works — and what you can realistically change.',
+    excerpt: 'Your passport says one number, your cells say another. How biomarker testing works, and what you can realistically change.',
     excerptAr: 'جواز سفرك يقول رقمًا وخلاياك تقول رقمًا آخر. كيف يعمل فحص المؤشرات الحيوية وما الذي يمكنك تغييره فعلًا.',
     body: [
       {
         type: 'p',
-        text: 'Chronological age is simply how long you have been alive. Biological age estimates how well your body is actually functioning — and two people born the same year can be a decade apart.',
+        text: 'Chronological age is simply how long you have been alive. Biological age estimates how well your body is actually functioning, and two people born the same year can be a decade apart.',
       },
       { type: 'h2', text: 'How it is measured' },
       {
@@ -87,7 +87,7 @@ export const BLOGS = [
       { type: 'h2', text: 'What moves the needle' },
       {
         type: 'p',
-        text: 'Sleep, strength training and blood-sugar control have the strongest evidence. Targeted supplementation, IV therapy and hormonal optimisation can help — but only once the basics are in place and only where testing shows a real deficit.',
+        text: 'Sleep, strength training and blood-sugar control have the strongest evidence. Targeted supplementation, IV therapy and hormonal optimisation can help, but only once the basics are in place and only where testing shows a real deficit.',
       },
       {
         type: 'p',
@@ -118,7 +118,7 @@ export const BLOGS = [
       { type: 'h2', text: 'Choose cryolipolysis if…' },
       {
         type: 'p',
-        text: 'You have a distinct, pinchable pocket of fat — lower abdomen, flanks, under the chin — and your skin elasticity is good.',
+        text: 'You have a distinct, pinchable pocket of fat (lower abdomen, flanks, under the chin) and your skin elasticity is good.',
       },
       { type: 'h2', text: 'Choose HIFU if…' },
       {
@@ -131,11 +131,11 @@ export const BLOGS = [
       },
       {
         type: 'p',
-        text: 'Neither is a weight-loss treatment. They work best within a few kilos of your goal weight, and a consultation will tell you which — or which combination — makes sense.',
+        text: 'Neither is a weight-loss treatment. They work best within a few kilos of your goal weight, and a consultation will tell you which (or which combination) makes sense.',
       },
     ],
     metaTitle: 'Cryolipolysis vs HIFU: Which Body Treatment Is Right for You?',
-    metaDescription: 'A body contouring specialist compares cryolipolysis and HIFU — how each works, who each suits, and when to combine them.',
+    metaDescription: 'A body contouring specialist compares cryolipolysis and HIFU: how each works, who each suits, and when to combine them.',
     keywords: ['cryolipolysis', 'HIFU', 'fat freezing', 'body contouring UAE'],
   },
   {
@@ -148,8 +148,8 @@ export const BLOGS = [
     featured: false,
     title: 'Understanding hair loss in women',
     titleAr: 'فهم تساقط الشعر لدى النساء',
-    excerpt: 'Postpartum shedding, iron deficiency, hormones — female hair loss has many causes, and the right treatment depends on finding yours.',
-    excerptAr: 'تساقط ما بعد الولادة ونقص الحديد والهرمونات — لتساقط الشعر لدى النساء أسباب كثيرة، والعلاج المناسب يبدأ بمعرفة السبب.',
+    excerpt: 'Postpartum shedding, iron deficiency, hormones: female hair loss has many causes, and the right treatment depends on finding yours.',
+    excerptAr: 'تساقط ما بعد الولادة ونقص الحديد والهرمونات، لتساقط الشعر لدى النساء أسباب كثيرة، والعلاج المناسب يبدأ بمعرفة السبب.',
     body: [
       {
         type: 'p',
@@ -167,11 +167,11 @@ export const BLOGS = [
       },
       {
         type: 'quote',
-        text: 'Hair responds slowly — give any treatment three to six months before judging it.',
+        text: 'Hair responds slowly. Give any treatment three to six months before judging it.',
       },
     ],
     metaTitle: 'Female Hair Loss: Causes & Treatments | Kaya',
-    metaDescription: 'Iron deficiency, hormones, postpartum shedding — the common causes of hair loss in women and how PRP and medical treatment help.',
+    metaDescription: 'Iron deficiency, hormones, postpartum shedding: the common causes of hair loss in women and how PRP and medical treatment help.',
     keywords: ['female hair loss', 'hair thinning', 'PRP hair', 'postpartum hair loss'],
   },
   {
@@ -184,7 +184,7 @@ export const BLOGS = [
     featured: false,
     title: 'Your rhinoplasty recovery, week by week',
     titleAr: 'التعافي من تجميل الأنف أسبوعًا بأسبوع',
-    excerpt: 'What to expect from the first night to the final result — and the small habits that make recovery smoother.',
+    excerpt: 'What to expect from the first night to the final result, and the small habits that make recovery smoother.',
     excerptAr: 'ما الذي تتوقعه من الليلة الأولى حتى النتيجة النهائية، والعادات البسيطة التي تجعل التعافي أسهل.',
     body: [
       {
@@ -204,7 +204,7 @@ export const BLOGS = [
       { type: 'h2', text: 'Months three to twelve' },
       {
         type: 'p',
-        text: 'Residual swelling — especially at the tip — slowly resolves. This is when the refined, natural result really shows.',
+        text: 'Residual swelling (especially at the tip) slowly resolves. This is when the refined, natural result really shows.',
       },
       {
         type: 'quote',
@@ -212,7 +212,7 @@ export const BLOGS = [
       },
     ],
     metaTitle: 'Rhinoplasty Recovery Timeline, Week by Week',
-    metaDescription: 'A plastic surgeon\'s week-by-week guide to rhinoplasty recovery — swelling, splint removal, returning to work and the final result.',
+    metaDescription: 'A plastic surgeon\'s week-by-week guide to rhinoplasty recovery: swelling, splint removal, returning to work and the final result.',
     keywords: ['rhinoplasty recovery', 'nose job Dubai', 'plastic surgery recovery'],
   },
   {
@@ -225,8 +225,8 @@ export const BLOGS = [
     featured: false,
     title: 'Five Botox myths, answered by a doctor',
     titleAr: 'خمس خرافات عن البوتوكس يجيب عنها طبيب',
-    excerpt: 'Frozen faces, lifelong commitment, "too young to start" — we separate what is true from what is not.',
-    excerptAr: 'الوجه المتجمد والالتزام مدى الحياة و"أصغر من أن تبدأ" — نفصل الحقيقة عن الخرافة.',
+    excerpt: 'Frozen faces, lifelong commitment, "too young to start": we separate what is true from what is not.',
+    excerptAr: 'الوجه المتجمد والالتزام مدى الحياة و"أصغر من أن تبدأ". نفصل الحقيقة عن الخرافة.',
     body: [
       {
         type: 'p',
@@ -250,7 +250,7 @@ export const BLOGS = [
       },
     ],
     metaTitle: '5 Botox Myths Debunked by a Doctor | Kaya',
-    metaDescription: 'Frozen faces, lifelong commitment, starting too young — a physician answers the most common Botox myths.',
+    metaDescription: 'Frozen faces, lifelong commitment, starting too young. A physician answers the most common Botox myths.',
     keywords: ['botox myths', 'botox Dubai', 'anti-wrinkle injections'],
   },
 ]

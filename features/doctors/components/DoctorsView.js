@@ -131,10 +131,10 @@ export default function DoctorsView() {
                         </span>
                       ))}
                     </span>
-                  ) : <span className="ad-muted">—</span>}
+                  ) : <span className="ad-muted">-</span>}
                 </td>
-                <td>{(d.countries || []).join(', ') || <span className="ad-muted">—</span>}</td>
-                <td>{d.yearsExp !== '' && d.yearsExp != null ? `${d.yearsExp} yrs` : <span className="ad-muted">—</span>}</td>
+                <td>{(d.countries || []).join(', ') || <span className="ad-muted">-</span>}</td>
+                <td>{d.yearsExp !== '' && d.yearsExp != null ? `${d.yearsExp} yrs` : <span className="ad-muted">-</span>}</td>
                 <td className="ad-td-actions">
                   <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: d.slug })}>Edit</Link>
                   {canDelete && (

@@ -19,7 +19,7 @@ export default function ReorderCell({ collection, itemKey, index, total, disable
   // Reordering a filtered list would move a row past rows you can't see, so
   // it's offered only when the full list is in view.
   if (disabled) {
-    return <span className="ad-muted ad-reorder-off" title="Clear filters to reorder">—</span>
+    return <span className="ad-muted ad-reorder-off" title="Clear filters to reorder">-</span>
   }
 
   return (

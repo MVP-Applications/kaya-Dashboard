@@ -71,7 +71,7 @@ export const DOCTORS = {
     countries: ['KSA'],
     clinics: ['Riyadh', 'Jeddah'],
     tagline: 'GCC-focused hair loss specialist with expertise in PRP and trichology',
-    bio: 'Dr. Nadia Ibrahim is a consultant dermatologist with a subspecialty focus on hair and scalp disorders. She completed her trichology training in the UK and has spent 12 years managing complex alopecia cases across Saudi Arabia. Her clinical interest extends to androgenetic alopecia in women, postpartum hair loss, and the intersection of nutritional deficiency and hair thinning — conditions highly prevalent in the GCC population.',
+    bio: 'Dr. Nadia Ibrahim is a consultant dermatologist with a subspecialty focus on hair and scalp disorders. She completed her trichology training in the UK and has spent 12 years managing complex alopecia cases across Saudi Arabia. Her clinical interest extends to androgenetic alopecia in women, postpartum hair loss, and the intersection of nutritional deficiency and hair thinning, conditions highly prevalent in the GCC population.',
     treatments: ['prp-hair', 'laser-resurfacing', 'microneedling', 'chemical-peels'],
   },
   'dr-james-whitfield': {

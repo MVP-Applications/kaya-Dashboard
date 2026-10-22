@@ -227,7 +227,7 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
         <div className="ad-editor-head">
           <button type="button" className="ad-back" onClick={onClose}>← Back</button>
         </div>
-        <p className="ad-empty">You don&apos;t have access to any country yet — ask a super admin to assign one.</p>
+        <p className="ad-empty">You don&apos;t have access to any country yet. Ask a super admin to assign one.</p>
       </div>
     )
   }
@@ -272,7 +272,7 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
               </>
             ) : (
               <>
-                <span>New for <strong>{tabCountry?.name}</strong> — it&apos;s added when you save.</span>
+                <span>New for <strong>{tabCountry?.name}</strong>. It&apos;s added when you save.</span>
                 <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => setOn(tab, false)}>
                   Discard
                 </button>
@@ -288,7 +288,7 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
             <p>Not offered in {tabCountry?.name}. Add it to give {tabCountry?.name} its own content.</p>
             <div className="ad-country-off-actions">
               <button type="button" className="ad-btn ad-btn--primary" onClick={() => setOn(tab, true)}>
-                Add {tabCountry?.name} — start empty
+                Add {tabCountry?.name} (start empty)
               </button>
               {otherOffered.map(c => (
                 <button key={c.code} type="button" className="ad-btn ad-btn--soft" onClick={() => copyFrom(c.code)}>

@@ -11,7 +11,7 @@ export const FOOTER_PANELS = [
   { id: 'brand', label: 'Brand & socials', section: 'brand' },
   {
     id: 'treatments', label: 'Treatments column', section: 'columns', keys: ['treatmentsHeading'],
-    hint: 'This column lists the Verticals automatically, with Tell us Everything at the top — only its heading is edited here.',
+    hint: 'This column lists the Verticals automatically, with Tell us Everything at the top. Only its heading is edited here.',
   },
   {
     id: 'company', label: 'Company column', section: 'columns', keys: ['companyHeading', 'companyLinks'],

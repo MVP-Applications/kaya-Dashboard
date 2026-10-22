@@ -88,7 +88,7 @@ export default function BlogCategoriesPanel() {
                     <span className="ad-cell-name">{c.name}</span>
                     <span className="ad-cell-slug">?category={c.slug}</span>
                   </td>
-                  <td dir="rtl">{c.nameAr || <span className="ad-muted">—</span>}</td>
+                  <td dir="rtl">{c.nameAr || <span className="ad-muted">-</span>}</td>
                   <td>{postCount(c.id)}</td>
                   {canManage && (
                     <td>
@@ -118,7 +118,7 @@ export default function BlogCategoriesPanel() {
             + New topic
           </button>
         )
-        : <p className="ad-field-hint">Topics are shared by every country — ask an admin to add or change one.</p>}
+        : <p className="ad-field-hint">Topics are shared by every country. Ask an admin to add or change one.</p>}
 
       {confirm && (
         <ConfirmDialog

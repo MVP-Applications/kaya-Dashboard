@@ -156,7 +156,7 @@ export default function CategoriesView() {
           {treatmentCount[target.id]
             ? <>
                 <strong>{target.name}</strong> is used by {treatmentCount[target.id]} treatment
-                {treatmentCount[target.id] === 1 ? '' : 's'} — they&apos;ll lose this category, not get deleted.
+                {treatmentCount[target.id] === 1 ? '' : 's'}. They&apos;ll lose this category, not get deleted.
               </>
             : <><strong>{target.name}</strong> will be removed.</>}
         </ConfirmDialog>

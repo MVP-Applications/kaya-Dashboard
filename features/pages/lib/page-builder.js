@@ -23,8 +23,8 @@
 /** Where a page's link goes in the website header. */
 export const HEADER_POSITIONS = [
   { value: 'NONE', label: 'Not in the header' },
-  { value: 'LEFT', label: 'Left — in the main menu' },
-  { value: 'RIGHT', label: 'Right — next to the language and account buttons' },
+  { value: 'LEFT', label: 'Left: in the main menu' },
+  { value: 'RIGHT', label: 'Right: next to the language and account buttons' },
 ]
 export const HEADER_POSITION_LABELS = { LEFT: 'Header left', RIGHT: 'Header right' }
 
@@ -79,7 +79,7 @@ export const BLOCK_TYPES = {
         ratio: 8 / 3,
         recommended: { width: 2400, height: 900 },
         focusKey: 'imageFocus',
-        hint: 'Full-width background behind the headline, at least 460 px tall — about 3:1 on desktop, while phones show a taller middle part. Use 2400 × 900 px and set the focal point on the subject.',
+        hint: 'Full-width background behind the headline, at least 460 px tall, about 3:1 on desktop, while phones show a taller middle part. Use 2400 × 900 px and set the focal point on the subject.',
       }),
       altText(),
       select('align', 'Text alignment', [{ value: 'left', label: 'Left' }, { value: 'center', label: 'Centre' }]),
@@ -129,7 +129,7 @@ export const BLOCK_TYPES = {
       image('image', 'Image', {
         fit: 'contain',
         recommended: { width: 1600, height: 0 },
-        hint: 'Shown in its own shape — never cropped. Use at least 1600 px wide (2400 px for full screen width).',
+        hint: 'Shown in its own shape, never cropped. Use at least 1600 px wide (2400 px for full screen width).',
       }),
       altText('alt'),
       text('caption', 'Caption'),
@@ -140,7 +140,7 @@ export const BLOCK_TYPES = {
   features: {
     label: 'Feature cards',
     icon: '☷',
-    hint: 'A row of short cards — benefits, steps, reasons to choose Kaya.',
+    hint: 'A row of short cards: benefits, steps, reasons to choose Kaya.',
     fields: [
       text('heading', 'Heading'),
       area('sub', 'Subtitle', { rows: 2 }),
@@ -159,7 +159,7 @@ export const BLOCK_TYPES = {
   treatments: {
     label: 'Treatments',
     icon: '✦',
-    hint: 'Cards for treatments you pick — they link to each treatment page.',
+    hint: 'Cards for treatments you pick. They link to each treatment page.',
     fields: [
       text('heading', 'Heading'),
       area('sub', 'Subtitle', { rows: 2 }),
@@ -170,7 +170,7 @@ export const BLOCK_TYPES = {
   doctors: {
     label: 'Doctors',
     icon: '⚕',
-    hint: 'Cards for doctors you pick — they link to each doctor profile.',
+    hint: 'Cards for doctors you pick. They link to each doctor profile.',
     fields: [
       text('heading', 'Heading'),
       area('sub', 'Subtitle', { rows: 2 }),
@@ -297,7 +297,7 @@ export const PAGE_TEMPLATES = [
   {
     id: 'info',
     label: 'Information page',
-    hint: 'Explain something in depth — a guide, an announcement, opening hours.',
+    hint: 'Explain something in depth: a guide, an announcement, opening hours.',
     icon: '▤',
     allowedTypes: ['hero', 'text', 'imageText', 'image', 'features', 'cta', 'spacer'],
     required: [],
@@ -311,7 +311,7 @@ export const PAGE_TEMPLATES = [
   {
     id: 'legal',
     label: 'Legal page',
-    hint: 'Privacy policy, terms of use, cookie policy — plain text.',
+    hint: 'Privacy policy, terms of use, cookie policy. Plain text.',
     icon: '§',
     allowedTypes: ['text', 'spacer'],
     required: ['text'],
@@ -402,7 +402,7 @@ export function validateCustomPage(page, { otherPages = [], builtInPaths = [] } 
   if (page.allCountries === false && !(page.countries || []).length) problems.push('Choose at least one country, or offer the page in every country.')
   const template = templateOf(page.template)
   const misfits = [...new Set(page.blocks.map(b => b.type))].filter(t => !template.allowedTypes.includes(t))
-  if (misfits.length) problems.push(`A ${template.label} can’t have ${misfits.map(t => BLOCK_TYPES[t]?.label || t).join(', ')} blocks — remove them.`)
+  if (misfits.length) problems.push(`A ${template.label} can’t have ${misfits.map(t => BLOCK_TYPES[t]?.label || t).join(', ')} blocks. Remove them.`)
   if (page.status === 'PUBLISHED') problems.push(...publishProblems(page))
   const slug = page.slug
   const reserved = new Set([...RESERVED_SLUGS, ...builtInPaths.map(p => p.replace(/^\//, '').split('/')[0]).filter(Boolean)])

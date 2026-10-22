@@ -125,7 +125,7 @@ export default function SystemPageSettings({ page, record, backHref }) {
       <div className="ad-editor-head">
         <Link className="ad-back" href={backHref}>← {page.label}</Link>
         <div className="ad-editor-titles">
-          <h1 className="ad-view-title">{page.label} — settings</h1>
+          <h1 className="ad-view-title">{page.label}: settings</h1>
           <div className="ad-view-sub ad-pg-sub">{record.path} · <PageStatusControl page={record} canEdit={canEdit} blockedReason={dirty ? 'Save your changes first.' : ''} /></div>
         </div>
         <div className="ad-editor-actions">

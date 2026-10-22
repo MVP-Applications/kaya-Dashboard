@@ -140,15 +140,15 @@ export default function BlogsView() {
                             </span>
                           </div>
                         </td>
-                        <td>{writerOf(b) || <span className="ad-muted">—</span>}</td>
-                        <td>{topicOf(b) || <span className="ad-muted">—</span>}</td>
+                        <td>{writerOf(b) || <span className="ad-muted">-</span>}</td>
+                        <td>{topicOf(b) || <span className="ad-muted">-</span>}</td>
                         <td>
                           <span className={`ad-status ad-status--${b.status === 'published' ? 'booked' : 'closed'}`}>
                             <span className="ad-status-dot" />
                             {BLOG_STATUS_LABELS[b.status] || b.status}
                           </span>
                         </td>
-                        <td>{formatBlogDate(b.publishedAt) || <span className="ad-muted">—</span>}</td>
+                        <td>{formatBlogDate(b.publishedAt) || <span className="ad-muted">-</span>}</td>
                         <td className="ad-td-actions">
                           <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: b.id })}>Edit</Link>
                           {canDelete && (

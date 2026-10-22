@@ -53,7 +53,7 @@ export default function VoucherForm({ initial, isNew, onClose }) {
     if (!form.description.trim()) return setError('Description is required.')
     const badPrice = Object.entries(form.pricing || {}).find(([, p]) => parsePriceInput(p?.price) === null)
     if (badPrice) {
-      return setError(`The ${badPrice[0]} price "${badPrice[1].price}" isn't a number — use digits, e.g. 1800 or 1,800.`)
+      return setError(`The ${badPrice[0]} price "${badPrice[1].price}" isn't a number. Use digits, e.g. 1800 or 1,800.`)
     }
     const months = Number(form.validityMonths)
     if (!Number.isInteger(months) || months < 1 || months > 120) {
@@ -174,7 +174,7 @@ export default function VoucherForm({ initial, isNew, onClose }) {
             </label>
           </label>
           <p className="ad-fieldset-hint">
-            Untick to hide it without deleting — a voucher that already has requests can&apos;t be deleted.
+            Untick to hide it without deleting. A voucher that already has requests can&apos;t be deleted.
           </p>
         </fieldset>
 
@@ -197,7 +197,7 @@ export default function VoucherForm({ initial, isNew, onClose }) {
               <span className="ad-field-label">Badge style</span>
               <select className="ad-input" value={form.badgeStyle}
                 onChange={e => set('badgeStyle', e.target.value)}>
-                {BADGE_STYLE_OPTIONS.map(b => <option key={b || 'none'} value={b}>{b || '— none —'}</option>)}
+                {BADGE_STYLE_OPTIONS.map(b => <option key={b || 'none'} value={b}>{b || 'None'}</option>)}
               </select>
             </label>
           </div>
@@ -206,7 +206,7 @@ export default function VoucherForm({ initial, isNew, onClose }) {
         <fieldset className="ad-fieldset">
           <legend>Image</legend>
           <ImagePicker value={form.img} onChange={v => set('img', v)} ratio={7 / 8}
-            hint="Shown beside the offer text on the homepage and the Indulgence page — almost square, 7:8. Use about 700 × 800 px with the subject in the centre." />
+            hint="Shown beside the offer text on the homepage and the Indulgence page. Almost square, 7:8. Use about 700 × 800 px with the subject in the centre." />
         </fieldset>
       </div>
     </form>

@@ -98,7 +98,7 @@ export default function TellUsQuestionEditor({
                   <div className="ad-tu-links">
                     {linked.map(tid => (
                       <span key={tid} className={`ad-tu-link${inArea.has(tid) ? '' : ' ad-tu-link--warn'}`}
-                        title={inArea.has(tid) ? '' : `Not in ${areaLabel} — it won't be suggested here`}>
+                        title={inArea.has(tid) ? '' : `Not in ${areaLabel}, so it won't be suggested here`}>
                         {nameOf[tid] || 'Deleted treatment'}
                         {!inArea.has(tid) && <span className="ad-tu-link-note"> · not in {areaLabel}</span>}
                         <button type="button" onClick={() => setOption(i, { treatments: linked.filter(t => t !== tid) })}

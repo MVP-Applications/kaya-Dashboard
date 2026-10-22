@@ -37,7 +37,7 @@ export function validateFooterLinkUrl(type, url) {
   const value = String(url || '').trim()
   if (type === FOOTER_LINK_TYPE.ROUTE) {
     if (!value) return 'Add the page path, e.g. /about.'
-    if (LOOKS_LIKE_FULL_URL.test(value)) return 'Paste only the path after the domain, e.g. /about — no https:// or www.'
+    if (LOOKS_LIKE_FULL_URL.test(value)) return 'Paste only the path after the domain, e.g. /about, with no https:// or www.'
     if (!ROUTE_PATH.test(value)) return 'The path must start with a single / and contain no spaces, e.g. /about.'
     return ''
   }

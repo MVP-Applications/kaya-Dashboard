@@ -45,7 +45,7 @@ export default function ImagePicker({
       return
     }
     if (file.size > MAX_BYTES) {
-      setProblem(`That file is ${(file.size / 1024 / 1024).toFixed(1)} MB — images can be up to 10 MB.`)
+      setProblem(`That file is ${(file.size / 1024 / 1024).toFixed(1)} MB. Images can be up to 10 MB.`)
       return
     }
     setProblem('')
@@ -105,7 +105,7 @@ export default function ImagePicker({
         {hint && <p className="ad-fieldset-hint ad-image-hint">{hint}</p>}
         {focusable && (
           <p className="ad-fieldset-hint ad-image-hint">
-            Focal point: {focus || 'centre'} — click the preview to change it.
+            Focal point: {focus || 'centre'}. Click the preview to change it.
             {focus && <> <button type="button" className="ad-link-btn" onClick={() => onFocusChange('')}>Reset</button></>}
           </p>
         )}
@@ -143,10 +143,10 @@ function sizeWarning(size, recommended, ratio) {
   if (!size || !size.width || !size.height) return ''
   const notes = []
   if (recommended && (size.width < recommended.width || size.height < recommended.height)) {
-    notes.push(`It's ${size.width} × ${size.height} px — smaller than the recommended ${recommended.width} × ${recommended.height} px, so it may look soft on large screens.`)
+    notes.push(`It's ${size.width} × ${size.height} px, smaller than the recommended ${recommended.width} × ${recommended.height} px, so it may look soft on large screens.`)
   }
   if (ratio && Math.abs(size.width / size.height - ratio) / ratio > RATIO_TOLERANCE) {
-    notes.push('Its shape differs from this slot, so the website will crop it — check the preview and set the focal point.')
+    notes.push('Its shape differs from this slot, so the website will crop it. Check the preview and set the focal point.')
   }
   return notes.join(' ')
 }

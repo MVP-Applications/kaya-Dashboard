@@ -154,7 +154,7 @@ export default function LocationsView() {
         <div>
           <h1 className="ad-view-title">Clinics</h1>
           <p className="ad-view-sub">
-            Clinic records behind the Find a Clinic page — addresses, phone numbers, and opening hours.
+            Clinic records behind the Find a Clinic page: addresses, phone numbers, and opening hours.
           </p>
         </div>
         {/* A link can't be disabled, so it stays a button while the list loads. */}
@@ -170,7 +170,7 @@ export default function LocationsView() {
       <div className="ad-stat-grid ad-loc-totals">
         <button type="button" className={`ad-stat-card${!country ? ' active' : ''}`}
           onClick={() => setCountry('')}>
-          <div className="ad-stat-value">{loading ? '—' : locations.length}</div>
+          <div className="ad-stat-value">{loading ? '-' : locations.length}</div>
           <div className="ad-stat-label">{locations.length === 1 ? 'Clinic' : 'Clinics'} in total</div>
           <div className="ad-stat-hint">
             across {countryTotals.filter(c => c.clinics > 0).length} of {countryTotals.length} countries
@@ -179,7 +179,7 @@ export default function LocationsView() {
         {countryTotals.map(c => (
           <button key={c.code} type="button" className={`ad-stat-card${country === c.code ? ' active' : ''}`}
             onClick={() => setCountry(country === c.code ? '' : c.code)}>
-            <div className="ad-stat-value">{loading ? '—' : c.clinics}</div>
+            <div className="ad-stat-value">{loading ? '-' : c.clinics}</div>
             <div className="ad-stat-label">
               {c.flagUrl && <img src={c.flagUrl} alt="" className="ad-loc-flag" />}
               {c.name}
@@ -227,7 +227,7 @@ export default function LocationsView() {
                 </td>
                 <td><span className="ad-badge">{l.country}</span></td>
                 <td>{l.city}</td>
-                <td>{l.tel || '—'}</td>
+                <td>{l.tel || '-'}</td>
                 <td className="ad-td-actions">
                   <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: l.id })}>Edit</Link>
                   {canDelete && (
@@ -468,7 +468,7 @@ function LocationForm({ initial, isNew, countryOptions, onCityAdded, onCityUpdat
               ) : (
                 <p className="ad-field-hint ad-fblock">
                   Arabic city name: {selectedCity.nameAr ? <span dir="rtl">{selectedCity.nameAr}</span> : 'not set'}
-                  {' '}— an administrator can change it here or on the <strong>Countries</strong> screen.
+                  . An administrator can change it here or on the <strong>Countries</strong> screen.
                 </p>
               )
             )}

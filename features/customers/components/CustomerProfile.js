@@ -16,7 +16,7 @@ import { VOUCHER_STATUS, voucherStatusLabel } from '@/shared/lib/voucher-status'
 import { viewHref } from '@/shared/lib/routes'
 
 function fullDate(iso, withTime = false) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   const d = new Date(iso)
   return d.toLocaleString('en-GB', withTime
     ? { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }
@@ -176,7 +176,7 @@ export default function CustomerProfile({ id, onClose }) {
         </div>
       </div>
 
-      {disabled && <div className="ad-tu-dirty">This account is disabled — the customer can&apos;t sign in on the website. Their information is kept.</div>}
+      {disabled && <div className="ad-tu-dirty">This account is disabled. The customer can&apos;t sign in on the website. Their information is kept.</div>}
 
       <div className="ad-cu-grid">
         <div className="ad-cu-col">
@@ -267,7 +267,7 @@ export default function CustomerProfile({ id, onClose }) {
               <p className="ad-an-note">Matched by email and mobile number.</p>
             </div>
             {history.loading ? <p className="ad-an-empty">Loading…</p>
-              : history.error ? <p className="ad-an-empty">Couldn&apos;t load enquiries — {history.error}</p>
+              : history.error ? <p className="ad-an-empty">Couldn&apos;t load enquiries: {history.error}</p>
                 : history.requests.length ? (
                   <div className="ad-cu-history">
                     {history.requests.map(r => (
@@ -325,7 +325,7 @@ export default function CustomerProfile({ id, onClose }) {
           onCancel={() => { setConfirm(null); setActionError('') }}
           onConfirm={runAction}
         >
-          {confirm === 'delete' && <>This permanently deletes <strong>{displayName(c, dialCodes)}</strong>&apos;s website account, profile and medical information — use it when the customer asks for their data to be erased. Their enquiries and voucher requests stay in Requests.</>}
+          {confirm === 'delete' && <>This permanently deletes <strong>{displayName(c, dialCodes)}</strong>&apos;s website account, profile and medical information. Use it when the customer asks for their data to be erased. Their enquiries and voucher requests stay in Requests.</>}
           {confirm === 'disable' && <><strong>{displayName(c, dialCodes)}</strong> won&apos;t be able to sign in on the website until you re-enable the account. Nothing is deleted.</>}
           {confirm === 'enable' && <><strong>{displayName(c, dialCodes)}</strong> will be able to sign in on the website again.</>}
         </ConfirmDialog>

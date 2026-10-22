@@ -12,7 +12,7 @@ export default function MissingRecord({ loading, label = 'record', backHref, bac
         ? <div className="ad-panel ad-muted">Loading…</div>
         : (
           <div className="ad-panel">
-            <p>This {label} couldn&apos;t be found — it may have been deleted or renamed.</p>
+            <p>This {label} couldn&apos;t be found. It may have been deleted or renamed.</p>
             <Link href={backHref} className="ad-btn ad-btn--soft ad-btn--sm">{backLabel}</Link>
           </div>
         )}

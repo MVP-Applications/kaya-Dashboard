@@ -168,18 +168,18 @@ export default function TreatmentFields({ country, form, onChange }) {
           <div className="ad-field">
             <span className="ad-field-label">Card image</span>
             <ImagePicker value={form.cardImage} onChange={v => set('cardImage', v)} ratio={16 / 9}
-              hint="Landscape 16:9 — the treatment's own page and treatment cards in lists, on desktop and phones. Use about 1600 × 900 px; keep the subject in the centre. If empty, the detail image is used (cropped to fit)." />
+              hint="Landscape 16:9: the treatment's own page and treatment cards in lists, on desktop and phones. Use about 1600 × 900 px; keep the subject in the centre. If empty, the detail image is used (cropped to fit)." />
           </div>
           <div className="ad-field">
             <span className="ad-field-label">Detail image</span>
             <ImagePicker value={form.image} onChange={v => set('image', v)} ratio={4 / 5}
-              hint="Portrait 4:5 — only the homepage Popular treatments cards. Use about 840 × 1050 px. If empty, the card image is used (cropped to fit)." />
+              hint="Portrait 4:5: only the homepage Popular treatments cards. Use about 840 × 1050 px. If empty, the card image is used (cropped to fit)." />
           </div>
           <label className="ad-field ad-w-md">
             <span className="ad-field-label">Icon</span>
             <select className="ad-input" value={form.thumb}
               onChange={e => set('thumb', e.target.value)}>
-              <option value="">— none —</option>
+              <option value="">None</option>
               {THUMB_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
@@ -209,7 +209,7 @@ export default function TreatmentFields({ country, form, onChange }) {
               <span className="ad-field-label">Category</span>
               <select className="ad-input" value={form.category}
                 onChange={e => set('category', e.target.value)}>
-                <option value="">— none —</option>
+                <option value="">None</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </label>
@@ -234,7 +234,7 @@ export default function TreatmentFields({ country, form, onChange }) {
 
       <fieldset className="ad-fieldset">
         <legend>Clinics</legend>
-        <p className="ad-fieldset-hint">Optional — leave empty to offer it at every clinic in this country.</p>
+        <p className="ad-fieldset-hint">Optional. Leave empty to offer it at every clinic in this country.</p>
         {clinicOptions.length === 0 ? (
           <p className="ad-muted">No clinics in this country yet.</p>
         ) : (

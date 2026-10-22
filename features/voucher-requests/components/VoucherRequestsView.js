@@ -215,7 +215,7 @@ export default function VoucherRequestsView() {
                 </td>
                 <td>
                   {v.isGift
-                    ? <><div className="ad-cell-name">{v.recipientName || '—'}</div>
+                    ? <><div className="ad-cell-name">{v.recipientName || '-'}</div>
                         <div className="ad-cell-slug">{v.recipientEmail || v.recipientPhone}</div></>
                     : <span className="ad-muted">Self-purchase</span>}
                 </td>
@@ -231,7 +231,7 @@ export default function VoucherRequestsView() {
                   )}
                 </td>
                 <td>
-                  {v.code ? <code className="ad-vcode">{v.code}</code> : <span className="ad-muted">—</span>}
+                  {v.code ? <code className="ad-vcode">{v.code}</code> : <span className="ad-muted">-</span>}
                   {voucherDates(v) && <div className="ad-cell-slug">{voucherDates(v)}</div>}
                 </td>
                 <td>{formatDate(v.submittedAt)}</td>
@@ -291,7 +291,7 @@ export default function VoucherRequestsView() {
           onCancel={cancelAction}
           onConfirm={() => confirmRedeem(redeemConfirm.onDone)}
         >
-          <code className="ad-vcode">{redeemConfirm.code}</code> — {redeemConfirm.offerTitle}
+          <code className="ad-vcode">{redeemConfirm.code}</code>: {redeemConfirm.offerTitle}
           {redeemConfirm.isGift ? ` for ${redeemConfirm.recipientName}` : ` for ${redeemConfirm.purchaserName}`}.
           {' '}It will be marked as used and can&apos;t be redeemed again.
         </ConfirmDialog>
@@ -372,10 +372,10 @@ function RedeemPanel({ canRedeem, onRedeem, latestChange }) {
               </button>
             )
             : <span className="ad-muted">
-                {current.status === VOUCHER_STATUS.REDEEMED ? 'Already used — can’t be redeemed again.'
-                  : current.status === VOUCHER_STATUS.EXPIRED ? 'Expired — can’t be redeemed.'
-                  : current.status === VOUCHER_STATUS.CANCELLED ? 'Cancelled — can’t be redeemed.'
-                  : 'Not issued yet — it must be paid and issued first.'}
+                {current.status === VOUCHER_STATUS.REDEEMED ? 'Already used, so it can’t be redeemed again.'
+                  : current.status === VOUCHER_STATUS.EXPIRED ? 'Expired, so it can’t be redeemed.'
+                  : current.status === VOUCHER_STATUS.CANCELLED ? 'Cancelled, so it can’t be redeemed.'
+                  : 'Not issued yet. It must be paid and issued first.'}
               </span>}
         </div>
       )}
@@ -387,7 +387,7 @@ function DetailRow({ label, children }) {
   return (
     <div className="ad-req-row">
       <span className="ad-req-key">{label}</span>
-      <span className="ad-req-val">{children || <span className="ad-muted">—</span>}</span>
+      <span className="ad-req-val">{children || <span className="ad-muted">-</span>}</span>
     </div>
   )
 }

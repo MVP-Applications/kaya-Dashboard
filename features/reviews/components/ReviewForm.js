@@ -112,14 +112,14 @@ export default function ReviewForm({ initial, isNew, onClose }) {
             <span className="ad-field-label">Client&apos;s country</span>
             <select className="ad-input" value={form.country || ''} disabled={!!lockedCountry}
               onChange={e => setCountry(e.target.value)}>
-              <option value="">— none —</option>
+              <option value="">None</option>
               {lockedCountry && <option value={lockedCountry.code}>{lockedCountry.name}</option>}
               {sortCountries(accessibleCountries).map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
             </select>
             <span className="ad-field-hint">
               {lockedCountry
                 ? `${lockedCountry.name} is managed by another country team.`
-                : 'Shown on the website when the review has no location — in Arabic too.'}
+                : 'Shown on the website when the review has no location, in Arabic too.'}
             </span>
           </label>
         </fieldset>
@@ -130,7 +130,7 @@ export default function ReviewForm({ initial, isNew, onClose }) {
             <span className="ad-field-label">Treatment</span>
             <select className="ad-input" value={form.treatment}
               onChange={e => set('treatment', e.target.value)}>
-              <option value="">— none —</option>
+              <option value="">None</option>
               {treatmentOptions.map(s => <option key={s.id} value={s.id}>{`${s.name} · ${s.country}`}</option>)}
             </select>
           </label>

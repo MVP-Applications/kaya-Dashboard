@@ -178,7 +178,7 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
               page={{ ...page, id: originalId || '' }}
               canEdit={canEdit}
               allowArchive
-              blockedReason={!originalId ? 'Create the page first.' : dirty ? 'Save your changes first — publishing uses the saved version.' : ''}
+              blockedReason={!originalId ? 'Create the page first.' : dirty ? 'Save your changes first. Publishing uses the saved version.' : ''}
             />
           </div>
           {originalId && page.status !== 'PUBLISHED' && notReady.length > 0 && (
@@ -238,7 +238,7 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
             <div className="ad-pb-card">
               <div className="ad-pb-card-head">
                 <strong>Blocks</strong>
-                <span className="ad-field-hint">{page.blocks.length} on this page — click one to edit it</span>
+                <span className="ad-field-hint">{page.blocks.length} on this page, click one to edit it</span>
               </div>
               <div className="ad-pb-outline">
                 {page.blocks.map((b, i) => (
@@ -318,7 +318,7 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
                     </span>
                     <span className="ad-field-hint">Addresses the website already uses, like /treatments, can’t be taken.</span>
                   </label>
-                  <p className="ad-field-hint">Page type: <strong>{template.label}</strong> — {template.allowedTypes.length === BLOCK_ORDER.length ? 'any block' : `blocks: ${template.allowedTypes.map(t => BLOCK_TYPES[t].label).join(', ')}`}{template.required.length ? ` (needs ${template.required.map(t => BLOCK_TYPES[t].label).join(', ')})` : ''}.</p>
+                  <p className="ad-field-hint">Page type: <strong>{template.label}</strong>, {template.allowedTypes.length === BLOCK_ORDER.length ? 'any block' : `blocks: ${template.allowedTypes.map(t => BLOCK_TYPES[t].label).join(', ')}`}{template.required.length ? ` (needs ${template.required.map(t => BLOCK_TYPES[t].label).join(', ')})` : ''}.</p>
                 </>
               )}
             />

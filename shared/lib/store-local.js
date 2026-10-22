@@ -615,7 +615,7 @@ export async function findVoucherByCode(code) {
     ? `KAYA-${blocks.slice(4, 8)}-${blocks.slice(8)}`
     : upper.replace(/[\s_]+/g, '-')
   const found = loadVoucherRequests().find(v => v.code && v.code.toUpperCase() === wanted)
-  if (!found) throw new Error('No voucher has this code — check it was typed correctly.')
+  if (!found) throw new Error('No voucher has this code. Check it was typed correctly.')
   return settle(found)
 }
 
@@ -625,7 +625,7 @@ export async function redeemVoucher(id) {
   if (v.status === 'REDEEMED') throw new Error('This voucher was already redeemed.')
   if (v.status === 'EXPIRED') throw new Error('This voucher has expired.')
   if (v.status === 'CANCELLED') throw new Error('This voucher was cancelled.')
-  if (v.status !== 'FULFILLED') throw new Error('This voucher hasn’t been issued yet — it must be paid and issued before it can be redeemed.')
+  if (v.status !== 'FULFILLED') throw new Error('This voucher hasn’t been issued yet. It must be paid and issued before it can be redeemed.')
   const now = new Date().toISOString()
   return settle(saveVoucherRequest({ ...v, status: 'REDEEMED', redeemedAt: now, statusUpdatedAt: now }))
 }
