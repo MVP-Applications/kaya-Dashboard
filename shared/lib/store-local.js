@@ -705,6 +705,14 @@ function saveSystem(id, patch) {
   write(KEYS.pageRegistry, { ...saved, [id]: { ...saved[id], ...patch } })
 }
 
+/**
+ * The page builder's section types and designs live in the API
+ * (GET /admin/pages/schema), so preview mode can't build pages.
+ */
+export async function fetchPageSchema() {
+  throw new Error('The page builder needs the API: set NEXT_PUBLIC_API_BASE_URL to use it.')
+}
+
 export async function fetchPageRegistry() {
   return settle([...systemRecords(), ...loadCustom()])
 }

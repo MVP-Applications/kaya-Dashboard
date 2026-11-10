@@ -117,6 +117,7 @@ export const ApiEndpoints = {
     adminStatus: id => `${V1}/admin/pages/${id}/status`,
     adminNavigation: `${V1}/admin/pages/navigation`,
     adminOverrides: `${V1}/admin/pages/overrides`,
+    adminSchema: `${V1}/admin/pages/schema`,
     publicBySlug: slug => `${V1}/public/pages/${slug}`,
   },
 

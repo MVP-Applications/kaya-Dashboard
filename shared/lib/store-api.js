@@ -1002,44 +1002,10 @@ export const removeVoucher = async id => {
 // only PUBLISHED is on the website), its menu placement, and the countries
 // it's offered in. Contract: docs/page-builder.md.
 //
-// Built pages store each block's content one language at a time on the
-// backend; the builder keeps English under `key` and Arabic under `keyAr`.
-// These are the text fields that have an Arabic version — they mirror the
-// `localized` fields in features/pages/lib/page-builder.js (BLOCK_TYPES).
-const LOCALIZED_BLOCK_FIELDS = new Set([
-  'eyebrow', 'heading', 'sub', 'body', 'caption', 'buttonLabel', 'title', 'text', 'question', 'answer', 'imageAlt', 'alt',
-])
-
-/** One language of a block's data: English keeps `key`, Arabic reads `keyAr` into `key`. */
-function blockLocale(data, locale) {
-  const out = {}
-  for (const [k, v] of Object.entries(data || {})) {
-    if (k.endsWith('Ar') && LOCALIZED_BLOCK_FIELDS.has(k.slice(0, -2))) continue
-    if (Array.isArray(v)) out[k] = v.map(item => (item && typeof item === 'object' ? blockLocale(item, locale) : item))
-    else if (LOCALIZED_BLOCK_FIELDS.has(k)) out[k] = locale === 'AR' ? (data[`${k}Ar`] || '') : (v || '')
-    else out[k] = v
-  }
-  return out
-}
-
-/** The builder's shape back from both languages: English plus Arabic as `keyAr`. */
-function blockData(en = {}, ar = {}) {
-  const out = {}
-  for (const [k, v] of Object.entries(en)) {
-    if (Array.isArray(v)) {
-      const arList = Array.isArray(ar[k]) ? ar[k] : []
-      out[k] = v.map((item, i) => (item && typeof item === 'object' ? blockData(item, arList[i] || {}) : item))
-    } else {
-      out[k] = v
-      if (LOCALIZED_BLOCK_FIELDS.has(k)) out[`${k}Ar`] = ar[k] || ''
-    }
-  }
-  return out
-}
-
-const hasArabic = data => Object.entries(data || {}).some(([k, v]) =>
-  (Array.isArray(v) ? v.some(item => item && typeof item === 'object' && hasArabic(item))
-    : k.endsWith('Ar') && typeof v === 'string' && v.trim()))
+// Built pages store each section's content one language at a time, with the
+// website's field names; the builder keeps them as { EN: {…}, AR: {…} }.
+// Which fields a section has comes from the backend schema
+// (features/pages/lib/schema.js).
 
 function pageRecord(p) {
   const tr = locale => (p.translations || []).find(t => t.locale === locale) || {}
@@ -1065,13 +1031,14 @@ function pageRecord(p) {
     seoTitle: en.seoTitle || '', seoTitleAr: ar.seoTitle || '',
     seoDescription: en.seoDescription || '', seoDescriptionAr: ar.seoDescription || '',
     missingLocales: p.missingLocales || [],
+    fixedAddress: Boolean(p.fixedAddress),
     hiddenSections: (p.sections || []).filter(sec => !sec.visible).map(sec => sec.key),
     updatedAt: p.updatedAt || '',
   }
   if (p.kind === 'CUSTOM') {
     record.blocks = (p.sections || []).map(sec => {
       const t = locale => (sec.translations || []).find(x => x.locale === locale)?.content || {}
-      return { id: sec.key, type: sec.type, hidden: !sec.visible, data: blockData(t('EN'), t('AR')) }
+      return { id: sec.key, type: sec.type, hidden: !sec.visible, content: { EN: t('EN'), AR: t('AR') } }
     })
   }
   return record
@@ -1106,15 +1073,28 @@ function settingsBody(r, countryIds) {
   }
 }
 
+/** True when some text anywhere in `value` is filled in. */
+const hasText = value => (Array.isArray(value) ? value.some(hasText)
+  : value && typeof value === 'object' ? Object.values(value).some(hasText)
+    : typeof value === 'string' && value.trim() !== '')
+
 async function blockSections(blocks) {
   const out = []
   for (const b of blocks || []) {
-    const data = await uploadImagesDeep(b.data)
-    const translations = [{ locale: 'EN', content: blockLocale(data, 'EN') }]
-    if (hasArabic(data)) translations.push({ locale: 'AR', content: blockLocale(data, 'AR') })
+    const en = await uploadImagesDeep(b.content?.EN || {})
+    const ar = await uploadImagesDeep(b.content?.AR || {})
+    const translations = [{ locale: 'EN', content: en }]
+    // An untouched Arabic version isn't sent: the website shows English there.
+    if (hasText(ar)) translations.push({ locale: 'AR', content: ar })
     out.push({ key: b.id, type: b.type, visible: !b.hidden, translations })
   }
   return out
+}
+
+/** Section types, page designs and reserved addresses the builder works from. */
+export async function fetchPageSchema() {
+  const { data } = await apiRequest(ApiEndpoints.pages.adminSchema)
+  return data
 }
 
 /**
@@ -1133,7 +1113,7 @@ export async function saveCustomPage(record, { isNew }) {
     return pageRecord(data)
   }
   await apiRequest(ApiEndpoints.pages.adminById(record.id), {
-    method: 'PUT', body: { ...settings, slug: record.slug, template: record.template },
+    method: 'PUT', body: { ...settings, ...(record.fixedAddress ? {} : { slug: record.slug }), template: record.template },
   })
   const { data } = await apiRequest(ApiEndpoints.pages.adminSections(record.id), { method: 'PUT', body: { sections } })
   return pageRecord(data)

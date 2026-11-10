@@ -1606,6 +1606,10 @@
 .ad-pb-picker-head > div { flex: 1; }
 .ad-pb-picker-close { font-size: 22px; }
 .ad-pb-templates { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.ad-pb-template-group + .ad-pb-template-group { margin-top: 20px; }
+.ad-pb-template-group > .ad-an-section-title { margin-bottom: 10px; }
+.ad-cf-ref .ad-cf-item-head { margin-bottom: 0; }
+.ad-cf-ref--missing { color: #B23B3B; }
 .ad-pb-template {
   display: flex; flex-direction: column; gap: 6px; text-align: left; cursor: pointer; font: inherit;
   background: var(--whisper); border: 1px solid var(--line); border-radius: 14px; padding: 16px;

@@ -7,11 +7,10 @@ import BlockFields from '@/features/pages/components/BlockFields'
 import PagePreview from '@/features/pages/components/PagePreview'
 import PageStatusControl from '@/features/pages/components/PageStatus'
 import { PageSettingsFields } from '@/features/pages/components/PageSettings'
+import { HEADER_POSITION_LABELS, FOOTER_COLUMN_LABELS, newId, slugify } from '@/features/pages/lib/page-builder'
 import {
-  BLOCK_TYPES, BLOCK_ORDER, TEMPLATE_LABELS, HEADER_POSITION_LABELS, FOOTER_COLUMN_LABELS,
-  newBlock, newId, slugify, validateCustomPage, publishProblems, plainText, templateOf,
-} from '@/features/pages/lib/page-builder'
-import { PAGES } from '@/shared/lib/content'
+  designOf, designsThatFit, newSection, publishProblems, sectionSummary, sectionTypeOf, validateCustomPage,
+} from '@/features/pages/lib/schema'
 import { siteUrl } from '@/shared/lib/site'
 import { slugInput } from '@/shared/lib/slug'
 import { useQuery } from '@/shared/hooks/useUrlState'
@@ -21,15 +20,8 @@ function cloneSafe(obj) {
   return JSON.parse(JSON.stringify(obj))
 }
 
-/** A short label for a block in the outline: its heading, else its type. */
-function blockSummary(block) {
-  const d = block.data
-  const firstItem = d.items?.[0]?.question || d.items?.[0]?.title
-  return plainText(d.heading || d.caption || firstItem || '') || BLOCK_TYPES[block.type]?.hint || ''
-}
-
 export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
-  const { customPages, saveBuiltPage, services, doctors, allowed, saving } = useAdmin()
+  const { customPages, saveBuiltPage, services, doctors, allowed, saving, pageSchema: schema } = useAdmin()
   // Pages are global settings — only a super admin changes them.
   const canEdit = allowed('manageSettings')
 
@@ -55,9 +47,11 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
 
   const dirty = saved === null || JSON.stringify(page) !== saved
   const selected = page.blocks.find(b => b.id === selectedId) || null
-  const builtInPaths = useMemo(() => PAGES.map(p => p.path), [])
-  const template = templateOf(page.template)
-  const notReady = originalId ? publishProblems(page) : []
+  const design = designOf(schema, page.template)
+  const typeOf = type => sectionTypeOf(schema, type)
+  const fitting = useMemo(() => designsThatFit(schema, page), [schema, page])
+  const notReady = originalId ? publishProblems(schema, page) : []
+  const address = page.fixedAddress ? page.path : `/${page.slug || '…'}`
 
   // The status is changed from the list or the header control (after a
   // confirmation) and saved straight away — keep this copy in step with it.
@@ -94,7 +88,7 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
 
   /** New blocks go after the selected one, else at the end. */
   function addBlock(type) {
-    const block = newBlock(type)
+    const block = newSection(schema, type)
     setBlocks(bs => {
       const at = selectedId ? bs.findIndex(b => b.id === selectedId) + 1 : bs.length
       return [...bs.slice(0, at), block, ...bs.slice(at)]
@@ -104,7 +98,7 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
   }
 
   function duplicateBlock(block) {
-    const copy = { ...cloneSafe(block), id: newId('blk') }
+    const copy = { ...cloneSafe(block), id: newId('sec') }
     setBlocks(bs => {
       const at = bs.findIndex(b => b.id === block.id) + 1
       return [...bs.slice(0, at), copy, ...bs.slice(at)]
@@ -119,9 +113,8 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
 
   // ── Save ──
   async function save() {
-    const found = validateCustomPage(page, {
+    const found = validateCustomPage(schema, page, {
       otherPages: customPages.filter(p => p.id !== originalId),
-      builtInPaths,
     })
     setProblems(found)
     if (found.length) {
@@ -153,17 +146,30 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
 
   const addPalette = (
     <div className="ad-pb-palette">
-      {BLOCK_ORDER.filter(type => template.allowedTypes.includes(type)).map(type => (
-        <button key={type} type="button" className="ad-pb-palette-item" onClick={() => addBlock(type)}>
-          <span className="ad-pb-palette-ico" aria-hidden="true">{BLOCK_TYPES[type].icon}</span>
+      {(design?.allowedTypes || []).map(typeOf).filter(Boolean).map(t => (
+        <button key={t.type} type="button" className="ad-pb-palette-item" onClick={() => addBlock(t.type)}>
+          <span className="ad-pb-palette-ico" aria-hidden="true">{t.icon}</span>
           <span className="ad-pb-palette-txt">
-            <strong>{BLOCK_TYPES[type].label}</strong>
-            <span>{BLOCK_TYPES[type].hint}</span>
+            <strong>{t.label}</strong>
+            <span>{t.hint}</span>
           </span>
         </button>
       ))}
     </div>
   )
+
+  if (!schema) {
+    return (
+      <div className="ad-view ad-pb">
+        <div className="ad-editor-head">
+          <button type="button" className="ad-back" onClick={onClose}>← All pages</button>
+        </div>
+        <div className="ad-panel ad-blog-unavailable">
+          <strong>The page builder can’t load its section types.</strong> Check the connection and use Refresh content.
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="ad-view ad-pb">
@@ -172,7 +178,7 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
         <div className="ad-editor-titles">
           <h1 className="ad-view-title">{page.title || (isNew && !originalId ? 'New page' : 'Untitled page')}</h1>
           <div className="ad-view-sub ad-pg-sub">
-            {TEMPLATE_LABELS[page.template] || 'Custom page'} · /{page.slug || '…'} ·{' '}
+            {design?.label || 'Custom page'} design · {address} ·{' '}
             {[HEADER_POSITION_LABELS[page.headerPosition], FOOTER_COLUMN_LABELS[page.footerColumn]].filter(Boolean).map(m => `${m} · `)}
             <PageStatusControl
               page={{ ...page, id: originalId || '' }}
@@ -187,7 +193,7 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
         </div>
         <div className="ad-editor-actions">
           {originalId && page.status === 'PUBLISHED' && !dirty && (
-            <a href={siteUrl(`/${page.slug}`)} className="ad-btn ad-btn--ghost" target="_blank" rel="noreferrer">View page ↗</a>
+            <a href={siteUrl(address)} className="ad-btn ad-btn--ghost" target="_blank" rel="noreferrer">View page ↗</a>
           )}
           <button type="button" className="ad-btn ad-btn--primary" disabled={!canEdit || !dirty || saving} onClick={save}>
             {saving ? 'Saving…' : originalId ? (dirty ? 'Save changes' : 'Saved') : 'Create page'}
@@ -210,7 +216,7 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
           <div className="ad-tu-seg ad-pb-panels" role="tablist">
             <button type="button" role="tab" aria-selected={panel === 'blocks'}
               className={`ad-tu-seg-btn${panel === 'blocks' ? ' active' : ''}`} onClick={() => setPanel('blocks')}>
-              Blocks
+              Sections
             </button>
             <button type="button" role="tab" aria-selected={panel === 'settings'}
               className={`ad-tu-seg-btn${panel === 'settings' ? ' active' : ''}`} onClick={() => { setPanel('settings'); setSelectedId(null) }}>
@@ -221,15 +227,15 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
           {panel === 'blocks' && selected && (
             <div className="ad-pb-card">
               <div className="ad-pb-card-head">
-                <button type="button" className="ad-back ad-pb-back" onClick={() => setSelectedId(null)}>← All blocks</button>
-                <strong>{BLOCK_TYPES[selected.type].label}</strong>
+                <button type="button" className="ad-back ad-pb-back" onClick={() => setSelectedId(null)}>← All sections</button>
+                <strong>{typeOf(selected.type)?.label || selected.type}</strong>
               </div>
               <LocaleToggle locale={locale} onChange={setLocale} />
-              <BlockFields block={selected} locale={locale} services={services} doctors={doctors}
-                onChange={data => updateBlock(selected.id, { data })} />
+              <BlockFields schema={schema} block={selected} locale={locale} disabled={!canEdit}
+                onChange={content => updateBlock(selected.id, { content })} />
               <label className="ad-check ad-pb-hide">
                 <input type="checkbox" checked={selected.hidden} onChange={e => updateBlock(selected.id, { hidden: e.target.checked })} />
-                Hide this block on the website
+                Hide this section on the website
               </label>
             </div>
           )}
@@ -237,33 +243,33 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
           {panel === 'blocks' && !selected && (
             <div className="ad-pb-card">
               <div className="ad-pb-card-head">
-                <strong>Blocks</strong>
+                <strong>Sections</strong>
                 <span className="ad-field-hint">{page.blocks.length} on this page, click one to edit it</span>
               </div>
               <div className="ad-pb-outline">
                 {page.blocks.map((b, i) => (
                   <div key={b.id} className={`ad-pb-row${b.hidden ? ' off' : ''}`}>
                     <button type="button" className="ad-pb-row-main" onClick={() => setSelectedId(b.id)}>
-                      <span className="ad-pb-row-ico" aria-hidden="true">{BLOCK_TYPES[b.type]?.icon}</span>
+                      <span className="ad-pb-row-ico" aria-hidden="true">{typeOf(b.type)?.icon}</span>
                       <span className="ad-pb-row-txt">
-                        <strong>{BLOCK_TYPES[b.type]?.label || b.type}{b.hidden ? ' · hidden' : ''}</strong>
-                        <span>{blockSummary(b)}</span>
+                        <strong>{typeOf(b.type)?.label || b.type}{b.hidden ? ' · hidden' : ''}</strong>
+                        <span>{sectionSummary(schema, b)}</span>
                       </span>
                     </button>
                     <span className="ad-pb-row-actions">
                       <button type="button" className="ad-reorder-btn" disabled={i === 0} onClick={() => move(b.id, -1)} aria-label="Move up">▲</button>
                       <button type="button" className="ad-reorder-btn" disabled={i === page.blocks.length - 1} onClick={() => move(b.id, 1)} aria-label="Move down">▼</button>
                       <button type="button" className="ad-reorder-btn" onClick={() => updateBlock(b.id, { hidden: !b.hidden })}
-                        aria-label={b.hidden ? 'Show block' : 'Hide block'} title={b.hidden ? 'Show block' : 'Hide block'}>
+                        aria-label={b.hidden ? 'Show section' : 'Hide section'} title={b.hidden ? 'Show section' : 'Hide section'}>
                         {b.hidden ? '◌' : '●'}
                       </button>
-                      <button type="button" className="ad-reorder-btn" onClick={() => duplicateBlock(b)} aria-label="Duplicate block" title="Duplicate">⧉</button>
+                      <button type="button" className="ad-reorder-btn" onClick={() => duplicateBlock(b)} aria-label="Duplicate section" title="Duplicate">⧉</button>
                       <button type="button" className="ad-reorder-btn ad-pb-del" onClick={() => setConfirm({
-                        title: 'Remove block?',
-                        body: `The ${BLOCK_TYPES[b.type]?.label || b.type} block will be removed from this page.`,
+                        title: 'Remove section?',
+                        body: `The ${typeOf(b.type)?.label || b.type} section will be removed from this page.`,
                         label: 'Remove',
                         run: () => removeBlock(b),
-                      })} aria-label="Remove block" title="Remove">×</button>
+                      })} aria-label="Remove section" title="Remove">×</button>
                     </span>
                   </div>
                 ))}
@@ -271,13 +277,13 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
               {adding ? (
                 <>
                   <div className="ad-pb-card-head ad-pb-add-head">
-                    <strong>Add a block</strong>
+                    <strong>Add a section</strong>
                     <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => setAdding(false)}>Cancel</button>
                   </div>
                   {addPalette}
                 </>
               ) : (
-                <button type="button" className="ad-btn ad-btn--soft ad-pb-add" onClick={() => setAdding(true)}>+ Add block</button>
+                <button type="button" className="ad-btn ad-btn--soft ad-pb-add" onClick={() => setAdding(true)}>+ Add section</button>
               )}
             </div>
           )}
@@ -308,17 +314,36 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
                       onChange={e => (locale === 'AR' ? set({ titleAr: e.target.value }) : setTitle(e.target.value))} />
                     <span className="ad-field-hint">Shown in the browser tab and when the page is shared.</span>
                   </label>
+                  {page.fixedAddress ? (
+                    <div className="ad-field ad-w-lg">
+                      <span className="ad-field-label">Address</span>
+                      <span className="ad-pb-slug"><span>kaya.ae{page.path}</span></span>
+                      <span className="ad-field-hint">One of the website’s own pages: it keeps this address.</span>
+                    </div>
+                  ) : (
+                    <label className="ad-field ad-w-lg">
+                      <span className="ad-field-label">Address *</span>
+                      <span className="ad-pb-slug">
+                        <span>kaya.ae/</span>
+                        <input className="ad-input" value={page.slug}
+                          onChange={e => { setSlugTouched(true); set({ slug: slugInput(e.target.value) }) }}
+                          onBlur={e => set({ slug: slugify(e.target.value) })} placeholder="ramadan-offers" />
+                      </span>
+                      <span className="ad-field-hint">Addresses the website already uses, like /treatments, can’t be taken.</span>
+                    </label>
+                  )}
                   <label className="ad-field ad-w-lg">
-                    <span className="ad-field-label">Address *</span>
-                    <span className="ad-pb-slug">
-                      <span>kaya.ae/</span>
-                      <input className="ad-input" value={page.slug}
-                        onChange={e => { setSlugTouched(true); set({ slug: slugInput(e.target.value) }) }}
-                        onBlur={e => set({ slug: slugify(e.target.value) })} placeholder="ramadan-offers" />
+                    <span className="ad-field-label">Design</span>
+                    <select className="ad-input" value={page.template} disabled={!canEdit}
+                      onChange={e => set({ template: e.target.value })}>
+                      {!fitting.some(d => d.id === page.template) && <option value={page.template}>{design?.label || page.template}</option>}
+                      {fitting.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                    </select>
+                    <span className="ad-field-hint">
+                      {design?.hint} Only designs that allow every section on this page are offered.
+                      {design?.required.length ? ` Needs a ${design.required.map(t => typeOf(t)?.label || t).join(', ')} section.` : ''}
                     </span>
-                    <span className="ad-field-hint">Addresses the website already uses, like /treatments, can’t be taken.</span>
                   </label>
-                  <p className="ad-field-hint">Page type: <strong>{template.label}</strong>, {template.allowedTypes.length === BLOCK_ORDER.length ? 'any block' : `blocks: ${template.allowedTypes.map(t => BLOCK_TYPES[t].label).join(', ')}`}{template.required.length ? ` (needs ${template.required.map(t => BLOCK_TYPES[t].label).join(', ')})` : ''}.</p>
                 </>
               )}
             />
@@ -347,7 +372,7 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
               </div>
               {dirty && <span className="ad-pb-unsaved">Unsaved changes</span>}
             </div>
-            <PagePreview page={page} locale={locale} device={device} selectedId={selectedId}
+            <PagePreview schema={schema} page={page} locale={locale} device={device} selectedId={selectedId}
               onSelect={id => { setPanel('blocks'); setSelectedId(id) }} services={services} doctors={doctors} />
           </div>
         )}

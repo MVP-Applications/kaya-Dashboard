@@ -17,7 +17,7 @@ import {
   fetchUsers, updateStaffUser, removeStaffUser, fetchStaffInvites, revokeStaffInvite,
   fetchOverrides, persistOverrideSection,
   fetchTellUs, persistTellUs,
-  fetchPageRegistry, saveCustomPage, savePageSettings, setPageStatus, reorderNavigation,
+  fetchPageRegistry, fetchPageSchema, saveCustomPage, savePageSettings, setPageStatus, reorderNavigation,
   removePage, setSectionVisible, systemPageSlug, pageSectionKey,
   fetchBlogs, persistBlogs, removeBlog,
   fetchBlogCategories, persistBlogCategories, removeBlogCategory,
@@ -70,6 +70,9 @@ export function AdminProvider({ children }) {
   const [pageRegistry, setPageRegistry] = useState([])
   const [customPagesError, setCustomPagesError] = useState('')
   const customPages = useMemo(() => pageRegistry.filter(p => p.kind === 'CUSTOM'), [pageRegistry])
+  // The page builder's section types and designs, from the API; '' while fine, else why not.
+  const [pageSchema, setPageSchema] = useState(null)
+  const [pageSchemaError, setPageSchemaError] = useState('')
   // Blog posts + topics — loaded on their own too; '' while fine, else why not.
   const [blogs, setBlogs] = useState([])
   const [blogCategories, setBlogCategories] = useState([])
@@ -147,6 +150,13 @@ export function AdminProvider({ children }) {
       if (token === loadToken.current) { setPageRegistry(list || []); setCustomPagesError('') }
     } catch (e) {
       if (token === loadToken.current) { setPageRegistry([]); setCustomPagesError(e.message) }
+    }
+
+    try {
+      const schema = await fetchPageSchema()
+      if (token === loadToken.current) { setPageSchema(schema); setPageSchemaError('') }
+    } catch (e) {
+      if (token === loadToken.current) { setPageSchema(null); setPageSchemaError(e.message) }
     }
 
     try {
@@ -1020,7 +1030,7 @@ export function AdminProvider({ children }) {
     countryRecords, upsertCountryRecord, deleteCountryRecord, addCityToCountry, replaceCityInCountry,
     contacts, upsertContact, deleteContact,
     tellUs, tellUsError, saveTellUs,
-    pageRegistry, customPages, customPagesError, saveBuiltPage, changePageStatus,
+    pageRegistry, customPages, customPagesError, pageSchema, pageSchemaError, saveBuiltPage, changePageStatus,
     savePageSettings: savePageSettingsFor, reorderPageNavigation, deletePage,
     systemPageRecord, isSectionHidden, setPageSectionVisible,
     blogs, blogCategories, blogsError, upsertBlog, deleteBlog, upsertBlogCategory, deleteBlogCategory,

@@ -13,9 +13,9 @@ import MissingRecord from '@/shared/components/MissingRecord'
 import { useQuery, useQueryParam, useQueryText } from '@/shared/hooks/useUrlState'
 import { PAGES, seedPages } from '@/shared/lib/content'
 import {
-  PAGE_TEMPLATES, TEMPLATE_LABELS, HEADER_POSITION_LABELS, FOOTER_COLUMN_LABELS, PAGE_STATUSES,
-  newCustomPage, newId, slugify,
+  HEADER_POSITION_LABELS, FOOTER_COLUMN_LABELS, PAGE_STATUSES, newId, slugify,
 } from '@/features/pages/lib/page-builder'
+import { designOf, newPageFromDesign } from '@/features/pages/lib/schema'
 import { siteUrl } from '@/shared/lib/site'
 
 function formatDate(iso) {
@@ -29,48 +29,58 @@ function cloneSafe(obj) {
   return JSON.parse(JSON.stringify(obj))
 }
 
-/** "What kind of page?" — the first step of creating one. */
-function TemplatePicker({ onPick, onCancel }) {
+/** "Which design?" — the first step of creating a page. */
+function DesignPicker({ schema, onPick, onCancel }) {
   useEffect(() => {
     const onKey = e => { if (e.key === 'Escape') onCancel() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onCancel])
 
+  const groups = [
+    { id: 'page', title: 'Designs from the website’s pages', designs: schema.designs.filter(d => d.group === 'page') },
+    { id: 'general', title: 'General designs', designs: schema.designs.filter(d => d.group === 'general') },
+  ].filter(g => g.designs.length)
+
   return (
     <div className="ad-drawer-scrim" onClick={onCancel}>
       <div className="ad-pb-picker" role="dialog" aria-modal="true" aria-labelledby="ad-pb-picker-title" onClick={e => e.stopPropagation()}>
         <div className="ad-pb-picker-head">
           <div>
-            <h2 id="ad-pb-picker-title" className="ad-confirm-title">What kind of page?</h2>
-            <p className="ad-view-sub">Each type starts with blocks suited to the job, filled with example text to replace, and decides which blocks the page can use.</p>
+            <h2 id="ad-pb-picker-title" className="ad-confirm-title">Which design?</h2>
+            <p className="ad-view-sub">The design decides how the page looks on the website and which sections it can have. It starts with example sections you can edit, reorder, hide or remove.</p>
           </div>
           <button type="button" className="ad-toast-close ad-pb-picker-close" onClick={onCancel} aria-label="Close">×</button>
         </div>
-        <div className="ad-pb-templates">
-          {PAGE_TEMPLATES.map(t => (
-            <button key={t.id} type="button" className="ad-pb-template" onClick={() => onPick(t.id)}>
-              <span className="ad-pb-template-ico" aria-hidden="true">{t.icon}</span>
-              <strong>{t.label}</strong>
-              <span>{t.hint}</span>
-              <span className="ad-pb-template-n">{t.blocks().length ? `${t.blocks().length} blocks to start` : 'No blocks'}</span>
-            </button>
-          ))}
-        </div>
+        {groups.map(g => (
+          <div key={g.id} className="ad-pb-template-group">
+            <h3 className="ad-an-section-title">{g.title}</h3>
+            <div className="ad-pb-templates">
+              {g.designs.map(d => (
+                <button key={d.id} type="button" className="ad-pb-template" onClick={() => onPick(d.id)}>
+                  <span className="ad-pb-template-ico" aria-hidden="true">{d.icon}</span>
+                  <strong>{d.label}</strong>
+                  <span>{d.hint}</span>
+                  <span className="ad-pb-template-n">{d.starter.length ? `${d.starter.length} sections to start` : 'No sections'}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
-/** A draft copy of `p` with a free "-copy" address and fresh block ids. */
+/** A draft copy of `p` with a free "-copy" address and fresh section ids. */
 function duplicateOf(p, customPages) {
   const taken = new Set(customPages.map(x => x.slug))
   let slug = slugify(`${p.slug}-copy`)
   for (let n = 2; taken.has(slug); n++) slug = slugify(`${p.slug}-copy-${n}`)
   return {
     ...cloneSafe(p), id: '', slug, title: `${p.title} (copy)`, status: 'DRAFT', updatedAt: '',
-    headerPosition: 'NONE', footerColumn: 'NONE',
-    blocks: p.blocks.map(b => ({ ...cloneSafe(b), id: newId('blk') })),
+    headerPosition: 'NONE', footerColumn: 'NONE', fixedAddress: false, path: `/${slug}`,
+    blocks: p.blocks.map(b => ({ ...cloneSafe(b), id: newId('sec') })),
   }
 }
 
@@ -91,7 +101,7 @@ const matches = (q, ...values) => !q || values.some(v => String(v || '').toLower
 export default function PagesView() {
   const {
     pages, saveSection, allowed, activeCountry, overrides, resetSectionToShared,
-    customPages, customPagesError, deletePage, dataVersion,
+    customPages, customPagesError, deletePage, dataVersion, pageSchema, pageSchemaError,
     systemPageRecord, isSectionHidden, setPageSectionVisible,
   } = useAdmin()
   // Everything worth getting back lives in the URL:
@@ -124,6 +134,12 @@ export default function PagesView() {
 
   const page = PAGES.find(p => p.id === openId)
   const record = page ? systemPageRecord(page.id) : null
+  // A website page that has moved to a design is edited in the builder; its
+  // old copy editor must never save into it (that saves one section at a time).
+  const builtVersion = page ? customPages.find(c => c.path === page.path) : null
+  useEffect(() => {
+    if (builtVersion) set({ open: '', panel: '', build: builtVersion.id })
+  }, [builtVersion?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const source = build === 'new' ? (from ? customPages.find(p => p.id === from) : null) : customPages.find(p => p.id === build)
   // The builder copies `initial` on mount, so it only has to be stable per URL.
@@ -131,8 +147,8 @@ export default function PagesView() {
     if (!build) return null
     if (build !== 'new') return source ? { initial: source, isNew: false } : null
     if (from) return source ? { initial: duplicateOf(source, customPages), isNew: true } : null
-    return { initial: newCustomPage(template || undefined), isNew: true }
-  }, [build, template, from, Boolean(source)]) // eslint-disable-line react-hooks/exhaustive-deps
+    return pageSchema ? { initial: newPageFromDesign(pageSchema, template || undefined), isNew: true } : null
+  }, [build, template, from, Boolean(source), Boolean(pageSchema)]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (build) {
     if (!building || (building.isNew && !canCreate)) {
@@ -155,6 +171,7 @@ export default function PagesView() {
   }
 
   if (openId) {
+    if (builtVersion) return <MissingRecord loading label="page" backHref={href({ open: '' })} backLabel="← All pages" />
     if (!page) {
       return <MissingRecord label="page" backHref={href({ open: '', panel: '' })} backLabel="← All pages" />
     }
@@ -231,6 +248,7 @@ export default function PagesView() {
     .filter(p => keep(p) && matches(q, p.title, p.slug))
     .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
   const systemPages = PAGES
+    .filter(p => !customPages.some(c => c.path === p.path))
     .map(p => ({ page: p, record: systemPageRecord(p.id) }))
     .filter(({ page: p, record: r }) => (!r || keep(r)) && matches(q, p.label, p.path))
 
@@ -246,7 +264,7 @@ export default function PagesView() {
         </div>
         <div className="ad-view-head-actions">
           <Link className="ad-btn ad-btn--ghost" href={href({ panel: 'navigation' })}>Menu order</Link>
-          {canCreate && !customPagesError && (
+          {canCreate && !customPagesError && pageSchema && (
             <button type="button" className="ad-btn ad-btn--primary" onClick={() => setPicking(true)}>+ New page</button>
           )}
         </div>
@@ -266,28 +284,31 @@ export default function PagesView() {
         <div className="ad-pg-section-head">
           <h2 className="ad-an-section-title">Your pages</h2>
           <p className="ad-an-section-sub">
-            Pages built here from blocks. New pages start as drafts; once published, their links show in the menus you chose.
+            Pages built from a design: add, remove, reorder and hide their sections and edit everything in them. New pages start as drafts; once published, their links show in the menus you chose.
           </p>
         </div>
+        {pageSchemaError && !customPagesError && (
+          <div className="ad-panel ad-blog-unavailable"><strong>The page builder can&apos;t load its designs.</strong> {pageSchemaError}</div>
+        )}
         {customPagesError ? (
           <div className="ad-panel ad-blog-unavailable"><strong>Pages can&apos;t be loaded.</strong> {customPagesError}</div>
         ) : sortedCustom.length === 0 ? (
           <div className="ad-panel ad-pg-empty">
             <strong>{customPages.length ? 'No pages match.' : 'No pages yet.'}</strong>
             <span>Create a landing page, a campaign, an FAQ or a legal page. No code needed.</span>
-            {canCreate && <button type="button" className="ad-btn ad-btn--soft" onClick={() => setPicking(true)}>+ New page</button>}
+            {canCreate && pageSchema && <button type="button" className="ad-btn ad-btn--soft" onClick={() => setPicking(true)}>+ New page</button>}
           </div>
         ) : (
           <div className="ad-page-grid">
             {sortedCustom.map(p => (
               <div key={p.id} className={`ad-page-card ad-pg-card${p.status === 'PUBLISHED' ? '' : ' ad-pg-card--hidden'}`}>
                 <Link className="ad-pg-card-main" href={href({ build: p.id })}>
-                  <span className="ad-page-icon" aria-hidden="true">{PAGE_TEMPLATES.find(t => t.id === p.template)?.icon || '□'}</span>
+                  <span className="ad-page-icon" aria-hidden="true">{designOf(pageSchema, p.template)?.icon || '□'}</span>
                   <span className="ad-page-body">
                     <span className="ad-page-label">{p.title || 'Untitled page'}</span>
-                    <span className="ad-page-hint">{TEMPLATE_LABELS[p.template] || 'Custom page'} · {p.blocks.length} blocks{p.updatedAt ? ` · updated ${formatDate(p.updatedAt)}` : ''}</span>
+                    <span className="ad-page-hint">{designOf(pageSchema, p.template)?.label || 'Custom'} design · {p.blocks.length} {p.blocks.length === 1 ? 'section' : 'sections'}{p.updatedAt ? ` · updated ${formatDate(p.updatedAt)}` : ''}</span>
                     <span className="ad-page-meta">
-                      <span className="ad-page-path">/{p.slug}</span>
+                      <span className="ad-page-path">{p.path || `/${p.slug}`}</span>
                       <MenuChips page={p} />
                     </span>
                   </span>
@@ -297,7 +318,7 @@ export default function PagesView() {
                   <span className="ad-pg-card-actions">
                     <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ build: p.id })}>{canEdit ? 'Edit' : 'View'}</Link>
                     {canCreate && <Link className="ad-btn ad-btn--ghost ad-btn--sm" href={href({ build: 'new', from: p.id })}>Duplicate</Link>}
-                    {canDelete && (
+                    {canDelete && !p.fixedAddress && (
                       <button type="button" className="ad-btn ad-btn--danger ad-btn--sm" onClick={() => setConfirm(p)}>Delete</button>
                     )}
                   </span>
@@ -310,8 +331,8 @@ export default function PagesView() {
 
       <section className="ad-pg-section">
         <div className="ad-pg-section-head">
-          <h2 className="ad-an-section-title">Website pages</h2>
-          <p className="ad-an-section-sub">The website&apos;s built-in pages. Their layout and address are fixed; edit their copy and imagery, switch optional sections off, and choose whether they&apos;re live.</p>
+          <h2 className="ad-an-section-title">Website pages not moved to a design yet</h2>
+          <p className="ad-an-section-sub">These still have a fixed layout: edit their copy and imagery, switch optional sections off, and choose whether they&apos;re live. Each moves into the page builder as its design is added.</p>
         </div>
         <div className="ad-page-grid">
           {systemPages.map(({ page: p, record: r }) => (
@@ -342,8 +363,9 @@ export default function PagesView() {
         </div>
       </section>
 
-      {picking && (
-        <TemplatePicker
+      {picking && pageSchema && (
+        <DesignPicker
+          schema={pageSchema}
           onCancel={() => setPicking(false)}
           onPick={id => { setPicking(false); set({ build: 'new', template: id }, { push: true }) }}
         />
