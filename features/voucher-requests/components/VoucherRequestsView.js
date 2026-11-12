@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useAdmin } from '@/shared/context/AdminContext'
 import ConfirmDialog from '@/shared/components/ConfirmDialog'
@@ -319,6 +319,9 @@ function RedeemPanel({ canRedeem, onRedeem, latestChange }) {
   const [found, setFound] = useState(null)
   const [error, setError] = useState('')
   const [looking, setLooking] = useState(false)
+  // Bumped on every lookup, edit and Clear, so a lookup that comes back after
+  // the code has changed is ignored instead of showing a stale voucher.
+  const lookupId = useRef(0)
 
   // The fresh lookup is what's shown; an action taken *after* it on the same
   // voucher (e.g. Redeem pressed in the table) replaces it.
@@ -330,17 +333,30 @@ function RedeemPanel({ canRedeem, onRedeem, latestChange }) {
   async function lookUp(e) {
     e.preventDefault()
     if (!code.trim()) return
+    const id = ++lookupId.current
     setLooking(true)
     setError('')
     setFound(null)
     try {
-      setFound(await findVoucherByCode(code))
+      const voucher = await findVoucherByCode(code)
+      if (id === lookupId.current) setFound(voucher)
     } catch (err) {
-      setError(err.message)
+      if (id === lookupId.current) setError(err.message)
     } finally {
-      setLooking(false)
+      if (id === lookupId.current) setLooking(false)
     }
   }
+
+  // The result always belongs to the code shown: editing the code drops it.
+  function changeCode(value) {
+    lookupId.current++
+    setCode(value)
+    setFound(null)
+    setError('')
+    setLooking(false)
+  }
+
+  const canClear = code !== '' || found || error
 
   return (
     <section className="ad-fieldset ad-redeem">
@@ -348,11 +364,16 @@ function RedeemPanel({ canRedeem, onRedeem, latestChange }) {
         <label className="ad-field">
           <span className="ad-field-label">Redeem a voucher</span>
           <input className="ad-input ad-redeem-input" value={code} placeholder="KAYA-XXXX-XXXX"
-            onChange={e => setCode(e.target.value.toUpperCase())} autoComplete="off" spellCheck={false} />
+            onChange={e => changeCode(e.target.value.toUpperCase())} autoComplete="off" spellCheck={false} />
         </label>
         <button type="submit" className="ad-btn ad-btn--soft" disabled={!code.trim() || looking}>
           {looking ? 'Looking up…' : 'Find voucher'}
         </button>
+        {canClear && (
+          <button type="button" className="ad-btn ad-btn--ghost" onClick={() => changeCode('')}>
+            Clear
+          </button>
+        )}
       </form>
       {error && <div className="ad-form-error">{error}</div>}
       {current && (
