@@ -8,6 +8,8 @@ import LocaleToggle from '@/shared/components/LocaleToggle'
 import { emptyCategory } from '@/shared/lib/seed'
 import SlugField from '@/shared/components/SlugField'
 import { resolveSlug } from '@/shared/lib/slug'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 import MissingRecord from '@/shared/components/MissingRecord'
 import { useQuery, useQueryText } from '@/shared/hooks/useUrlState'
 
@@ -233,12 +235,12 @@ function CategoryForm({ initial, isNew, existing, readOnly = false, onSave, onCl
           <LocaleToggle locale={locale} onChange={setLocale} />
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'الاسم (Name)' : 'Name *'}</span>
-            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
+            <LimitedInput max={LIMITS.category.name} dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
               onChange={e => set(nameKey, e.target.value)} />
           </label>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'الوصف (Description)' : 'Description'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={3}
+            <LimitedInput multiline max={LIMITS.category.description} className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={3}
               value={form[descriptionKey]} onChange={e => set(descriptionKey, e.target.value)} />
           </label>
         </fieldset>

@@ -555,6 +555,11 @@
 .ad-input--invalid, .ad-input--invalid:focus { border-color: #D98C8C; }
 .ad-input--invalid:focus { box-shadow: 0 0 0 3px rgba(178,59,59,.12); }
 .ad-field-error { font-size: 11.5px; line-height: 1.45; color: #B23B3B; }
+/* LimitedInput: a field with its character counter underneath. */
+.ad-limited { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ad-char-count { font-size: 11px; line-height: 1.4; color: var(--slate); text-align: end; font-variant-numeric: tabular-nums; }
+.ad-char-count--full { color: #8A6317; }
+.ad-char-count--over { color: #B23B3B; }
 /* In content forms the hint sits between the label and the input. */
 .ad-field .ad-cf-hint { margin-top: 0; }
 .ad-cf-invalid {

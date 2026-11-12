@@ -5,6 +5,8 @@ import { useAdmin } from '@/shared/context/AdminContext'
 import { emptyLocation, sortCountries } from '@/shared/lib/content'
 import { createCity, updateCity } from '@/shared/lib/store'
 import LocaleToggle from '@/shared/components/LocaleToggle'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 import MissingRecord from '@/shared/components/MissingRecord'
 import { useQuery, useQueryText } from '@/shared/hooks/useUrlState'
 import { useCountryFilter } from '@/shared/hooks/useCountryFilter'
@@ -388,12 +390,12 @@ function LocationForm({ initial, isNew, countryOptions, onCityAdded, onCityUpdat
             <LocaleToggle locale={locale} onChange={setLocale} />
             <label className="ad-field ad-w-lg">
               <span className="ad-field-label">{isAr ? 'اسم العيادة (Clinic name)' : 'Clinic name *'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
+              <LimitedInput max={LIMITS.clinic.name} dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
                 onChange={e => set(nameKey, e.target.value)} />
             </label>
             <label className="ad-field ad-w-xl">
               <span className="ad-field-label">{isAr ? 'العنوان (Address)' : 'Address'}</span>
-              <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={2} value={form[addressKey]}
+              <LimitedInput multiline max={LIMITS.clinic.address} className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={2} value={form[addressKey]}
                 onChange={e => set(addressKey, e.target.value)} />
             </label>
           </fieldset>
@@ -403,7 +405,7 @@ function LocationForm({ initial, isNew, countryOptions, onCityAdded, onCityUpdat
             <div className="ad-frow">
               <label className="ad-field ad-w-md">
                 <span className="ad-field-label">Telephone</span>
-                <input className="ad-input" type="tel" value={form.tel} onChange={e => set('tel', e.target.value)}
+                <LimitedInput max={LIMITS.clinic.phone} type="tel" value={form.tel} onChange={e => set('tel', e.target.value)}
                   placeholder="04 450 1001" />
               </label>
             </div>
@@ -453,7 +455,7 @@ function LocationForm({ initial, isNew, countryOptions, onCityAdded, onCityUpdat
                   <div className="ad-frow">
                     <label className="ad-field ad-w-md">
                       <span className="ad-field-label">City name in Arabic</span>
-                      <input className="ad-input" dir="rtl" value={cityAr} placeholder="الاسم بالعربية، مثل دبي"
+                      <LimitedInput max={LIMITS.city.name} dir="rtl" value={cityAr} placeholder="الاسم بالعربية، مثل دبي"
                         onChange={e => setCityArDraft(e.target.value)} onKeyDown={onEnter(saveCityAr)} />
                     </label>
                     <button type="button" className="ad-btn ad-btn--soft ad-frow-btn" disabled={!cityArChanged || savingCityAr}
@@ -477,10 +479,10 @@ function LocationForm({ initial, isNew, countryOptions, onCityAdded, onCityUpdat
             <div className="ad-fblock ad-fsub">
               <span className="ad-field-label">City not listed? Add it to {selectedCountry?.name || 'this country'}</span>
               <div className="ad-frow">
-                <input className="ad-input ad-w-md" value={newCityName} placeholder="English name, e.g. Al Ain"
+                <LimitedInput max={LIMITS.city.name} wrapClassName="ad-w-md" value={newCityName} placeholder="English name, e.g. Al Ain"
                   aria-label="New city name in English"
                   onChange={e => setNewCityName(e.target.value)} onKeyDown={onEnter(addCity)} />
-                <input className="ad-input ad-w-md" dir="rtl" value={newCityNameAr} placeholder="الاسم بالعربية، مثل العين"
+                <LimitedInput max={LIMITS.city.name} wrapClassName="ad-w-md" dir="rtl" value={newCityNameAr} placeholder="الاسم بالعربية، مثل العين"
                   aria-label="New city name in Arabic"
                   onChange={e => setNewCityNameAr(e.target.value)} onKeyDown={onEnter(addCity)} />
                 <button type="button" className="ad-btn ad-btn--soft ad-frow-btn" disabled={!newCityName.trim() || addingCity}

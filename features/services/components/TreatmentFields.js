@@ -5,22 +5,10 @@ import { BADGE_OPTIONS, THUMB_OPTIONS } from '@/shared/lib/seed'
 import LocaleToggle from '@/shared/components/LocaleToggle'
 import ImagePicker from '@/shared/components/ImagePicker'
 import SlugField from '@/shared/components/SlugField'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 
-// Character limits enforced by the API (kaya-nest-api treatments
-// create-treatment.dto.ts). Keep both sides in step when one changes.
-const MAX = {
-  name: 200,
-  sub: 500,
-  what: 1000,
-  mechanism: 2000,
-  duration: 100,
-  sessions: 100,
-  downtimeNotes: 500,
-  downtimeLevel: 100,
-  benefitIcon: 100,
-  benefitTitle: 200,
-  benefitDescription: 500,
-}
+const MAX = LIMITS.treatment
 
 /**
  * Every field of one country's version of a treatment — what each country
@@ -78,28 +66,28 @@ export default function TreatmentFields({ country, form, onChange }) {
         <div className="ad-frow">
           <label className="ad-field ad-w-lg">
             <span className="ad-field-label">{isAr ? 'الاسم (Name)' : 'Name *'}</span>
-            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
-              maxLength={MAX.name} onChange={e => set(nameKey, e.target.value)} />
+            <LimitedInput max={MAX.title} dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
+              onChange={e => set(nameKey, e.target.value)} />
           </label>
           <SlugField className="ad-field ad-w-md" value={form.slug} source={form.name}
             onChange={v => set('slug', v)} />
         </div>
         <label className="ad-field ad-w-xl">
           <span className="ad-field-label">{isAr ? 'مقتطف قصير (Short teaser)' : 'Short teaser'}</span>
-          <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[subKey]}
-            placeholder="A one-line summary shown on treatment cards" maxLength={MAX.sub}
+          <LimitedInput max={MAX.subtitle} dir={isAr ? 'rtl' : undefined} value={form[subKey]}
+            placeholder="A one-line summary shown on treatment cards"
             onChange={e => set(subKey, e.target.value)} />
         </label>
         <div className="ad-split">
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'ما هو (What it is)' : 'What it is *'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
-              maxLength={MAX.what} value={form[whatKey]} onChange={e => set(whatKey, e.target.value)} />
+            <LimitedInput multiline max={MAX.summary} className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
+              value={form[whatKey]} onChange={e => set(whatKey, e.target.value)} />
           </label>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'كيف يعمل (How it works)' : 'How it works (mechanism) *'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
-              maxLength={MAX.mechanism} value={form[mechanismKey]} onChange={e => set(mechanismKey, e.target.value)} />
+            <LimitedInput multiline max={MAX.howItWorks} className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
+              value={form[mechanismKey]} onChange={e => set(mechanismKey, e.target.value)} />
           </label>
         </div>
       </fieldset>
@@ -114,29 +102,29 @@ export default function TreatmentFields({ country, form, onChange }) {
           <div className="ad-frow">
             <label className="ad-field ad-w-md">
               <span className="ad-field-label">{isAr ? 'المدة (Duration)' : 'Duration'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[durationKey]}
-                placeholder="e.g. 45 mins" maxLength={MAX.duration}
+              <LimitedInput max={MAX.duration} dir={isAr ? 'rtl' : undefined} value={form[durationKey]}
+                placeholder="e.g. 45 mins"
                 onChange={e => set(durationKey, e.target.value)} />
             </label>
             <label className="ad-field ad-w-md">
               <span className="ad-field-label">{isAr ? 'الجلسات (Sessions)' : 'Sessions'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[sessionsKey]}
-                placeholder="e.g. 3–6 sessions" maxLength={MAX.sessions}
+              <LimitedInput max={MAX.sessions} dir={isAr ? 'rtl' : undefined} value={form[sessionsKey]}
+                placeholder="e.g. 3–6 sessions"
                 onChange={e => set(sessionsKey, e.target.value)} />
             </label>
           </div>
           <div className="ad-frow">
             <label className="ad-field ad-w-md">
               <span className="ad-field-label">{isAr ? 'فترة التعافي (Downtime)' : 'Downtime'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeNotesKey]}
-                maxLength={MAX.downtimeNotes} onChange={e => set(downtimeNotesKey, e.target.value)} />
+              <LimitedInput max={MAX.downtimeNotes} dir={isAr ? 'rtl' : undefined} value={form[downtimeNotesKey]}
+                onChange={e => set(downtimeNotesKey, e.target.value)} />
             </label>
             <label className="ad-field ad-w-md">
               <span className="ad-field-label">
                 {isAr ? 'شدة فترة التعافي (Downtime severity)' : 'Downtime severity'}
               </span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeLevelKey]}
-                placeholder="e.g. Minimal, Mild, Moderate" maxLength={MAX.downtimeLevel}
+              <LimitedInput max={MAX.downtimeSeverity} dir={isAr ? 'rtl' : undefined} value={form[downtimeLevelKey]}
+                placeholder="e.g. Minimal, Mild, Moderate"
                 onChange={e => set(downtimeLevelKey, e.target.value)} />
             </label>
           </div>
@@ -164,12 +152,12 @@ export default function TreatmentFields({ country, form, onChange }) {
         {form[benefitsKey].map((b, i) => (
           <div key={i} className="ad-repeat-row">
             <div className="ad-frow">
-              <input className="ad-input ad-w-xs" dir={isAr ? 'rtl' : undefined} value={b.i} placeholder="Icon (e.g. ✦)"
-                aria-label="Icon" maxLength={MAX.benefitIcon} onChange={e => updateBenefit(i, 'i', e.target.value)} />
-              <input className="ad-input ad-w-md" dir={isAr ? 'rtl' : undefined} value={b.t} placeholder="Title"
-                aria-label="Title" maxLength={MAX.benefitTitle} onChange={e => updateBenefit(i, 't', e.target.value)} />
-              <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={b.d} placeholder="Description"
-                aria-label="Description" maxLength={MAX.benefitDescription} onChange={e => updateBenefit(i, 'd', e.target.value)} />
+              <LimitedInput max={MAX.benefitIcon} wrapClassName="ad-w-xs" dir={isAr ? 'rtl' : undefined} value={b.i} placeholder="Icon (e.g. ✦)"
+                aria-label="Icon" onChange={e => updateBenefit(i, 'i', e.target.value)} />
+              <LimitedInput max={MAX.benefitTitle} wrapClassName="ad-w-md" dir={isAr ? 'rtl' : undefined} value={b.t} placeholder="Title"
+                aria-label="Title" onChange={e => updateBenefit(i, 't', e.target.value)} />
+              <LimitedInput max={MAX.benefitDescription} wrapClassName="ad-w-grow" dir={isAr ? 'rtl' : undefined} value={b.d} placeholder="Description"
+                aria-label="Description" onChange={e => updateBenefit(i, 'd', e.target.value)} />
             </div>
             <button type="button" className="ad-icon-btn" onClick={() => removeBenefit(i)}
               aria-label="Remove benefit">✕</button>

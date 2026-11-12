@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAdmin } from '@/shared/context/AdminContext'
 import LocaleToggle from '@/shared/components/LocaleToggle'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 import PageStatusControl from '@/features/pages/components/PageStatus'
 import { HEADER_POSITIONS, FOOTER_COLUMNS } from '@/features/pages/lib/page-builder'
 
@@ -38,7 +40,7 @@ export function PageSettingsFields({ value, onChange, locale, disabled, withTitl
           {withTitle && titleSlot}
           <label className="ad-field ad-w-lg">
             <span className="ad-field-label">{ar ? 'Menu label (Arabic)' : 'Menu label'}</span>
-            <input {...text('navLabel', { placeholder: value.title || 'e.g. Summer offers' })} />
+            <LimitedInput max={LIMITS.pageSettings.navLabel} {...text('navLabel', { placeholder: value.title || 'e.g. Summer offers' })} />
             <span className="ad-field-hint">The link text in the website menu. Empty = the page title.{ar ? ' Empty Arabic shows the English label.' : ''}</span>
           </label>
         </fieldset>
@@ -88,11 +90,11 @@ export function PageSettingsFields({ value, onChange, locale, disabled, withTitl
           <legend>Search engines</legend>
           <label className="ad-field ad-w-xl">
             <span className="ad-field-label">{ar ? 'SEO title (Arabic)' : 'SEO title'}</span>
-            <input {...text('seoTitle', { placeholder: value.title ? `${value.title} | Kaya` : 'Empty = the site’s default title' })} />
+            <LimitedInput max={LIMITS.pageSettings.seoTitle} {...text('seoTitle', { placeholder: value.title ? `${value.title} | Kaya` : 'Empty = the site’s default title' })} />
           </label>
           <label className="ad-field ad-w-xl">
             <span className="ad-field-label">{ar ? 'Description (Arabic)' : 'Description'}</span>
-            <textarea rows={3} {...text('seoDescription')} className="ad-input ad-textarea" />
+            <LimitedInput multiline max={LIMITS.pageSettings.seoDescription} rows={3} {...text('seoDescription')} className="ad-input ad-textarea" />
             <span className="ad-field-hint">{(value[field('seoDescription')] || '').length} / 160 characters recommended</span>
           </label>
         </fieldset>

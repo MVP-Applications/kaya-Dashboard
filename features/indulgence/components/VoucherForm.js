@@ -6,6 +6,8 @@ import { parsePriceInput } from '@/shared/lib/price'
 import CountryFields from '@/features/indulgence/components/CountryFields'
 import ImagePicker from '@/shared/components/ImagePicker'
 import LocaleToggle from '@/shared/components/LocaleToggle'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 
 function slugify(str) {
   return String(str)
@@ -106,24 +108,24 @@ export default function VoucherForm({ initial, isNew, onClose }) {
           <LocaleToggle locale={locale} onChange={setLocale} />
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'العنوان (Title)' : 'Title *'}</span>
-            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[titleKey]}
+            <LimitedInput max={LIMITS.indulgence.title} dir={isAr ? 'rtl' : undefined} value={form[titleKey]}
               onChange={e => set(titleKey, e.target.value)} placeholder="e.g. Gift Card" />
           </label>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'العنوان الفرعي (Subtitle)' : 'Subtitle'}</span>
-            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[subtitleKey]}
+            <LimitedInput max={LIMITS.indulgence.subtitle} dir={isAr ? 'rtl' : undefined} value={form[subtitleKey]}
               onChange={e => set(subtitleKey, e.target.value)}
               placeholder="e.g. AED 500 treatment credit" />
           </label>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'الوصف (Description)' : 'Description *'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={3} value={form[descriptionKey]}
+            <LimitedInput multiline max={LIMITS.indulgence.description} className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={3} value={form[descriptionKey]}
               onChange={e => set(descriptionKey, e.target.value)}
               placeholder="What the voucher includes." />
           </label>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'شروط الاسترداد (Redemption terms)' : 'Redemption terms'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={2} value={form[redemptionTermsKey]}
+            <LimitedInput multiline max={LIMITS.indulgence.redemptionTerms} className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={2} value={form[redemptionTermsKey]}
               onChange={e => set(redemptionTermsKey, e.target.value)}
               placeholder="e.g. Valid for 6 months from purchase date." />
           </label>
@@ -190,7 +192,7 @@ export default function VoucherForm({ initial, isNew, onClose }) {
             </label>
             <label className="ad-field">
               <span className="ad-field-label">{isAr ? 'شارة (Badge label)' : 'Badge label'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[badgeKey]}
+              <LimitedInput max={LIMITS.indulgence.badge} dir={isAr ? 'rtl' : undefined} value={form[badgeKey]}
                 onChange={e => set(badgeKey, e.target.value)} placeholder="e.g. Most Popular" />
             </label>
             <label className="ad-field">

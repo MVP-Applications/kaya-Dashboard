@@ -8,6 +8,8 @@ import { resolveSlug } from '@/shared/lib/slug'
 import ImagePicker from '@/shared/components/ImagePicker'
 import LocaleToggle from '@/shared/components/LocaleToggle'
 import SlugField from '@/shared/components/SlugField'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 import BlogBlocksEditor from '@/features/blog/components/BlogBlocksEditor'
 import { filledBlocks, parseKeywords, todayISO } from '@/features/blog/lib/blog'
 
@@ -129,13 +131,13 @@ export default function BlogForm({ initial, isNew, onClose }) {
           <LocaleToggle locale={locale} onChange={setLocale} />
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'العنوان (Title)' : 'Title *'}</span>
-            <input className="ad-input" dir={dir} value={form[field('title')]}
+            <LimitedInput max={LIMITS.blog.title} dir={dir} value={form[field('title')]}
               onChange={e => set(field('title'), e.target.value)}
               placeholder={isAr ? '' : 'e.g. What to expect from your first laser session'} />
           </label>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'المقتطف (Excerpt)' : 'Excerpt *'}</span>
-            <textarea className="ad-input ad-textarea" rows={2} dir={dir} value={form[field('excerpt')]}
+            <LimitedInput multiline max={LIMITS.blog.excerpt} className="ad-input ad-textarea" rows={2} dir={dir} value={form[field('excerpt')]}
               onChange={e => set(field('excerpt'), e.target.value)}
               placeholder={isAr ? '' : 'One or two sentences, shown on the blog cards and under the title.'} />
           </label>
@@ -167,7 +169,7 @@ export default function BlogForm({ initial, isNew, onClose }) {
             {otherWriter && (
               <label className="ad-field">
                 <span className="ad-field-label">Writer’s name *</span>
-                <input className="ad-input" value={form.authorName}
+                <LimitedInput max={LIMITS.blog.authorName} value={form.authorName}
                   onChange={e => set('authorName', e.target.value)} placeholder="e.g. Kaya editorial team" />
               </label>
             )}
@@ -229,13 +231,13 @@ export default function BlogForm({ initial, isNew, onClose }) {
           </p>
           <label className="ad-field ad-w-xl">
             <span className="ad-field-label">{isAr ? 'Meta title (Arabic)' : 'Meta title'}</span>
-            <input className="ad-input" dir={dir} value={form[field('metaTitle')]}
+            <LimitedInput max={LIMITS.blog.metaTitle} dir={dir} value={form[field('metaTitle')]}
               placeholder={form[field('title')] ? `${form[field('title')]} | Kaya` : ''}
               onChange={e => set(field('metaTitle'), e.target.value)} />
           </label>
           <label className="ad-field ad-w-xl">
             <span className="ad-field-label">{isAr ? 'Meta description (Arabic)' : 'Meta description'}</span>
-            <textarea className="ad-input ad-textarea" rows={3} dir={dir} value={form[field('metaDescription')]}
+            <LimitedInput multiline max={LIMITS.blog.metaDescription} className="ad-input ad-textarea" rows={3} dir={dir} value={form[field('metaDescription')]}
               onChange={e => set(field('metaDescription'), e.target.value)} />
             <span className="ad-field-hint">{form[field('metaDescription')].length} / 160 characters recommended</span>
           </label>
@@ -249,12 +251,12 @@ export default function BlogForm({ initial, isNew, onClose }) {
           <div className="ad-grid2">
             <label className="ad-field">
               <span className="ad-field-label">{isAr ? 'Social share title (Arabic)' : 'Social share title'}</span>
-              <input className="ad-input" dir={dir} value={form[field('ogTitle')]}
+              <LimitedInput max={LIMITS.blog.ogTitle} dir={dir} value={form[field('ogTitle')]}
                 onChange={e => set(field('ogTitle'), e.target.value)} placeholder="defaults to the meta title" />
             </label>
             <label className="ad-field">
               <span className="ad-field-label">{isAr ? 'Social share text (Arabic)' : 'Social share text'}</span>
-              <input className="ad-input" dir={dir} value={form[field('ogDescription')]}
+              <LimitedInput max={LIMITS.blog.ogDescription} dir={dir} value={form[field('ogDescription')]}
                 onChange={e => set(field('ogDescription'), e.target.value)} placeholder="defaults to the meta description" />
             </label>
           </div>
@@ -265,7 +267,7 @@ export default function BlogForm({ initial, isNew, onClose }) {
           </div>
           <label className="ad-field ad-w-xl">
             <span className="ad-field-label">Canonical URL</span>
-            <input className="ad-input" value={form.canonicalUrl} onChange={e => set('canonicalUrl', e.target.value)}
+            <LimitedInput max={LIMITS.blog.canonicalUrl} value={form.canonicalUrl} onChange={e => set('canonicalUrl', e.target.value)}
               placeholder={`/blogs/${form.slug || '…'}/`} />
             <span className="ad-field-hint">Only if this article first appeared elsewhere.</span>
           </label>
