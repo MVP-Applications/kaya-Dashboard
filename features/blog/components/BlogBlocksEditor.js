@@ -55,7 +55,7 @@ export default function BlogBlocksEditor({ blocks, onChange, dir }) {
               value={b.text} onChange={e => update(i, { text: e.target.value })}
               placeholder="A line worth pulling out" />
           ) : (
-            <RichTextEditor dir={dir} value={b.text} label={`Paragraph ${i + 1}`}
+            <RichTextEditor max={LIMITS.blog.blockText} dir={dir} value={b.text} label={`Paragraph ${i + 1}`}
               onChange={text => update(i, { text })} placeholder="Paragraph text" />
           )}
         </div>

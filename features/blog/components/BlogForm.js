@@ -8,12 +8,17 @@ import { resolveSlug } from '@/shared/lib/slug'
 import ImagePicker from '@/shared/components/ImagePicker'
 import LocaleToggle from '@/shared/components/LocaleToggle'
 import SlugField from '@/shared/components/SlugField'
-import LimitedInput from '@/shared/components/LimitedInput'
+import LimitedInput, { CharCount } from '@/shared/components/LimitedInput'
 import { LIMITS } from '@/shared/lib/limits'
 import BlogBlocksEditor from '@/features/blog/components/BlogBlocksEditor'
 import { filledBlocks, parseKeywords, todayISO } from '@/features/blog/lib/blog'
 
 const OTHER_WRITER = '__other'
+
+/** Length of the longest keyword in comma-separated keyword text. */
+function longestKeyword(text) {
+  return Math.max(0, ...parseKeywords(text).map(k => k.length))
+}
 
 function cloneSafe(obj) {
   if (typeof structuredClone === 'function') return structuredClone(obj)
@@ -29,6 +34,8 @@ export default function BlogForm({ initial, isNew, onClose }) {
     EN: (initial.keywords || []).join(', '),
     AR: (initial.keywordsAr || []).join(', '),
   }))
+  // A keyword edit was refused for going over the per-keyword limit.
+  const [keywordBlocked, setKeywordBlocked] = useState(false)
   const [otherWriter, setOtherWriter] = useState(() => !initial.authorDoctorId && !!initial.authorName)
   const [error, setError] = useState('')
   const [locale, setLocale] = useState('EN')
@@ -243,10 +250,24 @@ export default function BlogForm({ initial, isNew, onClose }) {
           </label>
           <label className="ad-field ad-w-xl">
             <span className="ad-field-label">{isAr ? 'Keywords (Arabic)' : 'Keywords'}</span>
-            <input className="ad-input" dir={dir} value={keywordText[locale]}
-              onChange={e => setKeywordText(k => ({ ...k, [locale]: e.target.value }))}
+            <input className={`ad-input${longestKeyword(keywordText[locale]) > LIMITS.blog.keyword ? ' ad-input--invalid' : ''}`}
+              dir={dir} value={keywordText[locale]}
+              onChange={e => {
+                // The API limits each keyword, not the whole field: refuse an
+                // edit that makes a keyword too long (shortening one is fine).
+                const next = e.target.value
+                const longest = longestKeyword(next)
+                if (longest > LIMITS.blog.keyword && longest > longestKeyword(keywordText[locale])) {
+                  setKeywordBlocked(true)
+                  return
+                }
+                setKeywordBlocked(false)
+                setKeywordText(k => ({ ...k, [locale]: next }))
+              }}
               placeholder={isAr ? '' : 'e.g. pigmentation, sunscreen, melasma'} />
-            <span className="ad-field-hint">Separate with commas.</span>
+            <span className="ad-field-hint">Separate with commas. Each keyword can be up to {LIMITS.blog.keyword} characters.</span>
+            <CharCount label="Longest keyword: " length={longestKeyword(keywordText[locale])} max={LIMITS.blog.keyword}
+              note={keywordBlocked ? `A keyword can't be longer than ${LIMITS.blog.keyword} characters.` : ''} />
           </label>
           <div className="ad-grid2">
             <label className="ad-field">
