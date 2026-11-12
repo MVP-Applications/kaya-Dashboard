@@ -1,8 +1,11 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { useEditor, useEditorState, EditorContent } from '@tiptap/react'
+import { Extension, getHTMLFromFragment } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import { plainToRichHtml } from '@/shared/lib/rich-text'
+import { CharCount } from '@/shared/components/LimitedInput'
 
 /**
  * Text editor for paragraph fields (blog paragraphs, a page's body
@@ -34,7 +37,40 @@ const EXTENSIONS = [
   }),
 ]
 
-export default function RichTextEditor({ value, onChange, dir, disabled = false, placeholder = '', label = '' }) {
+/**
+ * Stops an edit that would take the saved HTML past `getMax()` characters
+ * (the API checks the HTML, so formatting counts). Edits that shrink an
+ * already-too-long value, and content set from outside (load, Discard,
+ * language switch), always go through.
+ */
+function maxHtmlLength(getMax, onBlocked) {
+  return Extension.create({
+    name: 'maxHtmlLength',
+    addProseMirrorPlugins() {
+      const { schema } = this.editor
+      return [new Plugin({
+        key: new PluginKey('maxHtmlLength'),
+        filterTransaction(tr, state) {
+          const max = getMax()
+          if (!max || !tr.docChanged || tr.getMeta('preventUpdate')) return true
+          const next = getHTMLFromFragment(tr.doc.content, schema).length
+          if (next <= max) return true
+          if (next <= getHTMLFromFragment(state.doc.content, schema).length) return true
+          onBlocked()
+          return false
+        },
+      })]
+    },
+  })
+}
+
+export default function RichTextEditor({ value, onChange, dir, disabled = false, placeholder = '', label = '', max }) {
+  // Read by the length plugin, which is created once with the editor.
+  const maxRef = useRef(max)
+  maxRef.current = max
+  // An edit (typing past the limit, a long paste) was refused.
+  const [blocked, setBlocked] = useState(false)
+
   // What the editor last reported, so a parent re-render with that same value
   // doesn't reset the content (and the cursor).
   const emitted = useRef(value || '')
@@ -45,7 +81,7 @@ export default function RichTextEditor({ value, onChange, dir, disabled = false,
   onChangeRef.current = onChange
 
   const editor = useEditor({
-    extensions: EXTENSIONS,
+    extensions: [...EXTENSIONS, maxHtmlLength(() => maxRef.current, () => setBlocked(true))],
     content: plainToRichHtml(value),
     editable: !disabled,
     immediatelyRender: false,
@@ -66,6 +102,7 @@ export default function RichTextEditor({ value, onChange, dir, disabled = false,
     onUpdate: ({ editor: e }) => {
       if (loaded.current === null || e.getHTML() === loaded.current) return
       loaded.current = ''
+      setBlocked(false)
       const html = e.isEmpty ? '' : e.getHTML()
       emitted.current = html
       onChangeRef.current(html)
@@ -124,6 +161,7 @@ export default function RichTextEditor({ value, onChange, dir, disabled = false,
   )
 
   return (
+    <>
     <div className={`ad-rte${disabled ? ' ad-rte--disabled' : ''}${state?.empty ? ' ad-rte--empty' : ''}`} dir={dir}>
       {!disabled && (
         <div className="ad-rte-bar" role="toolbar" aria-label="Formatting">
@@ -151,5 +189,10 @@ export default function RichTextEditor({ value, onChange, dir, disabled = false,
       )}
       <EditorContent editor={editor} />
     </div>
+    {max > 0 && (
+      <CharCount length={(value || '').length} max={max}
+        note={blocked ? `That would go over the ${max} character limit. Formatting such as bold, lists and links counts too.` : ''} />
+    )}
+    </>
   )
 }
