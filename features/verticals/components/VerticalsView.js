@@ -6,6 +6,8 @@ import LocaleToggle from '@/shared/components/LocaleToggle'
 import ImagePicker from '@/shared/components/ImagePicker'
 import MarketScopeFields from '@/shared/components/MarketScopeFields'
 import SlugField from '@/shared/components/SlugField'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 import { resolveSlug } from '@/shared/lib/slug'
 import MissingRecord from '@/shared/components/MissingRecord'
 import { useQuery } from '@/shared/hooks/useUrlState'
@@ -17,6 +19,8 @@ import { useCountryFilter } from '@/shared/hooks/useCountryFilter'
 // image is still allowed through.
 const HERO_MIN_RATIO = 1.8
 const HERO_MAX_RATIO = 2.2
+
+const MAX = LIMITS.vertical
 
 const empty = {
   id: '', label: '', labelAr: '', hint: '', hintAr: '', color: '#6E5A96', heroImage: '',
@@ -298,12 +302,12 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
             {locale === 'EN' ? (
               <label className="ad-field ad-w-md">
                 <span className="ad-field-label">Label *</span>
-                <input className="ad-input" value={form.label} onChange={e => set('label', e.target.value)} />
+                <LimitedInput max={MAX.name} value={form.label} onChange={e => set('label', e.target.value)} />
               </label>
             ) : (
               <label className="ad-field ad-w-md">
                 <span className="ad-field-label">التسمية (Label)</span>
-                <input className="ad-input" dir="rtl" value={form.labelAr}
+                <LimitedInput max={MAX.name} dir="rtl" value={form.labelAr}
                   onChange={e => set('labelAr', e.target.value)} />
               </label>
             )}
@@ -317,7 +321,7 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
           </div>
           <label className="ad-field ad-w-xl">
             <span className="ad-field-label">{isAr ? 'نص التلميح (Hint text)' : 'Hint text'}</span>
-            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[hintKey]}
+            <LimitedInput max={MAX.hintText} dir={isAr ? 'rtl' : undefined} value={form[hintKey]}
               placeholder="Short helper text shown with this vertical"
               onChange={e => set(hintKey, e.target.value)} />
           </label>
@@ -338,27 +342,27 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
             <div>
               <label className="ad-field">
                 <span className="ad-field-label">{isAr ? 'الشعار (Eyebrow)' : 'Eyebrow'}</span>
-                <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[eyebrowKey]}
+                <LimitedInput max={MAX.heroEyebrow} dir={isAr ? 'rtl' : undefined} value={form[eyebrowKey]}
                   placeholder="e.g. Men's Treatments"
                   onChange={e => set(eyebrowKey, e.target.value)} />
               </label>
               <div className="ad-frow">
                 <label className="ad-field ad-w-grow">
                   <span className="ad-field-label">{isAr ? 'العنوان (Headline)' : 'Headline'}</span>
-                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[headlineKey]}
+                  <LimitedInput max={MAX.heroHeadline} dir={isAr ? 'rtl' : undefined} value={form[headlineKey]}
                     placeholder="e.g. Built for men."
                     onChange={e => set(headlineKey, e.target.value)} />
                 </label>
                 <label className="ad-field ad-w-grow">
                   <span className="ad-field-label">{isAr ? 'تتمة العنوان (Headline emphasis)' : 'Headline emphasis'}</span>
-                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[headlineEmKey]}
+                  <LimitedInput max={MAX.heroHeadlineEm} dir={isAr ? 'rtl' : undefined} value={form[headlineEmKey]}
                     placeholder="e.g. Backed by medicine."
                     onChange={e => set(headlineEmKey, e.target.value)} />
                 </label>
               </div>
               <label className="ad-field">
                 <span className="ad-field-label">{isAr ? 'النص الفرعي (Sub text)' : 'Sub text'}</span>
-                <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={3}
+                <LimitedInput multiline max={MAX.heroSub} className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={3}
                   value={form[subKey]} onChange={e => set(subKey, e.target.value)} />
               </label>
             </div>
@@ -371,11 +375,11 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
             {form[trustPointsKey].map((p, i) => (
               <div key={i} className="ad-repeat-row">
                 <div className="ad-frow">
-                  <input className="ad-input ad-w-xs" dir={isAr ? 'rtl' : undefined} value={p.icon || ''} placeholder="Icon (e.g. 🩺)"
+                  <LimitedInput max={MAX.trustPointIcon} wrapClassName="ad-w-xs" dir={isAr ? 'rtl' : undefined} value={p.icon || ''} placeholder="Icon (e.g. 🩺)"
                     aria-label="Icon" onChange={e => updateTrustPoint(i, 'icon', e.target.value)} />
-                  <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={p.label || ''} placeholder="Label"
+                  <LimitedInput max={MAX.trustPointLabel} wrapClassName="ad-w-grow" dir={isAr ? 'rtl' : undefined} value={p.label || ''} placeholder="Label"
                     aria-label="Label" onChange={e => updateTrustPoint(i, 'label', e.target.value)} />
-                  <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={p.hint || ''} placeholder="Hint"
+                  <LimitedInput max={MAX.trustPointHint} wrapClassName="ad-w-grow" dir={isAr ? 'rtl' : undefined} value={p.hint || ''} placeholder="Hint"
                     aria-label="Hint" onChange={e => updateTrustPoint(i, 'hint', e.target.value)} />
                 </div>
                 <button type="button" className="ad-icon-btn" onClick={() => removeTrustPoint(i)}
@@ -390,9 +394,9 @@ function VerticalForm({ initial, isNew, existing, saving, onSave, onClose }) {
             {form[statsKey].map((s, i) => (
               <div key={i} className="ad-repeat-row">
                 <div className="ad-frow">
-                  <input className="ad-input ad-w-sm" dir={isAr ? 'rtl' : undefined} value={s.value || ''} placeholder="Value (e.g. 23)"
+                  <LimitedInput max={MAX.statValue} wrapClassName="ad-w-sm" dir={isAr ? 'rtl' : undefined} value={s.value || ''} placeholder="Value (e.g. 23)"
                     aria-label="Value" onChange={e => updateStat(i, 'value', e.target.value)} />
-                  <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={s.label || ''} placeholder="Label"
+                  <LimitedInput max={MAX.statLabel} wrapClassName="ad-w-grow" dir={isAr ? 'rtl' : undefined} value={s.label || ''} placeholder="Label"
                     aria-label="Label" onChange={e => updateStat(i, 'label', e.target.value)} />
                 </div>
                 <button type="button" className="ad-icon-btn" onClick={() => removeStat(i)}

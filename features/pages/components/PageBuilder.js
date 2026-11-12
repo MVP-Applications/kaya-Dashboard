@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAdmin } from '@/shared/context/AdminContext'
 import ConfirmDialog from '@/shared/components/ConfirmDialog'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 import LocaleToggle from '@/shared/components/LocaleToggle'
 import BlockFields from '@/features/pages/components/BlockFields'
 import PagePreview from '@/features/pages/components/PagePreview'
@@ -308,7 +310,7 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
                 <>
                   <label className="ad-field ad-w-lg">
                     <span className="ad-field-label">{locale === 'AR' ? 'Title (Arabic)' : 'Title *'}</span>
-                    <input className="ad-input" dir={locale === 'AR' ? 'rtl' : undefined}
+                    <LimitedInput max={LIMITS.pageSettings.title} dir={locale === 'AR' ? 'rtl' : undefined}
                       value={locale === 'AR' ? page.titleAr : page.title}
                       placeholder={locale === 'AR' ? page.title : 'e.g. Ramadan offers'}
                       onChange={e => (locale === 'AR' ? set({ titleAr: e.target.value }) : setTitle(e.target.value))} />

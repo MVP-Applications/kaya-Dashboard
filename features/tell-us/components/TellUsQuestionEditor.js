@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react'
 import LocaleToggle from '@/shared/components/LocaleToggle'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 import { emptyOption } from '@/shared/lib/tell-us'
 
 /**
@@ -40,19 +42,19 @@ export default function TellUsQuestionEditor({
       <div className="ad-grid2">
         <label className="ad-field">
           <span className="ad-field-label">{isAr ? 'Eyebrow (AR)' : 'Eyebrow'}</span>
-          <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={question[k('eyebrow')]}
+          <LimitedInput max={LIMITS.tellUs.eyebrow} dir={isAr ? 'rtl' : undefined} value={question[k('eyebrow')]}
             onChange={e => set(k('eyebrow'), e.target.value)} placeholder={isAr ? '' : 'e.g. A little more about you'} />
         </label>
         <label className="ad-field">
           <span className="ad-field-label">{isAr ? 'Heading (AR)' : 'Heading *'}</span>
-          <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={question[k('heading')]}
+          <LimitedInput max={LIMITS.tellUs.heading} dir={isAr ? 'rtl' : undefined} value={question[k('heading')]}
             onChange={e => set(k('heading'), e.target.value)} placeholder={isAr ? '' : 'e.g. What is your *gender*?'} />
           <span className="ad-field-hint">Wrap the highlighted words in *asterisks*.</span>
         </label>
       </div>
       <label className="ad-field">
         <span className="ad-field-label">{isAr ? 'Subtitle (AR)' : 'Subtitle'}</span>
-        <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={question[k('sub')]}
+        <LimitedInput max={LIMITS.tellUs.sub} dir={isAr ? 'rtl' : undefined} value={question[k('sub')]}
           onChange={e => set(k('sub'), e.target.value)} />
       </label>
 
@@ -88,7 +90,7 @@ export default function TellUsQuestionEditor({
                     <button type="button" className="ad-reorder-btn" onClick={() => moveOption(i, -1)} disabled={i === 0} aria-label="Move answer up">▲</button>
                     <button type="button" className="ad-reorder-btn" onClick={() => moveOption(i, 1)} disabled={i === question.options.length - 1} aria-label="Move answer down">▼</button>
                   </span>
-                  <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={o[k('label')]}
+                  <LimitedInput max={LIMITS.tellUs.optionLabel} wrapClassName="ad-w-grow" dir={isAr ? 'rtl' : undefined} value={o[k('label')]}
                     onChange={e => setOption(i, { [k('label')]: e.target.value })}
                     placeholder={isAr ? (o.label || '') : 'Answer'} aria-label={`Answer ${i + 1}`} />
                   <button type="button" className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => removeOption(i)}
@@ -133,7 +135,7 @@ export default function TellUsQuestionEditor({
             Offer a &ldquo;not sure&rdquo; answer that shows every treatment in {areaLabel || 'this main treatment'}
           </label>
           {question.notSure && (
-            <input className="ad-input ad-tu-notsure" dir={isAr ? 'rtl' : undefined} value={question[k('notSureLabel')]}
+            <LimitedInput max={LIMITS.tellUs.notSureLabel} wrapClassName="ad-tu-notsure" dir={isAr ? 'rtl' : undefined} value={question[k('notSureLabel')]}
               onChange={e => set(k('notSureLabel'), e.target.value)} aria-label="Not sure answer label" />
           )}
         </div>

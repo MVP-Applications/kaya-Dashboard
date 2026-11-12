@@ -1,5 +1,7 @@
 'use client'
 import RichTextEditor from '@/shared/components/RichTextEditor'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 import { richTextToPlain } from '@/shared/lib/rich-text'
 import { BLOCK_TYPES, readingStats } from '@/features/blog/lib/blog'
 
@@ -46,10 +48,10 @@ export default function BlogBlocksEditor({ blocks, onChange, dir }) {
             </button>
           </div>
           {b.type === 'h2' ? (
-            <input className="ad-input" dir={dir} value={b.text}
+            <LimitedInput max={LIMITS.blog.blockText} dir={dir} value={b.text}
               onChange={e => update(i, { text: e.target.value })} placeholder="Section heading" />
           ) : b.type === 'quote' ? (
-            <textarea className="ad-input ad-textarea" dir={dir} rows={2}
+            <LimitedInput multiline max={LIMITS.blog.blockText} className="ad-input ad-textarea" dir={dir} rows={2}
               value={b.text} onChange={e => update(i, { text: e.target.value })}
               placeholder="A line worth pulling out" />
           ) : (
