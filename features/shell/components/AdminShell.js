@@ -33,7 +33,7 @@ const NAV_GROUPS = [
       { id: 'categories', label: 'Categories', icon: '▣', hidden: true },
       { id: 'tell-us', label: 'Tell Us Everything', icon: '◎' },
       { id: 'doctors', label: 'Doctors', icon: '⚕' },
-      { id: 'indulgence', label: 'Indulgence', icon: '🎁' },
+      { id: 'indulgence', label: 'Offers', icon: '🎁' },
       { id: 'reviews', label: 'Reviews', icon: '★', hidden: true },
     ],
   },

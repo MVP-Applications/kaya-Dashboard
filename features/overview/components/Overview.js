@@ -83,7 +83,7 @@ export default function Overview() {
     { label: 'Requests', icon: '✉', view: 'requests' },
     { label: 'Treatments', icon: '✦', view: 'services' },
     { label: 'Doctors', icon: '⚕', view: 'doctors' },
-    { label: 'Indulgence', icon: '🎁', view: 'indulgence' },
+    { label: 'Offers', icon: '🎁', view: 'indulgence' },
     { label: 'Pages', icon: '▤', view: 'pages' },
     { label: 'Clinics', icon: '⌖', view: 'locations' },
   ]
