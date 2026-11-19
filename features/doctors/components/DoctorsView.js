@@ -118,6 +118,7 @@ export default function DoctorsView() {
                     <span>
                       <span className="ad-cell-name">{d.name}</span>
                       <span className="ad-cell-slug">{d.specialist}</span>
+                      {d.isPublished === false && <span className="ad-badge ad-voucher-hidden">Draft</span>}
                     </span>
                   </div>
                 </td>

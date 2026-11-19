@@ -138,6 +138,7 @@ function treatmentToService(treatment) {
     mechanism: t.howItWorks || '',
     durationMins: t.duration ?? '',
     sessions: t.sessions ?? '',
+    interval: t.interval || '',
     downtimeNotes: t.downtimeNotes || '',
     downtimeLevel: t.downtimeSeverity || '',
     suitable: t.suitableFor || [],
@@ -150,9 +151,11 @@ function treatmentToService(treatment) {
     benefitsAr: benefitsToForm(ar?.benefits),
     durationMinsAr: ar?.duration || '',
     sessionsAr: ar?.sessions || '',
+    intervalAr: ar?.interval || '',
     downtimeNotesAr: ar?.downtimeNotes || '',
     downtimeLevelAr: ar?.downtimeSeverity || '',
     clinics: (treatment.clinics || []).map(c => c.id),
+    isPublished: treatment.isPublished !== false,
   }
 }
 
@@ -365,6 +368,7 @@ async function serviceToVersionBody(s, countryIds) {
     suitableFor: s.suitable || [],
     duration: s.durationMins || null,
     sessions: s.sessions || null,
+    interval: s.interval || null,
     downtimeNotes: s.downtimeNotes || null,
     downtimeSeverity: s.downtimeLevel || null,
   }]
@@ -379,6 +383,7 @@ async function serviceToVersionBody(s, countryIds) {
       suitableFor: s.suitableAr || [],
       duration: s.durationMinsAr || null,
       sessions: s.sessionsAr || null,
+      interval: s.intervalAr || null,
       downtimeNotes: s.downtimeNotesAr || null,
       downtimeSeverity: s.downtimeLevelAr || null,
     })
@@ -396,7 +401,7 @@ async function serviceToVersionBody(s, countryIds) {
     imageUrl,
     cardImageUrl: cardImageUrl || null,
     icon: s.thumb,
-    isPublished: true,
+    isPublished: s.isPublished !== false,
     clinicIds: s.clinics || [],
     translations,
   }
@@ -493,6 +498,7 @@ function doctorToRecord(doctor) {
     countries: (doctor.countries || []).map(c => c.code),
     clinics: (doctor.clinics || []).map(c => c.id),
     treatments: (doctor.treatments || []).map(t => t.id), // treatment version ids
+    isPublished: doctor.isPublished !== false,
   }
 }
 
@@ -582,7 +588,7 @@ export const persistDoctors = async list => {
       yearsExperience: toNumberOrUndefined(d.yearsExp),
       languages: (d.languages || []).filter(Boolean),
       photoUrl,
-      isPublished: true,
+      isPublished: d.isPublished !== false,
       translations,
       clinicIds: d.clinics || [],
       treatmentIds: (d.treatments || []).filter(Boolean),
@@ -1536,6 +1542,7 @@ function reviewToRecord(t) {
     nameAr: ar?.clientAlias || '',
     locationAr: ar?.address || '',
     quoteAr: ar?.quote || '',
+    isPublished: t.isPublished !== false,
   }
 }
 
@@ -1565,7 +1572,7 @@ export const persistReviews = async list => {
       beforeImgUrl: beforeImgUrl || undefined,
       afterImgUrl: afterImgUrl || undefined,
       consentGiven: !!r.consentGiven,
-      isPublished: true,
+      isPublished: r.isPublished !== false,
       // null clears it on update; a code not (yet) known is left unchanged.
       countryId: r.country ? countryIds.get(String(r.country).toUpperCase()) : null,
       translations,
@@ -2059,6 +2066,7 @@ function leadToRequest(lead) {
     city: lead.city?.name || '',
     treatment: lead.treatment?.title || '',
     doctor: lead.doctor?.name || '',
+    doctorId: lead.doctor?.id || lead.doctorId || '',
     message: lead.message || '',
     createdAt: lead.submittedAt,
     gender: REQUEST_GENDER_FROM_BACKEND[lead.gender] || '',
@@ -2070,13 +2078,14 @@ function leadToRequest(lead) {
   }
 }
 
-function requestQueryParams({ search, source, status, country, city, from, to, page, pageSize } = {}) {
+function requestQueryParams({ search, source, status, country, city, doctor, from, to, page, pageSize } = {}) {
   const params = new URLSearchParams()
   if (search) params.set('search', search)
   if (source) params.set('type', REQUEST_SOURCE_TO_BACKEND[source] || source)
   if (status) params.set('status', REQUEST_STATUS_TO_BACKEND[status] || status)
   if (country) params.set('country', country)
   if (city) params.set('city', city)
+  if (doctor) params.set('doctor', doctor)
   if (from) params.set('from', from)
   if (to) params.set('to', to)
   if (page) params.set('page', String(page))

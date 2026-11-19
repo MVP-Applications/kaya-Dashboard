@@ -97,6 +97,7 @@ export default function ReviewsView() {
                 <td>
                   <div className="ad-cell-name">{r.name}</div>
                   <div className="ad-cell-slug">{r.location || '-'}</div>
+                  {r.isPublished === false && <span className="ad-badge ad-voucher-hidden">Draft</span>}
                 </td>
                 <td>{treatmentName[r.treatment] || <span className="ad-muted">-</span>}</td>
                 <td>{'★'.repeat(r.rating || 0)}{'☆'.repeat(5 - (r.rating || 0))}</td>

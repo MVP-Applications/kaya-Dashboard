@@ -14,7 +14,7 @@ function draftFrom(record, country) {
   return {
     ...emptyService(),
     cardImage: '', clinics: [], isPopular: false,
-    durationMinsAr: '', sessionsAr: '', downtimeNotesAr: '', downtimeLevelAr: '',
+    durationMinsAr: '', sessionsAr: '', intervalAr: '', downtimeNotesAr: '', downtimeLevelAr: '',
     ...record,
     country,
   }
@@ -176,6 +176,7 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
         mechanism,
         durationMins: String(f.durationMins).trim(),
         sessions: String(f.sessions).trim(),
+        interval: String(f.interval || '').trim(),
         downtimeNotes: f.downtimeNotes.trim(),
         downtimeLevel: f.downtimeLevel.trim(),
         suitable: trimList(f.suitable),
@@ -188,6 +189,7 @@ export default function ServiceForm({ groupId, initialVersions, onClose }) {
         benefitsAr: cleanBenefits(f.benefitsAr),
         durationMinsAr: String(f.durationMinsAr).trim(),
         sessionsAr: String(f.sessionsAr).trim(),
+        intervalAr: String(f.intervalAr || '').trim(),
         downtimeNotesAr: f.downtimeNotesAr.trim(),
         downtimeLevelAr: f.downtimeLevelAr.trim(),
       },

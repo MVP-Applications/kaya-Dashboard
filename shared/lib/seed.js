@@ -52,6 +52,7 @@ export function emptyDoctor() {
     countries: [],
     clinics: [],
     treatments: [],
+    isPublished: true,
   }
 }
 
@@ -78,6 +79,7 @@ export function emptyService() {
     mechanism: '',
     durationMins: '',
     sessions: '',
+    interval: '',
     downtimeNotes: '',
     downtimeLevel: '',
     suitable: [],
@@ -88,6 +90,7 @@ export function emptyService() {
     mechanismAr: '',
     suitableAr: [],
     benefitsAr: [],
+    isPublished: true,
   }
 }
 
@@ -164,6 +167,7 @@ export function emptyReview() {
     nameAr: '',
     locationAr: '',
     quoteAr: '',
+    isPublished: true,
   }
 }
 

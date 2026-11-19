@@ -87,6 +87,17 @@ export default function ReviewForm({ initial, isNew, onClose }) {
 
       <div className="ad-editor-body">
         <fieldset className="ad-fieldset">
+          <legend>Publishing</legend>
+          <label className="ad-field ad-field--toggle">
+            <span className="ad-field-label">Website status</span>
+            <label className="ad-check">
+              <input type="checkbox" checked={form.isPublished !== false}
+                onChange={e => set('isPublished', e.target.checked)} />
+              Published: show this review on the website
+            </label>
+          </label>
+        </fieldset>
+        <fieldset className="ad-fieldset">
           <legend>Patient</legend>
           <p className="ad-fieldset-hint">
             English is required. Fill in the Arabic name and quote to add an Arabic translation.
