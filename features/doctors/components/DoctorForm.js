@@ -125,6 +125,17 @@ export default function DoctorForm({ initial, isNew, onClose }) {
 
       <div className="ad-editor-body">
         <fieldset className="ad-fieldset">
+          <legend>Publishing</legend>
+          <label className="ad-field ad-field--toggle">
+            <span className="ad-field-label">Website status</span>
+            <label className="ad-check">
+              <input type="checkbox" checked={form.isPublished !== false}
+                onChange={e => set('isPublished', e.target.checked)} />
+              Published: show this doctor on the website
+            </label>
+          </label>
+        </fieldset>
+        <fieldset className="ad-fieldset">
           <legend>Profile</legend>
           <div className="ad-grid2">
             <SlugField value={form.slug} source={form.name} onChange={v => set('slug', v)} />

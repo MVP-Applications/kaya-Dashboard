@@ -189,6 +189,7 @@ export default function ServicesView() {
                 <td>
                   <div className="ad-cell-name">{s.name}</div>
                   <div className="ad-cell-slug">{s.slug}</div>
+                  {s.isPublished === false && <span className="ad-badge ad-voucher-hidden">Draft</span>}
                 </td>
                 <td>
                   <span className="ad-pill-row">

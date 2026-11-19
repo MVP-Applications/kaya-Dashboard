@@ -153,6 +153,7 @@ function treatmentToService(treatment) {
     downtimeNotesAr: ar?.downtimeNotes || '',
     downtimeLevelAr: ar?.downtimeSeverity || '',
     clinics: (treatment.clinics || []).map(c => c.id),
+    isPublished: treatment.isPublished !== false,
   }
 }
 
@@ -396,7 +397,7 @@ async function serviceToVersionBody(s, countryIds) {
     imageUrl,
     cardImageUrl: cardImageUrl || null,
     icon: s.thumb,
-    isPublished: true,
+    isPublished: s.isPublished !== false,
     clinicIds: s.clinics || [],
     translations,
   }
@@ -493,6 +494,7 @@ function doctorToRecord(doctor) {
     countries: (doctor.countries || []).map(c => c.code),
     clinics: (doctor.clinics || []).map(c => c.id),
     treatments: (doctor.treatments || []).map(t => t.id), // treatment version ids
+    isPublished: doctor.isPublished !== false,
   }
 }
 
@@ -582,7 +584,7 @@ export const persistDoctors = async list => {
       yearsExperience: toNumberOrUndefined(d.yearsExp),
       languages: (d.languages || []).filter(Boolean),
       photoUrl,
-      isPublished: true,
+      isPublished: d.isPublished !== false,
       translations,
       clinicIds: d.clinics || [],
       treatmentIds: (d.treatments || []).filter(Boolean),
@@ -1536,6 +1538,7 @@ function reviewToRecord(t) {
     nameAr: ar?.clientAlias || '',
     locationAr: ar?.address || '',
     quoteAr: ar?.quote || '',
+    isPublished: t.isPublished !== false,
   }
 }
 
@@ -1565,7 +1568,7 @@ export const persistReviews = async list => {
       beforeImgUrl: beforeImgUrl || undefined,
       afterImgUrl: afterImgUrl || undefined,
       consentGiven: !!r.consentGiven,
-      isPublished: true,
+      isPublished: r.isPublished !== false,
       // null clears it on update; a code not (yet) known is left unchanged.
       countryId: r.country ? countryIds.get(String(r.country).toUpperCase()) : null,
       translations,
