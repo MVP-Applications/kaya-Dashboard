@@ -56,7 +56,7 @@ export default function IndulgenceView() {
     <div className="ad-view">
       <div className="ad-view-head">
         <div>
-          <h1 className="ad-view-title">Indulgence</h1>
+          <h1 className="ad-view-title">Offers</h1>
           <p className="ad-view-sub">{vouchers.length} vouchers · showing {filtered.length}</p>
         </div>
         {canCreate && (
