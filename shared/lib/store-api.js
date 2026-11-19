@@ -2062,6 +2062,7 @@ function leadToRequest(lead) {
     city: lead.city?.name || '',
     treatment: lead.treatment?.title || '',
     doctor: lead.doctor?.name || '',
+    doctorId: lead.doctor?.id || lead.doctorId || '',
     message: lead.message || '',
     createdAt: lead.submittedAt,
     gender: REQUEST_GENDER_FROM_BACKEND[lead.gender] || '',
@@ -2073,13 +2074,14 @@ function leadToRequest(lead) {
   }
 }
 
-function requestQueryParams({ search, source, status, country, city, from, to, page, pageSize } = {}) {
+function requestQueryParams({ search, source, status, country, city, doctor, from, to, page, pageSize } = {}) {
   const params = new URLSearchParams()
   if (search) params.set('search', search)
   if (source) params.set('type', REQUEST_SOURCE_TO_BACKEND[source] || source)
   if (status) params.set('status', REQUEST_STATUS_TO_BACKEND[status] || status)
   if (country) params.set('country', country)
   if (city) params.set('city', city)
+  if (doctor) params.set('doctor', doctor)
   if (from) params.set('from', from)
   if (to) params.set('to', to)
   if (page) params.set('page', String(page))

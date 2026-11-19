@@ -105,7 +105,7 @@ function timeAgo(iso) {
 export default function RequestsView() {
   const {
     requestStatusCounts, loadRequestsPage, loadRequestCountries,
-    updateRequestStatus, updateRequestNotes, deleteRequestRecord, allowed,
+    updateRequestStatus, updateRequestNotes, deleteRequestRecord, allowed, doctors,
   } = useAdmin()
 
   // Filters, the page and the open enquiry live in the URL (?q, ?status,
@@ -121,6 +121,7 @@ export default function RequestsView() {
   const [query, setQuery, debouncedQuery] = useQueryText('q', resetPage)
   const [status, setStatus] = useQueryParam('status', '', resetPage)
   const [source, setSource] = useQueryParam('source', '', resetPage)
+  const [doctor, setDoctor] = useQueryParam('doctor', '', resetPage)
   // Country and range are set together with the params they invalidate
   // (city; from/to) — see their onChange handlers.
   const country = get('country')
@@ -170,9 +171,9 @@ export default function RequestsView() {
   }, [countries, country])
 
   const filters = useMemo(() => ({
-    search: debouncedQuery, status, source, country, city,
+    search: debouncedQuery, status, source, country, city, doctor,
     from: dateBounds.from, to: dateBounds.to,
-  }), [debouncedQuery, status, source, country, city, dateBounds])
+  }), [debouncedQuery, status, source, country, city, doctor, dateBounds])
 
   useEffect(() => {
     let alive = true
@@ -204,12 +205,12 @@ export default function RequestsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open?.id])
 
-  const isFiltered = Boolean(query.trim() || status || source || country || city || range || from || to)
+  const isFiltered = Boolean(query.trim() || status || source || country || city || doctor || range || from || to)
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   // One write for everything; the search box follows the URL.
   function clearFilters() {
-    set({ q: '', status: '', source: '', country: '', city: '', range: '', from: '', to: '', page: '' })
+    set({ q: '', status: '', source: '', country: '', city: '', doctor: '', range: '', from: '', to: '', page: '' })
   }
 
   /** Opens the confirmation prompt; the actual API call waits for confirmStatusChange. */
@@ -359,6 +360,16 @@ export default function RequestsView() {
         >
           <option value="">All cities</option>
           {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select
+          className="ad-input ad-filter"
+          value={doctor}
+          onChange={e => setDoctor(e.target.value)}
+        >
+          <option value="">All doctors</option>
+          {(doctors || []).map(d => (
+            <option key={d.id} value={d.id}>{d.name?.EN || d.name?.en || d.name || d.slug}</option>
+          ))}
         </select>
         <select
           className="ad-input ad-filter"
