@@ -79,6 +79,7 @@ export function emptyService() {
     mechanism: '',
     durationMins: '',
     sessions: '',
+    interval: '',
     downtimeNotes: '',
     downtimeLevel: '',
     suitable: [],

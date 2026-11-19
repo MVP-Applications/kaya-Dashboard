@@ -138,6 +138,7 @@ function treatmentToService(treatment) {
     mechanism: t.howItWorks || '',
     durationMins: t.duration ?? '',
     sessions: t.sessions ?? '',
+    interval: t.interval || '',
     downtimeNotes: t.downtimeNotes || '',
     downtimeLevel: t.downtimeSeverity || '',
     suitable: t.suitableFor || [],
@@ -150,6 +151,7 @@ function treatmentToService(treatment) {
     benefitsAr: benefitsToForm(ar?.benefits),
     durationMinsAr: ar?.duration || '',
     sessionsAr: ar?.sessions || '',
+    intervalAr: ar?.interval || '',
     downtimeNotesAr: ar?.downtimeNotes || '',
     downtimeLevelAr: ar?.downtimeSeverity || '',
     clinics: (treatment.clinics || []).map(c => c.id),
@@ -366,6 +368,7 @@ async function serviceToVersionBody(s, countryIds) {
     suitableFor: s.suitable || [],
     duration: s.durationMins || null,
     sessions: s.sessions || null,
+    interval: s.interval || null,
     downtimeNotes: s.downtimeNotes || null,
     downtimeSeverity: s.downtimeLevel || null,
   }]
@@ -380,6 +383,7 @@ async function serviceToVersionBody(s, countryIds) {
       suitableFor: s.suitableAr || [],
       duration: s.durationMinsAr || null,
       sessions: s.sessionsAr || null,
+      interval: s.intervalAr || null,
       downtimeNotes: s.downtimeNotesAr || null,
       downtimeSeverity: s.downtimeLevelAr || null,
     })

@@ -29,6 +29,7 @@ export default function TreatmentFields({ country, form, onChange }) {
   const benefitsKey = isAr ? 'benefitsAr' : 'benefits'
   const durationKey = isAr ? 'durationMinsAr' : 'durationMins'
   const sessionsKey = isAr ? 'sessionsAr' : 'sessions'
+  const intervalKey = isAr ? 'intervalAr' : 'interval'
   const downtimeNotesKey = isAr ? 'downtimeNotesAr' : 'downtimeNotes'
   const downtimeLevelKey = isAr ? 'downtimeLevelAr' : 'downtimeLevel'
 
@@ -122,6 +123,13 @@ export default function TreatmentFields({ country, form, onChange }) {
               <LimitedInput max={MAX.sessions} dir={isAr ? 'rtl' : undefined} value={form[sessionsKey]}
                 placeholder="e.g. 3–6 sessions"
                 onChange={e => set(sessionsKey, e.target.value)} />
+            </label>
+            {/* Shown as "Interval" in the website's "At a glance" box. */}
+            <label className="ad-field ad-w-md">
+              <span className="ad-field-label">{isAr ? 'الفاصل الزمني (Interval)' : 'Interval'}</span>
+              <LimitedInput max={MAX.interval} dir={isAr ? 'rtl' : undefined} value={form[intervalKey] || ''}
+                placeholder="e.g. 4–6 weeks apart"
+                onChange={e => set(intervalKey, e.target.value)} />
             </label>
           </div>
           <div className="ad-frow">
