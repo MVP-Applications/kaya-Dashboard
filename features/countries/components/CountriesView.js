@@ -58,7 +58,7 @@ export default function CountriesView() {
         <div>
           <h1 className="ad-view-title">Countries</h1>
           <p className="ad-view-sub">
-            The markets Kaya operates in — cities, flag, contact numbers, dial code, and default language for the website.
+            The markets Kaya operates in: cities, flag, contact numbers, dial code, and default language for the website.
           </p>
         </div>
         {canCreate && (
@@ -133,7 +133,7 @@ export default function CountriesView() {
             <h3 className="ad-confirm-title">Delete country?</h3>
             <p className="ad-confirm-text">
               <strong>{target.name}</strong> will be removed. This isn&apos;t possible while it still has cities or
-              clinics under it — remove those first.
+              clinics under it. Remove those first.
             </p>
             <div className="ad-confirm-actions">
               <button className="ad-btn ad-btn--ghost" onClick={() => setConfirm(null)}>Cancel</button>

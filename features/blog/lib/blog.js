@@ -1,4 +1,5 @@
 /** Blog helpers shared by the list, the editor and the topics panel. */
+import { richTextToPlain } from '@/shared/lib/rich-text'
 
 export const BLOCK_TYPES = [
   { value: 'p', label: 'Paragraph' },
@@ -15,17 +16,22 @@ export function formatBlogDate(day) {
     : day
 }
 
+/** A block's words — paragraphs are rich text, so their markup is dropped. */
+function blockText(b) {
+  return b.type === 'p' ? richTextToPlain(b.text) : String(b.text || '').trim()
+}
+
 /** Word count and a ~200 wpm reading time — the same estimate the backend saves. */
 export function readingStats(blocks) {
   const words = (blocks || [])
-    .map(b => String(b.text || '').trim().split(/\s+/).filter(Boolean).length)
+    .map(b => blockText(b).split(/\s+/).filter(Boolean).length)
     .reduce((a, b) => a + b, 0)
   return { words, minutes: Math.max(1, Math.round(words / 200)) }
 }
 
 /** Blocks that have text — what a post actually saves. */
 export function filledBlocks(blocks) {
-  return (blocks || []).filter(b => String(b.text || '').trim())
+  return (blocks || []).filter(b => blockText(b))
 }
 
 /** "botox, anti-wrinkle , " → ['botox', 'anti-wrinkle'] */

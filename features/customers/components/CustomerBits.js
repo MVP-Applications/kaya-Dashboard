@@ -4,7 +4,7 @@ import { PROVIDER_LABELS, PROVIDER_SHORT } from '@/shared/lib/customers'
 /** Small pieces shared by the Customers list and profile. */
 
 export function relativeDate(iso) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400_000)
   if (days <= 0) return 'Today'
   if (days === 1) return 'Yesterday'

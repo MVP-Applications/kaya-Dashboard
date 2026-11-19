@@ -253,7 +253,7 @@ export function seedRequests() {
       gender: 'Male', country: 'UAE', city: 'Abu Dhabi',
       treatmentArea: "Men's", treatment: '', doctor: '',
       concerns: ['Hair thinning', 'Receding hairline'],
-      message: 'Noticed thinning over the last year — wants to understand options.',
+      message: 'Noticed thinning over the last year. Wants to understand options.',
       createdAt: hoursAgo(7), notes: '',
     },
     {
@@ -262,7 +262,7 @@ export function seedRequests() {
       gender: 'Female', country: 'KSA', city: 'Riyadh',
       treatmentArea: 'Body Slimming', treatment: 'Cryolipolysis', doctor: 'Dr. Sara Qasim',
       concerns: [], message: '',
-      createdAt: hoursAgo(26), notes: 'Called — awaiting her to confirm a Thursday slot.',
+      createdAt: hoursAgo(26), notes: 'Called, awaiting her to confirm a Thursday slot.',
     },
     {
       id: 'req-1036', source: 'concern', status: 'contacted',
@@ -295,7 +295,7 @@ export function seedRequests() {
       gender: 'Male', country: 'KSA', city: 'Jeddah',
       treatmentArea: 'Body Slimming', treatment: '', doctor: '',
       concerns: ['Stubborn fat', 'Body contouring'], message: '',
-      createdAt: hoursAgo(120), notes: 'Not proceeding for now — follow up in Q4.',
+      createdAt: hoursAgo(120), notes: 'Not proceeding for now. Follow up in Q4.',
     },
     {
       id: 'req-1014', source: 'consultation', status: 'closed',
@@ -303,7 +303,7 @@ export function seedRequests() {
       gender: 'Female', country: 'UAE', city: 'Abu Dhabi',
       treatmentArea: 'Dermatology', treatment: 'Chemical Peels', doctor: '',
       concerns: [], message: '',
-      createdAt: hoursAgo(168), notes: 'Treatment completed. Happy — left a review.',
+      createdAt: hoursAgo(168), notes: 'Treatment completed. Happy, left a review.',
     },
   ]
 }

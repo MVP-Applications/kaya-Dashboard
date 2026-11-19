@@ -61,7 +61,7 @@ export default function ContactsView() {
         <div>
           <h1 className="ad-view-title">Contacts</h1>
           <p className="ad-view-sub">
-            Phone and WhatsApp numbers the website shows per country — one contact per country.
+            Phone and WhatsApp numbers the website shows per country, one contact per country.
           </p>
         </div>
         {/* A link can't be disabled, so the "every country is taken" state stays a button. */}
@@ -108,8 +108,8 @@ export default function ContactsView() {
                   <div className="ad-cell-slug">{c.countryCode}</div>
                 </td>
                 <td>{c.phoneNumber}</td>
-                <td>{c.secondaryPhoneNumber || '—'}</td>
-                <td>{c.whatsappNumber || '—'}</td>
+                <td>{c.secondaryPhoneNumber || '-'}</td>
+                <td>{c.whatsappNumber || '-'}</td>
                 <td className="ad-td-actions">
                   <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: c.id })}>Edit</Link>
                   {canDelete && (

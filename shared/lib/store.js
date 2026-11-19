@@ -76,6 +76,7 @@ export const fetchVoucherRequestsPage = (...a) => backend.fetchVoucherRequestsPa
 export const fetchVoucherRequest = (...a) => backend.fetchVoucherRequest(...a)
 export const fetchTellUs = (...a) => backend.fetchTellUs(...a)
 export const fetchPageRegistry = (...a) => backend.fetchPageRegistry(...a)
+export const fetchPageSchema = (...a) => backend.fetchPageSchema(...a)
 export const saveCustomPage = (...a) => backend.saveCustomPage(...a)
 export const savePageSettings = (...a) => backend.savePageSettings(...a)
 export const setPageStatus = (...a) => backend.setPageStatus(...a)

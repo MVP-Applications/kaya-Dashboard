@@ -79,9 +79,9 @@ function StatusPill({ status }) {
 
 // "23 Jul 2026, 08:12" — compact and locale-stable enough for the demo.
 function formatDate(iso) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
+  if (Number.isNaN(d.getTime())) return '-'
   return d.toLocaleDateString('en-GB', {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
@@ -105,7 +105,7 @@ function timeAgo(iso) {
 export default function RequestsView() {
   const {
     requestStatusCounts, loadRequestsPage, loadRequestCountries,
-    updateRequestStatus, updateRequestNotes, deleteRequestRecord, allowed,
+    updateRequestStatus, updateRequestNotes, deleteRequestRecord, allowed, doctors,
   } = useAdmin()
 
   // Filters, the page and the open enquiry live in the URL (?q, ?status,
@@ -121,6 +121,7 @@ export default function RequestsView() {
   const [query, setQuery, debouncedQuery] = useQueryText('q', resetPage)
   const [status, setStatus] = useQueryParam('status', '', resetPage)
   const [source, setSource] = useQueryParam('source', '', resetPage)
+  const [doctor, setDoctor] = useQueryParam('doctor', '', resetPage)
   // Country and range are set together with the params they invalidate
   // (city; from/to) — see their onChange handlers.
   const country = get('country')
@@ -170,9 +171,9 @@ export default function RequestsView() {
   }, [countries, country])
 
   const filters = useMemo(() => ({
-    search: debouncedQuery, status, source, country, city,
+    search: debouncedQuery, status, source, country, city, doctor,
     from: dateBounds.from, to: dateBounds.to,
-  }), [debouncedQuery, status, source, country, city, dateBounds])
+  }), [debouncedQuery, status, source, country, city, doctor, dateBounds])
 
   useEffect(() => {
     let alive = true
@@ -204,12 +205,12 @@ export default function RequestsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open?.id])
 
-  const isFiltered = Boolean(query.trim() || status || source || country || city || range || from || to)
+  const isFiltered = Boolean(query.trim() || status || source || country || city || doctor || range || from || to)
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   // One write for everything; the search box follows the URL.
   function clearFilters() {
-    set({ q: '', status: '', source: '', country: '', city: '', range: '', from: '', to: '', page: '' })
+    set({ q: '', status: '', source: '', country: '', city: '', doctor: '', range: '', from: '', to: '', page: '' })
   }
 
   /** Opens the confirmation prompt; the actual API call waits for confirmStatusChange. */
@@ -362,6 +363,16 @@ export default function RequestsView() {
         </select>
         <select
           className="ad-input ad-filter"
+          value={doctor}
+          onChange={e => setDoctor(e.target.value)}
+        >
+          <option value="">All doctors</option>
+          {(doctors || []).map(d => (
+            <option key={d.id} value={d.id}>{d.name?.EN || d.name?.en || d.name || d.slug}</option>
+          ))}
+        </select>
+        <select
+          className="ad-input ad-filter"
           value={range}
           // Leaving the custom range clears its dates, so they can't keep
           // filtering invisibly from behind a preset.
@@ -427,12 +438,12 @@ export default function RequestsView() {
                     {r.source === 'consultation' ? 'Consultation' : 'Concern finder'}
                   </span>
                   <div className="ad-req-interest">
-                    {r.treatment || r.treatmentArea || <span className="ad-muted">—</span>}
+                    {r.treatment || r.treatmentArea || <span className="ad-muted">-</span>}
                     {r.doctor && <span className="ad-req-doc"> · {r.doctor}</span>}
                   </div>
                 </td>
                 <td>
-                  <div>{r.city || <span className="ad-muted">—</span>}</div>
+                  <div>{r.city || <span className="ad-muted">-</span>}</div>
                   <div className="ad-cell-slug">{r.country}</div>
                 </td>
                 <td>
@@ -454,7 +465,7 @@ export default function RequestsView() {
             {!loading && items.length === 0 && (
               <tr><td colSpan={6} className="ad-empty">
                 {loadError
-                  ? `Could not load enquiries — ${loadError}`
+                  ? `Could not load enquiries: ${loadError}`
                   : total === 0 && !isFiltered
                     ? 'No enquiries yet. They arrive here from the booking form and the concern finder.'
                     : 'No enquiries match your filters.'}
@@ -538,7 +549,7 @@ export default function RequestsView() {
                 </div>
                 <div className="ad-req-row">
                   <span className="ad-req-key">Location</span>
-                  <span className="ad-req-val">{[open.city, open.country].filter(Boolean).join(', ') || '—'}</span>
+                  <span className="ad-req-val">{[open.city, open.country].filter(Boolean).join(', ') || '-'}</span>
                 </div>
               </div>
 
@@ -546,7 +557,7 @@ export default function RequestsView() {
               <div className="ad-req-detail">
                 <div className="ad-req-row">
                   <span className="ad-req-key">Area</span>
-                  <span className="ad-req-val">{open.treatmentArea || '—'}</span>
+                  <span className="ad-req-val">{open.treatmentArea || '-'}</span>
                 </div>
                 <div className="ad-req-row">
                   <span className="ad-req-key">Treatment</span>
@@ -576,7 +587,7 @@ export default function RequestsView() {
                     {open.answers.map(a => (
                       <div key={a.questionId || a.question} className="ad-req-row">
                         <span className="ad-req-key">{a.question}</span>
-                        <span className="ad-req-val">{(a.answers || []).join(', ') || '—'}</span>
+                        <span className="ad-req-val">{(a.answers || []).join(', ') || '-'}</span>
                       </div>
                     ))}
                   </div>

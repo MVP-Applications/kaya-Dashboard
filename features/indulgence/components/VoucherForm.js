@@ -6,6 +6,8 @@ import { parsePriceInput } from '@/shared/lib/price'
 import CountryFields from '@/features/indulgence/components/CountryFields'
 import ImagePicker from '@/shared/components/ImagePicker'
 import LocaleToggle from '@/shared/components/LocaleToggle'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 
 function slugify(str) {
   return String(str)
@@ -53,7 +55,7 @@ export default function VoucherForm({ initial, isNew, onClose }) {
     if (!form.description.trim()) return setError('Description is required.')
     const badPrice = Object.entries(form.pricing || {}).find(([, p]) => parsePriceInput(p?.price) === null)
     if (badPrice) {
-      return setError(`The ${badPrice[0]} price "${badPrice[1].price}" isn't a number — use digits, e.g. 1800 or 1,800.`)
+      return setError(`The ${badPrice[0]} price "${badPrice[1].price}" isn't a number. Use digits, e.g. 1800 or 1,800.`)
     }
     const months = Number(form.validityMonths)
     if (!Number.isInteger(months) || months < 1 || months > 120) {
@@ -106,24 +108,24 @@ export default function VoucherForm({ initial, isNew, onClose }) {
           <LocaleToggle locale={locale} onChange={setLocale} />
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'العنوان (Title)' : 'Title *'}</span>
-            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[titleKey]}
+            <LimitedInput max={LIMITS.indulgence.title} dir={isAr ? 'rtl' : undefined} value={form[titleKey]}
               onChange={e => set(titleKey, e.target.value)} placeholder="e.g. Gift Card" />
           </label>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'العنوان الفرعي (Subtitle)' : 'Subtitle'}</span>
-            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[subtitleKey]}
+            <LimitedInput max={LIMITS.indulgence.subtitle} dir={isAr ? 'rtl' : undefined} value={form[subtitleKey]}
               onChange={e => set(subtitleKey, e.target.value)}
               placeholder="e.g. AED 500 treatment credit" />
           </label>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'الوصف (Description)' : 'Description *'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={3} value={form[descriptionKey]}
+            <LimitedInput multiline max={LIMITS.indulgence.description} className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={3} value={form[descriptionKey]}
               onChange={e => set(descriptionKey, e.target.value)}
               placeholder="What the voucher includes." />
           </label>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'شروط الاسترداد (Redemption terms)' : 'Redemption terms'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={2} value={form[redemptionTermsKey]}
+            <LimitedInput multiline max={LIMITS.indulgence.redemptionTerms} className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={2} value={form[redemptionTermsKey]}
               onChange={e => set(redemptionTermsKey, e.target.value)}
               placeholder="e.g. Valid for 6 months from purchase date." />
           </label>
@@ -174,7 +176,7 @@ export default function VoucherForm({ initial, isNew, onClose }) {
             </label>
           </label>
           <p className="ad-fieldset-hint">
-            Untick to hide it without deleting — a voucher that already has requests can&apos;t be deleted.
+            Untick to hide it without deleting. A voucher that already has requests can&apos;t be deleted.
           </p>
         </fieldset>
 
@@ -190,14 +192,14 @@ export default function VoucherForm({ initial, isNew, onClose }) {
             </label>
             <label className="ad-field">
               <span className="ad-field-label">{isAr ? 'شارة (Badge label)' : 'Badge label'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[badgeKey]}
+              <LimitedInput max={LIMITS.indulgence.badge} dir={isAr ? 'rtl' : undefined} value={form[badgeKey]}
                 onChange={e => set(badgeKey, e.target.value)} placeholder="e.g. Most Popular" />
             </label>
             <label className="ad-field">
               <span className="ad-field-label">Badge style</span>
               <select className="ad-input" value={form.badgeStyle}
                 onChange={e => set('badgeStyle', e.target.value)}>
-                {BADGE_STYLE_OPTIONS.map(b => <option key={b || 'none'} value={b}>{b || '— none —'}</option>)}
+                {BADGE_STYLE_OPTIONS.map(b => <option key={b || 'none'} value={b}>{b || 'None'}</option>)}
               </select>
             </label>
           </div>
@@ -206,7 +208,7 @@ export default function VoucherForm({ initial, isNew, onClose }) {
         <fieldset className="ad-fieldset">
           <legend>Image</legend>
           <ImagePicker value={form.img} onChange={v => set('img', v)} ratio={7 / 8}
-            hint="Shown beside the offer text on the homepage and the Indulgence page — almost square, 7:8. Use about 700 × 800 px with the subject in the centre." />
+            hint="Shown beside the offer text on the homepage and the Indulgence page. Almost square, 7:8. Use about 700 × 800 px with the subject in the centre." />
         </fieldset>
       </div>
     </form>

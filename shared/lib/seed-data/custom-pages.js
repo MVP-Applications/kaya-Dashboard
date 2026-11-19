@@ -47,7 +47,7 @@ export const CUSTOM_PAGES = [
         data: {
           heading: 'Terms & *conditions*', headingAr: '',
           items: [
-            { question: 'Can I combine this with other offers?', questionAr: '', answer: 'No — one offer per treatment session.', answerAr: '' },
+            { question: 'Can I combine this with other offers?', questionAr: '', answer: 'No, one offer per treatment session.', answerAr: '' },
             { question: 'Which clinics take part?', questionAr: '', answer: 'Every Kaya clinic in the UAE.', answerAr: '' },
           ],
         },

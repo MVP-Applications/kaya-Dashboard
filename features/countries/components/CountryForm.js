@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { createCity, updateCity } from '@/shared/lib/store'
 import ImagePicker from '@/shared/components/ImagePicker'
 import LocaleToggle from '@/shared/components/LocaleToggle'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 
 export default function CountryForm({ initial, isNew, existing, onSave, onClose, onCityAdded, onCityUpdated, canEdit = true }) {
   const [form, setForm] = useState({ ...initial })
@@ -90,7 +92,7 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
 
       {error && <div className="ad-form-error ad-editor-error">{error}</div>}
       {!canEdit && (
-        <p className="ad-cf-readonly">Only administrators can change countries and cities — this is read-only.</p>
+        <p className="ad-cf-readonly">Only administrators can change countries and cities. This is read-only.</p>
       )}
 
       <div className="ad-editor-body">
@@ -104,13 +106,13 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
           {!isAr ? (
             <label className="ad-field">
               <span className="ad-field-label">Country name *</span>
-              <input className="ad-input" value={form.name} onChange={e => set('name', e.target.value)}
+              <LimitedInput max={LIMITS.country.name} value={form.name} onChange={e => set('name', e.target.value)}
                 placeholder="Saudi Arabia" />
             </label>
           ) : (
             <label className="ad-field">
               <span className="ad-field-label">اسم الدولة (Country name)</span>
-              <input className="ad-input" dir="rtl" value={form.nameAr}
+              <LimitedInput max={LIMITS.country.name} dir="rtl" value={form.nameAr}
                 onChange={e => set('nameAr', e.target.value)} placeholder="المملكة العربية السعودية" />
             </label>
           )}
@@ -121,7 +123,7 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
           <div className="ad-grid2">
             <label className="ad-field">
               <span className="ad-field-label">Country code *</span>
-              <input className="ad-input" value={form.code} disabled={!isNew}
+              <LimitedInput max={LIMITS.country.code} value={form.code} disabled={!isNew}
                 onChange={e => set('code', e.target.value.toUpperCase())} placeholder="KSA" />
             </label>
             <label className="ad-field">
@@ -141,7 +143,7 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
           <legend>Display order</legend>
           <p className="ad-fieldset-hint">
             Countries are listed in this order on the website (About page, region switcher) and across the
-            dashboard — lowest first. Countries with the same number sort by name.
+            dashboard, lowest first. Countries with the same number sort by name.
           </p>
           <input className="ad-input" type="number" min="0" max="9999" step="1" style={{ maxWidth: 140 }}
             value={form.displayOrder ?? 0} onChange={e => set('displayOrder', e.target.value)} />
@@ -156,7 +158,7 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
         <fieldset className="ad-fieldset">
           <legend>Contact</legend>
           <p className="ad-fieldset-hint">
-            Phone and WhatsApp numbers are managed on the <strong>Contacts</strong> screen, not here — each
+            Phone and WhatsApp numbers are managed on the <strong>Contacts</strong> screen, not here. Each
             country has exactly one contact record there.
           </p>
           {!isNew && (
@@ -195,7 +197,7 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
           ) : (
             <>
               <p className="ad-fieldset-hint">
-                Click a city to rename it or add its Arabic name — the website shows the Arabic name to visitors
+                Click a city to rename it or add its Arabic name. The website shows the Arabic name to visitors
                 browsing in Arabic.
               </p>
               {form.cities.length > 0 && (
@@ -214,9 +216,9 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
                 <div className="ad-field">
                   <span className="ad-field-label">Edit city</span>
                   <div className="ad-repeat-row">
-                    <input className="ad-input" value={editingCity.name} placeholder="English name"
+                    <LimitedInput max={LIMITS.city.name} wrapClassName="ad-w-grow" value={editingCity.name} placeholder="English name"
                       onChange={e => setEditingCity(c => ({ ...c, name: e.target.value }))} />
-                    <input className="ad-input" dir="rtl" value={editingCity.nameAr} placeholder="الاسم بالعربية"
+                    <LimitedInput max={LIMITS.city.name} wrapClassName="ad-w-grow" dir="rtl" value={editingCity.nameAr} placeholder="الاسم بالعربية"
                       onChange={e => setEditingCity(c => ({ ...c, nameAr: e.target.value }))} />
                     <button type="button" className="ad-btn ad-btn--primary" disabled={!editingCity.name.trim() || savingCity}
                       onClick={saveCity}>
@@ -229,9 +231,9 @@ export default function CountryForm({ initial, isNew, existing, onSave, onClose,
               <div className="ad-field">
                 <span className="ad-field-label">Add a city</span>
                 <div className="ad-repeat-row">
-                  <input className="ad-input" value={newCityName} placeholder="English name, e.g. Al Ain"
+                  <LimitedInput max={LIMITS.city.name} wrapClassName="ad-w-grow" value={newCityName} placeholder="English name, e.g. Al Ain"
                     onChange={e => setNewCityName(e.target.value)} />
-                  <input className="ad-input" dir="rtl" value={newCityNameAr} placeholder="الاسم بالعربية، مثل العين"
+                  <LimitedInput max={LIMITS.city.name} wrapClassName="ad-w-grow" dir="rtl" value={newCityNameAr} placeholder="الاسم بالعربية، مثل العين"
                     onChange={e => setNewCityNameAr(e.target.value)} />
                   <button type="button" className="ad-btn ad-btn--soft" disabled={!newCityName.trim() || addingCity}
                     onClick={addCity}>

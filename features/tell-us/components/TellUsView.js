@@ -56,7 +56,7 @@ function TryIt({ doc, areaId, areaLabel, areaTreatments }) {
         <h2 className="ad-panel-title">Try it</h2>
         <p className="ad-an-note">How the website asks {areaLabel}, with your unsaved changes.</p>
       </div>
-      {!flow.length && <p className="ad-an-empty">No questions are asked — people go straight to the treatments.</p>}
+      {!flow.length && <p className="ad-an-empty">No questions are asked. People go straight to the treatments.</p>}
       {flow.map((q, n) => (
         <div key={q.id} className="ad-tu-try-q">
           <div className="ad-tu-try-hd">

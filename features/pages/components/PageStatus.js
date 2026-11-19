@@ -19,7 +19,10 @@ export function StatusBadge({ status }) {
 function consequence(page, to) {
   const where = page.path || `/${page.slug}`
   if (to === 'PUBLISHED') return `It will be live on the website at ${where}${page.headerPosition !== 'NONE' || page.footerColumn !== 'NONE' ? ', with its menu link' : ''}.`
-  if (to === 'DRAFT') return `${where} will stop working on the website and its menu links will be removed. You can publish it again at any time.`
+  if (to === 'DRAFT') {
+    if (where === '/') return 'Visitors opening the homepage will see a “page not found” message, and anyone sent to the homepage lands there too. You can publish it again at any time.'
+    return `${where} will stop working on the website and its menu links will be removed. You can publish it again at any time.`
+  }
   return `${where} will stop working on the website and the page moves to the archive. You can restore it as a draft later.`
 }
 
@@ -39,16 +42,15 @@ export default function PageStatusControl({ page, canEdit, allowArchive = false,
   const [error, setError] = useState('')
 
   const isSystem = page.kind === 'SYSTEM'
-  const isHome = isSystem && page.path === '/'
   const options = [
-    { value: 'DRAFT', label: 'Draft', disabled: isHome, why: 'The homepage must always stay published.' },
+    { value: 'DRAFT', label: 'Draft' },
     { value: 'PUBLISHED', label: 'Published' },
     ...(allowArchive || page.status === 'ARCHIVED'
       ? [{ value: 'ARCHIVED', label: 'Archived', disabled: isSystem, why: "The website's own pages can't be archived." }]
       : []),
   ]
   const disabled = !canEdit || Boolean(blockedReason) || !page.id
-  const title = !canEdit ? 'Only a super admin can change this.' : blockedReason || (isHome ? 'The homepage must always stay published.' : '')
+  const title = !canEdit ? 'Only a super admin can change this.' : blockedReason
 
   async function confirm() {
     setBusy(true)

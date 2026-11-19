@@ -109,7 +109,7 @@ export default function CountryFields({ countries, pricing, onChange, showPricin
                     className="ad-input ad-price-input"
                     type="text"
                     inputMode="decimal"
-                    placeholder="—"
+                    placeholder="-"
                     value={priceOf(c.code).price}
                     onChange={e => setPrice(c.code, 'price', e.target.value)}
                     disabled={off}

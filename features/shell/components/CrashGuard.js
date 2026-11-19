@@ -49,7 +49,7 @@ export default class CrashGuard extends Component {
           <h1 className="ad-crash-title">The dashboard couldn&apos;t start</h1>
           <p className="ad-crash-text">
             This is usually data saved by an earlier version of the dashboard.
-            Clearing it fixes the page — nothing on the live site is affected.
+            Clearing it fixes the page. Nothing on the live site is affected.
           </p>
           <button className="ad-btn ad-btn--primary" onClick={this.clearAndReload}>
             Clear saved data &amp; reload

@@ -5,6 +5,10 @@ import { BADGE_OPTIONS, THUMB_OPTIONS } from '@/shared/lib/seed'
 import LocaleToggle from '@/shared/components/LocaleToggle'
 import ImagePicker from '@/shared/components/ImagePicker'
 import SlugField from '@/shared/components/SlugField'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
+
+const MAX = LIMITS.treatment
 
 /**
  * Every field of one country's version of a treatment — what each country
@@ -25,6 +29,7 @@ export default function TreatmentFields({ country, form, onChange }) {
   const benefitsKey = isAr ? 'benefitsAr' : 'benefits'
   const durationKey = isAr ? 'durationMinsAr' : 'durationMins'
   const sessionsKey = isAr ? 'sessionsAr' : 'sessions'
+  const intervalKey = isAr ? 'intervalAr' : 'interval'
   const downtimeNotesKey = isAr ? 'downtimeNotesAr' : 'downtimeNotes'
   const downtimeLevelKey = isAr ? 'downtimeLevelAr' : 'downtimeLevel'
 
@@ -52,6 +57,17 @@ export default function TreatmentFields({ country, form, onChange }) {
   return (
     <>
       <fieldset className="ad-fieldset">
+        <legend>Publishing</legend>
+        <label className="ad-field ad-field--toggle">
+          <span className="ad-field-label">Website status</span>
+          <label className="ad-check">
+            <input type="checkbox" checked={form.isPublished !== false}
+              onChange={e => set('isPublished', e.target.checked)} />
+            Published: show this treatment on the website
+          </label>
+        </label>
+      </fieldset>
+      <fieldset className="ad-fieldset">
         <legend>Name &amp; content</legend>
         <p className="ad-fieldset-hint">
           English is required. Fill in the Arabic Name, &quot;What it is&quot;
@@ -62,7 +78,7 @@ export default function TreatmentFields({ country, form, onChange }) {
         <div className="ad-frow">
           <label className="ad-field ad-w-lg">
             <span className="ad-field-label">{isAr ? 'الاسم (Name)' : 'Name *'}</span>
-            <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
+            <LimitedInput max={MAX.title} dir={isAr ? 'rtl' : undefined} value={form[nameKey]}
               onChange={e => set(nameKey, e.target.value)} />
           </label>
           <SlugField className="ad-field ad-w-md" value={form.slug} source={form.name}
@@ -70,19 +86,19 @@ export default function TreatmentFields({ country, form, onChange }) {
         </div>
         <label className="ad-field ad-w-xl">
           <span className="ad-field-label">{isAr ? 'مقتطف قصير (Short teaser)' : 'Short teaser'}</span>
-          <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[subKey]}
+          <LimitedInput max={MAX.subtitle} dir={isAr ? 'rtl' : undefined} value={form[subKey]}
             placeholder="A one-line summary shown on treatment cards"
             onChange={e => set(subKey, e.target.value)} />
         </label>
         <div className="ad-split">
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'ما هو (What it is)' : 'What it is *'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
+            <LimitedInput multiline max={MAX.summary} className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
               value={form[whatKey]} onChange={e => set(whatKey, e.target.value)} />
           </label>
           <label className="ad-field">
             <span className="ad-field-label">{isAr ? 'كيف يعمل (How it works)' : 'How it works (mechanism) *'}</span>
-            <textarea className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
+            <LimitedInput multiline max={MAX.howItWorks} className="ad-input ad-textarea" dir={isAr ? 'rtl' : undefined} rows={4}
               value={form[mechanismKey]} onChange={e => set(mechanismKey, e.target.value)} />
           </label>
         </div>
@@ -98,28 +114,35 @@ export default function TreatmentFields({ country, form, onChange }) {
           <div className="ad-frow">
             <label className="ad-field ad-w-md">
               <span className="ad-field-label">{isAr ? 'المدة (Duration)' : 'Duration'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[durationKey]}
+              <LimitedInput max={MAX.duration} dir={isAr ? 'rtl' : undefined} value={form[durationKey]}
                 placeholder="e.g. 45 mins"
                 onChange={e => set(durationKey, e.target.value)} />
             </label>
             <label className="ad-field ad-w-md">
               <span className="ad-field-label">{isAr ? 'الجلسات (Sessions)' : 'Sessions'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[sessionsKey]}
+              <LimitedInput max={MAX.sessions} dir={isAr ? 'rtl' : undefined} value={form[sessionsKey]}
                 placeholder="e.g. 3–6 sessions"
                 onChange={e => set(sessionsKey, e.target.value)} />
+            </label>
+            {/* Shown as "Interval" in the website's "At a glance" box. */}
+            <label className="ad-field ad-w-md">
+              <span className="ad-field-label">{isAr ? 'الفاصل الزمني (Interval)' : 'Interval'}</span>
+              <LimitedInput max={MAX.interval} dir={isAr ? 'rtl' : undefined} value={form[intervalKey] || ''}
+                placeholder="e.g. 4–6 weeks apart"
+                onChange={e => set(intervalKey, e.target.value)} />
             </label>
           </div>
           <div className="ad-frow">
             <label className="ad-field ad-w-md">
               <span className="ad-field-label">{isAr ? 'فترة التعافي (Downtime)' : 'Downtime'}</span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeNotesKey]}
+              <LimitedInput max={MAX.downtimeNotes} dir={isAr ? 'rtl' : undefined} value={form[downtimeNotesKey]}
                 onChange={e => set(downtimeNotesKey, e.target.value)} />
             </label>
             <label className="ad-field ad-w-md">
               <span className="ad-field-label">
                 {isAr ? 'شدة فترة التعافي (Downtime severity)' : 'Downtime severity'}
               </span>
-              <input className="ad-input" dir={isAr ? 'rtl' : undefined} value={form[downtimeLevelKey]}
+              <LimitedInput max={MAX.downtimeSeverity} dir={isAr ? 'rtl' : undefined} value={form[downtimeLevelKey]}
                 placeholder="e.g. Minimal, Mild, Moderate"
                 onChange={e => set(downtimeLevelKey, e.target.value)} />
             </label>
@@ -148,11 +171,11 @@ export default function TreatmentFields({ country, form, onChange }) {
         {form[benefitsKey].map((b, i) => (
           <div key={i} className="ad-repeat-row">
             <div className="ad-frow">
-              <input className="ad-input ad-w-xs" dir={isAr ? 'rtl' : undefined} value={b.i} placeholder="Icon (e.g. ✦)"
+              <LimitedInput max={MAX.benefitIcon} wrapClassName="ad-w-xs" dir={isAr ? 'rtl' : undefined} value={b.i} placeholder="Icon (e.g. ✦)"
                 aria-label="Icon" onChange={e => updateBenefit(i, 'i', e.target.value)} />
-              <input className="ad-input ad-w-md" dir={isAr ? 'rtl' : undefined} value={b.t} placeholder="Title"
+              <LimitedInput max={MAX.benefitTitle} wrapClassName="ad-w-md" dir={isAr ? 'rtl' : undefined} value={b.t} placeholder="Title"
                 aria-label="Title" onChange={e => updateBenefit(i, 't', e.target.value)} />
-              <input className="ad-input ad-w-grow" dir={isAr ? 'rtl' : undefined} value={b.d} placeholder="Description"
+              <LimitedInput max={MAX.benefitDescription} wrapClassName="ad-w-grow" dir={isAr ? 'rtl' : undefined} value={b.d} placeholder="Description"
                 aria-label="Description" onChange={e => updateBenefit(i, 'd', e.target.value)} />
             </div>
             <button type="button" className="ad-icon-btn" onClick={() => removeBenefit(i)}
@@ -168,18 +191,18 @@ export default function TreatmentFields({ country, form, onChange }) {
           <div className="ad-field">
             <span className="ad-field-label">Card image</span>
             <ImagePicker value={form.cardImage} onChange={v => set('cardImage', v)} ratio={16 / 9}
-              hint="Landscape 16:9 — the treatment's own page and treatment cards in lists, on desktop and phones. Use about 1600 × 900 px; keep the subject in the centre. If empty, the detail image is used (cropped to fit)." />
+              hint="Landscape 16:9: the treatment's own page and treatment cards in lists, on desktop and phones. Use about 1600 × 900 px; keep the subject in the centre. If empty, the detail image is used (cropped to fit)." />
           </div>
           <div className="ad-field">
             <span className="ad-field-label">Detail image</span>
             <ImagePicker value={form.image} onChange={v => set('image', v)} ratio={4 / 5}
-              hint="Portrait 4:5 — only the homepage Popular treatments cards. Use about 840 × 1050 px. If empty, the card image is used (cropped to fit)." />
+              hint="Portrait 4:5: only the homepage Popular treatments cards. Use about 840 × 1050 px. If empty, the card image is used (cropped to fit)." />
           </div>
           <label className="ad-field ad-w-md">
             <span className="ad-field-label">Icon</span>
             <select className="ad-input" value={form.thumb}
               onChange={e => set('thumb', e.target.value)}>
-              <option value="">— none —</option>
+              <option value="">None</option>
               {THUMB_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
@@ -209,7 +232,7 @@ export default function TreatmentFields({ country, form, onChange }) {
               <span className="ad-field-label">Category</span>
               <select className="ad-input" value={form.category}
                 onChange={e => set('category', e.target.value)}>
-                <option value="">— none —</option>
+                <option value="">None</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </label>
@@ -234,7 +257,7 @@ export default function TreatmentFields({ country, form, onChange }) {
 
       <fieldset className="ad-fieldset">
         <legend>Clinics</legend>
-        <p className="ad-fieldset-hint">Optional — leave empty to offer it at every clinic in this country.</p>
+        <p className="ad-fieldset-hint">Optional. Leave empty to offer it at every clinic in this country.</p>
         {clinicOptions.length === 0 ? (
           <p className="ad-muted">No clinics in this country yet.</p>
         ) : (

@@ -1,7 +1,9 @@
 'use client'
 import { useRef, useState } from 'react'
 import ImagePicker from '@/shared/components/ImagePicker'
+import RichTextEditor from '@/shared/components/RichTextEditor'
 import { emptyListItem } from '@/shared/lib/content'
+import { useAdmin } from '@/shared/context/AdminContext'
 
 /**
  * Generic renderer for the website-content schema in shared/lib/content.js.
@@ -102,7 +104,7 @@ function Field({ field, value, values, onChange, setValue, disabled }) {
             {!value && <option value="">Choose…</option>}
             {/* A saved value that's no longer offered stays visible rather than silently showing option 1. */}
             {value && !(field.options || []).some(o => o.value === value) && (
-              <option value={value}>{value} (not in the list — choose another)</option>
+              <option value={value}>{value} (not in the list, choose another)</option>
             )}
             {(field.options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -156,6 +158,12 @@ function Field({ field, value, values, onChange, setValue, disabled }) {
           onChange={onChange} disabled={disabled} />
       )
 
+    case 'refs':
+      return (
+        <RefsPicker field={field} value={Array.isArray(value) ? value : []}
+          onChange={onChange} disabled={disabled} />
+      )
+
     default:
       return (
         <label className="ad-field">
@@ -169,7 +177,55 @@ function Field({ field, value, values, onChange, setValue, disabled }) {
   }
 }
 
-/** Repeater of plain strings — used for long-form body paragraphs. */
+/**
+ * Records picked by id, in display order — `source` says which: TREATMENT
+ * or DOCTOR. Ids that no longer exist stay listed so they can be removed.
+ */
+function RefsPicker({ field, value, onChange, disabled }) {
+  const { services, doctors } = useAdmin()
+  const options = field.source === 'DOCTOR'
+    ? (doctors || []).map(d => ({ value: d.id, label: d.name }))
+    : (services || []).map(s => ({ value: s.id, label: s.country ? `${s.name} · ${s.country}` : s.name }))
+  const nameOf = Object.fromEntries(options.map(o => [o.value, o.label]))
+  const available = options.filter(o => !value.includes(o.value))
+  const noun = field.source === 'DOCTOR' ? 'doctor' : 'treatment'
+  function move(i, delta) {
+    const to = i + delta
+    if (to < 0 || to >= value.length) return
+    const next = [...value]
+    ;[next[i], next[to]] = [next[to], next[i]]
+    onChange(next)
+  }
+  return (
+    <div className="ad-field">
+      <span className="ad-field-label">{field.label}</span>
+      {value.length === 0 && <p className="ad-cf-none">No {noun}s picked yet.</p>}
+      {value.map((id, i) => (
+        <div key={id} className="ad-cf-item ad-cf-ref">
+          <div className="ad-cf-item-head">
+            <span className={`ad-cf-item-num${nameOf[id] ? '' : ' ad-cf-ref--missing'}`}>
+              {nameOf[id] || `${id} (no longer exists)`}
+            </span>
+            <ItemControls index={i} total={value.length} disabled={disabled}
+              onMove={move} onRemove={() => onChange(value.filter(x => x !== id))} />
+          </div>
+        </div>
+      ))}
+      {!disabled && available.length > 0 && (
+        <select className="ad-input" value="" aria-label={`Add a ${noun}`}
+          onChange={e => e.target.value && onChange([...value, e.target.value])}>
+          <option value="">+ Add a {noun}</option>
+          {available.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Repeater of strings — used for long-form body paragraphs. With `rich: true`
+ * each item is written in the text editor (stored as HTML) instead of a textarea.
+ */
 function StringList({ field, value, onChange, disabled }) {
   function update(i, next) {
     onChange(value.map((v, j) => (j === i ? next : v)))
@@ -193,8 +249,13 @@ function StringList({ field, value, onChange, disabled }) {
             <ItemControls index={i} total={value.length} disabled={disabled}
               onMove={move} onRemove={() => onChange(value.filter((_, j) => j !== i))} />
           </div>
-          <textarea className="ad-input ad-textarea" rows={4} value={item} disabled={disabled}
-            onChange={e => update(i, e.target.value)} />
+          {field.rich ? (
+            <RichTextEditor value={item} disabled={disabled} onChange={next => update(i, next)}
+              label={`${field.itemLabel || 'Item'} ${i + 1}`} />
+          ) : (
+            <textarea className="ad-input ad-textarea" rows={4} value={item} disabled={disabled}
+              onChange={e => update(i, e.target.value)} />
+          )}
         </div>
       ))}
       {!disabled && (
@@ -508,7 +569,7 @@ export function FieldsCard({
                 <dd className={text ? '' : 'ad-cf-view-empty'}>
                   {f.type === 'image' && values?.[f.key]
                     ? <img src={values[f.key]} alt="" className="ad-cf-view-img" />
-                    : text || 'Not set — hidden on the website'}
+                    : text || 'Not set, hidden on the website'}
                   {error && <span className="ad-field-error">{error}</span>}
                 </dd>
               </div>

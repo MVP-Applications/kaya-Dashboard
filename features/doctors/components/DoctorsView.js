@@ -118,6 +118,7 @@ export default function DoctorsView() {
                     <span>
                       <span className="ad-cell-name">{d.name}</span>
                       <span className="ad-cell-slug">{d.specialist}</span>
+                      {d.isPublished === false && <span className="ad-badge ad-voucher-hidden">Draft</span>}
                     </span>
                   </div>
                 </td>
@@ -131,10 +132,10 @@ export default function DoctorsView() {
                         </span>
                       ))}
                     </span>
-                  ) : <span className="ad-muted">—</span>}
+                  ) : <span className="ad-muted">-</span>}
                 </td>
-                <td>{(d.countries || []).join(', ') || <span className="ad-muted">—</span>}</td>
-                <td>{d.yearsExp !== '' && d.yearsExp != null ? `${d.yearsExp} yrs` : <span className="ad-muted">—</span>}</td>
+                <td>{(d.countries || []).join(', ') || <span className="ad-muted">-</span>}</td>
+                <td>{d.yearsExp !== '' && d.yearsExp != null ? `${d.yearsExp} yrs` : <span className="ad-muted">-</span>}</td>
                 <td className="ad-td-actions">
                   <Link className="ad-btn ad-btn--soft ad-btn--sm" href={href({ edit: d.slug })}>Edit</Link>
                   {canDelete && (

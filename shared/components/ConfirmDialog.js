@@ -41,7 +41,7 @@ export default function ConfirmDialog({
   const note = consequenceNote !== undefined
     ? consequenceNote
     : (demoMode
-      ? 'This is preview data — “Reset sample data” restores it.'
+      ? 'This is preview data. “Reset sample data” restores it.'
       : 'This cannot be undone.')
 
   return (

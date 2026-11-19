@@ -189,6 +189,7 @@ export default function ServicesView() {
                 <td>
                   <div className="ad-cell-name">{s.name}</div>
                   <div className="ad-cell-slug">{s.slug}</div>
+                  {s.isPublished === false && <span className="ad-badge ad-voucher-hidden">Draft</span>}
                 </td>
                 <td>
                   <span className="ad-pill-row">
@@ -207,9 +208,9 @@ export default function ServicesView() {
                         </span>
                       ))}
                     </span>
-                  ) : <span className="ad-muted">—</span>}
+                  ) : <span className="ad-muted">-</span>}
                 </td>
-                <td>{s.badge ? <span className="ad-badge">{s.badge}</span> : <span className="ad-muted">—</span>}</td>
+                <td>{s.badge ? <span className="ad-badge">{s.badge}</span> : <span className="ad-muted">-</span>}</td>
                 <td className="ad-td-actions">
                   <Link className="ad-btn ad-btn--soft ad-btn--sm"
                     href={href({ edit: groupId, tab: activeCountry || countries[0] })}>Edit</Link>

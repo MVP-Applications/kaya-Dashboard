@@ -6,6 +6,8 @@ import { fetchClinicOptions } from '@/shared/lib/store'
 import LocaleToggle from '@/shared/components/LocaleToggle'
 import SlugField from '@/shared/components/SlugField'
 import { resolveSlug } from '@/shared/lib/slug'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 
 function cloneSafe(obj) {
   if (typeof structuredClone === 'function') return structuredClone(obj)
@@ -123,6 +125,17 @@ export default function DoctorForm({ initial, isNew, onClose }) {
 
       <div className="ad-editor-body">
         <fieldset className="ad-fieldset">
+          <legend>Publishing</legend>
+          <label className="ad-field ad-field--toggle">
+            <span className="ad-field-label">Website status</span>
+            <label className="ad-check">
+              <input type="checkbox" checked={form.isPublished !== false}
+                onChange={e => set('isPublished', e.target.checked)} />
+              Published: show this doctor on the website
+            </label>
+          </label>
+        </fieldset>
+        <fieldset className="ad-fieldset">
           <legend>Profile</legend>
           <div className="ad-grid2">
             <SlugField value={form.slug} source={form.name} onChange={v => set('slug', v)} />
@@ -138,7 +151,7 @@ export default function DoctorForm({ initial, isNew, onClose }) {
           <legend>Name, title &amp; bio</legend>
           <p className="ad-fieldset-hint">
             English is required. Fill in all three Arabic fields to add an
-            Arabic translation — leave any one blank and the doctor stays
+            Arabic translation. Leave any one blank and the doctor stays
             English-only.
           </p>
           <LocaleToggle locale={locale} onChange={setLocale} />
@@ -147,19 +160,19 @@ export default function DoctorForm({ initial, isNew, onClose }) {
               <div className="ad-grid2">
                 <label className="ad-field">
                   <span className="ad-field-label">Name *</span>
-                  <input className="ad-input" value={form.name}
+                  <LimitedInput max={LIMITS.doctor.name} value={form.name}
                     onChange={e => set('name', e.target.value)} placeholder="Dr. …" />
                 </label>
                 <label className="ad-field">
                   <span className="ad-field-label">Specialist / title</span>
-                  <input className="ad-input" value={form.specialist}
+                  <LimitedInput max={LIMITS.doctor.title} value={form.specialist}
                     onChange={e => set('specialist', e.target.value)}
                     placeholder="e.g. Dermatologist & Aesthetic Physician" />
                 </label>
               </div>
               <label className="ad-field">
                 <span className="ad-field-label">Bio</span>
-                <textarea className="ad-input ad-textarea" rows={5} value={form.bio}
+                <LimitedInput multiline max={LIMITS.doctor.bio} className="ad-input ad-textarea" rows={5} value={form.bio}
                   onChange={e => set('bio', e.target.value)} />
               </label>
             </>
@@ -168,18 +181,18 @@ export default function DoctorForm({ initial, isNew, onClose }) {
               <div className="ad-grid2">
                 <label className="ad-field">
                   <span className="ad-field-label">الاسم (Name)</span>
-                  <input className="ad-input" dir="rtl" value={form.nameAr}
+                  <LimitedInput max={LIMITS.doctor.name} dir="rtl" value={form.nameAr}
                     onChange={e => set('nameAr', e.target.value)} placeholder="د. …" />
                 </label>
                 <label className="ad-field">
                   <span className="ad-field-label">التخصص (Specialist / title)</span>
-                  <input className="ad-input" dir="rtl" value={form.specialistAr}
+                  <LimitedInput max={LIMITS.doctor.title} dir="rtl" value={form.specialistAr}
                     onChange={e => set('specialistAr', e.target.value)} />
                 </label>
               </div>
               <label className="ad-field">
                 <span className="ad-field-label">نبذة (Bio)</span>
-                <textarea className="ad-input ad-textarea" dir="rtl" rows={5} value={form.bioAr}
+                <LimitedInput multiline max={LIMITS.doctor.bio} className="ad-input ad-textarea" dir="rtl" rows={5} value={form.bioAr}
                   onChange={e => set('bioAr', e.target.value)} />
               </label>
             </>
@@ -211,12 +224,12 @@ export default function DoctorForm({ initial, isNew, onClose }) {
               )}
               <p className="ad-fieldset-hint ad-image-hint">
                 Portrait 2:3 on doctor cards and the profile page (taller on desktop), plus a small circle when
-                booking. Every view crops from the top — use about 800 × 1200 px with the face in the upper third
+                booking. Every view crops from the top. Use about 800 × 1200 px with the face in the upper third
                 and a little space above the head.
               </p>
               <label className="ad-field ad-image-url">
                 <span className="ad-field-label">or paste an image URL / path</span>
-                <input className="ad-input" value={form.image?.startsWith('data:') ? '' : (form.image || '')}
+                <LimitedInput max={LIMITS.doctor.photoUrl} value={form.image?.startsWith('data:') ? '' : (form.image || '')}
                   placeholder="/Assets/doctor.jpg"
                   onChange={e => set('image', e.target.value)} />
               </label>

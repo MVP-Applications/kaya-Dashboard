@@ -66,7 +66,7 @@ export default function ContactForm({ initial, isNew, availableCountries, onSave
               </label>
               <p className="ad-fieldset-hint">
                 Don&apos;t see the country you&apos;re looking for? It either already has a contact (edit that one
-                instead) or hasn&apos;t been added yet — add it first on the <strong>Countries</strong> screen.
+                instead) or hasn&apos;t been added yet. Add it first on the <strong>Countries</strong> screen.
               </p>
             </>
           ) : (
@@ -81,7 +81,7 @@ export default function ContactForm({ initial, isNew, availableCountries, onSave
           <legend>Numbers</legend>
           <p className="ad-fieldset-hint">
             Shown on the website for visitors browsing from this country. Phone number is required; WhatsApp and a
-            secondary number are optional — leave either blank to hide that option on the site.
+            secondary number are optional. Leave either blank to hide that option on the site.
           </p>
           <label className="ad-field">
             <span className="ad-field-label">Phone number *</span>

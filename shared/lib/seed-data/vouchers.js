@@ -38,7 +38,7 @@ export const VOUCHERS = [
     badge: 'Limited Offer',
     badgeStyle: 'new',
     title: 'Wellness Trio',
-    subtitle: '3 IV Drip sessions — 30% off',
+    subtitle: '3 IV Drip sessions, 30% off',
     price: 890,
     currency: 'AED',
     img: '/Assets/indulgence 4.jpg',

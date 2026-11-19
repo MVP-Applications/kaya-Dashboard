@@ -6,10 +6,10 @@ import { StatusBadge } from '@/features/pages/components/PageStatus'
 
 /** The menus a page link can be in, and the record fields that place it there. */
 const MENUS = [
-  { id: 'header-LEFT', label: 'Header — left (main menu)', field: 'headerPosition', value: 'LEFT', order: 'headerOrder' },
-  { id: 'header-RIGHT', label: 'Header — right', field: 'headerPosition', value: 'RIGHT', order: 'headerOrder' },
-  { id: 'footer-COMPANY', label: 'Footer — Company column', field: 'footerColumn', value: 'COMPANY', order: 'footerOrder' },
-  { id: 'footer-SUPPORT', label: 'Footer — Support column', field: 'footerColumn', value: 'SUPPORT', order: 'footerOrder' },
+  { id: 'header-LEFT', label: 'Header: left (main menu)', field: 'headerPosition', value: 'LEFT', order: 'headerOrder' },
+  { id: 'header-RIGHT', label: 'Header: right', field: 'headerPosition', value: 'RIGHT', order: 'headerOrder' },
+  { id: 'footer-COMPANY', label: 'Footer: Company column', field: 'footerColumn', value: 'COMPANY', order: 'footerOrder' },
+  { id: 'footer-SUPPORT', label: 'Footer: Support column', field: 'footerColumn', value: 'SUPPORT', order: 'footerOrder' },
 ]
 
 const pageLabel = p => p.navLabel || p.title || p.name || p.slug

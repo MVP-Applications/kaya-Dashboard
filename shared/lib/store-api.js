@@ -138,6 +138,7 @@ function treatmentToService(treatment) {
     mechanism: t.howItWorks || '',
     durationMins: t.duration ?? '',
     sessions: t.sessions ?? '',
+    interval: t.interval || '',
     downtimeNotes: t.downtimeNotes || '',
     downtimeLevel: t.downtimeSeverity || '',
     suitable: t.suitableFor || [],
@@ -150,9 +151,11 @@ function treatmentToService(treatment) {
     benefitsAr: benefitsToForm(ar?.benefits),
     durationMinsAr: ar?.duration || '',
     sessionsAr: ar?.sessions || '',
+    intervalAr: ar?.interval || '',
     downtimeNotesAr: ar?.downtimeNotes || '',
     downtimeLevelAr: ar?.downtimeSeverity || '',
     clinics: (treatment.clinics || []).map(c => c.id),
+    isPublished: treatment.isPublished !== false,
   }
 }
 
@@ -237,7 +240,7 @@ export const reorderCategories = async list => {
 
 export const removeCategory = async slug => {
   const id = categoryIds.get(slug)
-  if (!id) throw new Error(`Could not delete "${slug}" — it wasn't found.`)
+  if (!id) throw new Error(`Could not delete "${slug}": it wasn't found.`)
   await apiRequest(ApiEndpoints.categories.adminById(id), { method: 'DELETE' })
   categoryIds.delete(slug)
 }
@@ -332,7 +335,7 @@ export const persistVerticals = async list => {
 
 export const removeVertical = async slug => {
   const id = pillarIds.get(slug)
-  if (!id) throw new Error(`Could not delete "${slug}" — it wasn't found.`)
+  if (!id) throw new Error(`Could not delete "${slug}": it wasn't found.`)
   await apiRequest(ApiEndpoints.pillars.adminById(id), { method: 'DELETE' })
   pillarIds.delete(slug)
 }
@@ -365,6 +368,7 @@ async function serviceToVersionBody(s, countryIds) {
     suitableFor: s.suitable || [],
     duration: s.durationMins || null,
     sessions: s.sessions || null,
+    interval: s.interval || null,
     downtimeNotes: s.downtimeNotes || null,
     downtimeSeverity: s.downtimeLevel || null,
   }]
@@ -379,12 +383,13 @@ async function serviceToVersionBody(s, countryIds) {
       suitableFor: s.suitableAr || [],
       duration: s.durationMinsAr || null,
       sessions: s.sessionsAr || null,
+      interval: s.intervalAr || null,
       downtimeNotes: s.downtimeNotesAr || null,
       downtimeSeverity: s.downtimeLevelAr || null,
     })
   }
   const countryId = countryIds.get(String(s.country).toUpperCase())
-  if (!countryId) throw new Error(`Country "${s.country}" wasn't found — refresh and try again.`)
+  if (!countryId) throw new Error(`Country "${s.country}" wasn't found. Refresh and try again.`)
   return {
     countryId,
     slug: s.slug,
@@ -396,7 +401,7 @@ async function serviceToVersionBody(s, countryIds) {
     imageUrl,
     cardImageUrl: cardImageUrl || null,
     icon: s.thumb,
-    isPublished: true,
+    isPublished: s.isPublished !== false,
     clinicIds: s.clinics || [],
     translations,
   }
@@ -422,7 +427,7 @@ export async function persistTreatment({ groupId, versions }) {
 export async function removeTreatmentCountry(groupId, countryCode) {
   const countryIds = await ensureCountryIds([countryCode])
   const countryId = countryIds.get(String(countryCode).toUpperCase())
-  if (!countryId) throw new Error(`Country "${countryCode}" wasn't found — refresh and try again.`)
+  if (!countryId) throw new Error(`Country "${countryCode}" wasn't found. Refresh and try again.`)
   await apiRequest(ApiEndpoints.treatments.adminCountry(groupId, countryId), { method: 'DELETE' })
 }
 
@@ -493,6 +498,7 @@ function doctorToRecord(doctor) {
     countries: (doctor.countries || []).map(c => c.code),
     clinics: (doctor.clinics || []).map(c => c.id),
     treatments: (doctor.treatments || []).map(t => t.id), // treatment version ids
+    isPublished: doctor.isPublished !== false,
   }
 }
 
@@ -542,7 +548,7 @@ async function uploadImageIfNeeded(image) {
   }
   const body = await response.json().catch(() => null)
   if (!response.ok || body?.success === false) {
-    throw new Error(body?.error?.message || 'Could not upload the image — please try again.')
+    throw new Error(body?.error?.message || 'Could not upload the image. Please try again.')
   }
   return body.data.url
 }
@@ -582,7 +588,7 @@ export const persistDoctors = async list => {
       yearsExperience: toNumberOrUndefined(d.yearsExp),
       languages: (d.languages || []).filter(Boolean),
       photoUrl,
-      isPublished: true,
+      isPublished: d.isPublished !== false,
       translations,
       clinicIds: d.clinics || [],
       treatmentIds: (d.treatments || []).filter(Boolean),
@@ -621,7 +627,7 @@ export const reorderDoctors = async list => {
 
 export const removeDoctor = async slug => {
   const id = doctorIds.get(slug)
-  if (!id) throw new Error(`Could not delete "${slug}" — it wasn't found.`)
+  if (!id) throw new Error(`Could not delete "${slug}": it wasn't found.`)
   await apiRequest(ApiEndpoints.doctors.adminById(id), { method: 'DELETE' })
   doctorIds.delete(slug)
 }
@@ -746,7 +752,7 @@ export const persistLocations = async list => {
 
 export const removeLocation = async id => {
   const backendId = clinicRecordIds.get(id)
-  if (!backendId) throw new Error('Could not delete this clinic — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this clinic: it wasn\'t found.')
   await apiRequest(ApiEndpoints.clinics.adminById(backendId), { method: 'DELETE' })
   clinicRecordIds.delete(id)
 }
@@ -810,7 +816,7 @@ export const persistCountries = async list => {
 
 export const removeCountry = async id => {
   const backendId = countryRecordIds.get(id)
-  if (!backendId) throw new Error('Could not delete this country — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this country: it wasn\'t found.')
   await apiRequest(ApiEndpoints.locations.adminCountryById(backendId), { method: 'DELETE' })
   countryRecordIds.delete(id)
   countryIdByCode = null
@@ -868,7 +874,7 @@ export const persistContacts = async list => {
 
 export const removeContact = async id => {
   const backendId = contactRecordIds.get(id)
-  if (!backendId) throw new Error('Could not delete this contact — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this contact: it wasn\'t found.')
   await apiRequest(ApiEndpoints.contacts.adminById(backendId), { method: 'DELETE' })
   contactRecordIds.delete(id)
 }
@@ -989,7 +995,7 @@ export const reorderVouchers = async list => {
 
 export const removeVoucher = async id => {
   const backendId = voucherOfferIds.get(id)
-  if (!backendId) throw new Error('Could not delete this voucher — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this voucher: it wasn\'t found.')
   await apiRequest(ApiEndpoints.indulgence.adminById(backendId), { method: 'DELETE' })
   voucherOfferIds.delete(id)
 }
@@ -1002,44 +1008,10 @@ export const removeVoucher = async id => {
 // only PUBLISHED is on the website), its menu placement, and the countries
 // it's offered in. Contract: docs/page-builder.md.
 //
-// Built pages store each block's content one language at a time on the
-// backend; the builder keeps English under `key` and Arabic under `keyAr`.
-// These are the text fields that have an Arabic version — they mirror the
-// `localized` fields in features/pages/lib/page-builder.js (BLOCK_TYPES).
-const LOCALIZED_BLOCK_FIELDS = new Set([
-  'eyebrow', 'heading', 'sub', 'body', 'caption', 'buttonLabel', 'title', 'text', 'question', 'answer', 'imageAlt', 'alt',
-])
-
-/** One language of a block's data: English keeps `key`, Arabic reads `keyAr` into `key`. */
-function blockLocale(data, locale) {
-  const out = {}
-  for (const [k, v] of Object.entries(data || {})) {
-    if (k.endsWith('Ar') && LOCALIZED_BLOCK_FIELDS.has(k.slice(0, -2))) continue
-    if (Array.isArray(v)) out[k] = v.map(item => (item && typeof item === 'object' ? blockLocale(item, locale) : item))
-    else if (LOCALIZED_BLOCK_FIELDS.has(k)) out[k] = locale === 'AR' ? (data[`${k}Ar`] || '') : (v || '')
-    else out[k] = v
-  }
-  return out
-}
-
-/** The builder's shape back from both languages: English plus Arabic as `keyAr`. */
-function blockData(en = {}, ar = {}) {
-  const out = {}
-  for (const [k, v] of Object.entries(en)) {
-    if (Array.isArray(v)) {
-      const arList = Array.isArray(ar[k]) ? ar[k] : []
-      out[k] = v.map((item, i) => (item && typeof item === 'object' ? blockData(item, arList[i] || {}) : item))
-    } else {
-      out[k] = v
-      if (LOCALIZED_BLOCK_FIELDS.has(k)) out[`${k}Ar`] = ar[k] || ''
-    }
-  }
-  return out
-}
-
-const hasArabic = data => Object.entries(data || {}).some(([k, v]) =>
-  (Array.isArray(v) ? v.some(item => item && typeof item === 'object' && hasArabic(item))
-    : k.endsWith('Ar') && typeof v === 'string' && v.trim()))
+// Built pages store each section's content one language at a time, with the
+// website's field names; the builder keeps them as { EN: {…}, AR: {…} }.
+// Which fields a section has comes from the backend schema
+// (features/pages/lib/schema.js).
 
 function pageRecord(p) {
   const tr = locale => (p.translations || []).find(t => t.locale === locale) || {}
@@ -1065,13 +1037,14 @@ function pageRecord(p) {
     seoTitle: en.seoTitle || '', seoTitleAr: ar.seoTitle || '',
     seoDescription: en.seoDescription || '', seoDescriptionAr: ar.seoDescription || '',
     missingLocales: p.missingLocales || [],
+    fixedAddress: Boolean(p.fixedAddress),
     hiddenSections: (p.sections || []).filter(sec => !sec.visible).map(sec => sec.key),
     updatedAt: p.updatedAt || '',
   }
   if (p.kind === 'CUSTOM') {
     record.blocks = (p.sections || []).map(sec => {
       const t = locale => (sec.translations || []).find(x => x.locale === locale)?.content || {}
-      return { id: sec.key, type: sec.type, hidden: !sec.visible, data: blockData(t('EN'), t('AR')) }
+      return { id: sec.key, type: sec.type, hidden: !sec.visible, content: { EN: t('EN'), AR: t('AR') } }
     })
   }
   return record
@@ -1080,6 +1053,11 @@ function pageRecord(p) {
 /** Every page except the hidden footer/global holder. */
 export async function fetchPageRegistry() {
   const items = await fetchAllPages(ApiEndpoints.pages.adminList)
+  // An API from before page status existed sends pages without `status`/`kind`;
+  // say so instead of quietly showing pages with no status to change.
+  if (items.length && items.every(p => p.status === undefined)) {
+    throw new Error('The connected API doesn’t support page status and menus yet. It needs the latest kaya-nest-api (pages registry) deployed.')
+  }
   return items.filter(p => p.kind !== 'GLOBAL').map(pageRecord)
 }
 
@@ -1101,15 +1079,28 @@ function settingsBody(r, countryIds) {
   }
 }
 
+/** True when some text anywhere in `value` is filled in. */
+const hasText = value => (Array.isArray(value) ? value.some(hasText)
+  : value && typeof value === 'object' ? Object.values(value).some(hasText)
+    : typeof value === 'string' && value.trim() !== '')
+
 async function blockSections(blocks) {
   const out = []
   for (const b of blocks || []) {
-    const data = await uploadImagesDeep(b.data)
-    const translations = [{ locale: 'EN', content: blockLocale(data, 'EN') }]
-    if (hasArabic(data)) translations.push({ locale: 'AR', content: blockLocale(data, 'AR') })
+    const en = await uploadImagesDeep(b.content?.EN || {})
+    const ar = await uploadImagesDeep(b.content?.AR || {})
+    const translations = [{ locale: 'EN', content: en }]
+    // An untouched Arabic version isn't sent: the website shows English there.
+    if (hasText(ar)) translations.push({ locale: 'AR', content: ar })
     out.push({ key: b.id, type: b.type, visible: !b.hidden, translations })
   }
   return out
+}
+
+/** Section types, page designs and reserved addresses the builder works from. */
+export async function fetchPageSchema() {
+  const { data } = await apiRequest(ApiEndpoints.pages.adminSchema)
+  return data
 }
 
 /**
@@ -1128,7 +1119,7 @@ export async function saveCustomPage(record, { isNew }) {
     return pageRecord(data)
   }
   await apiRequest(ApiEndpoints.pages.adminById(record.id), {
-    method: 'PUT', body: { ...settings, slug: record.slug, template: record.template },
+    method: 'PUT', body: { ...settings, ...(record.fixedAddress ? {} : { slug: record.slug }), template: record.template },
   })
   const { data } = await apiRequest(ApiEndpoints.pages.adminSections(record.id), { method: 'PUT', body: { sections } })
   return pageRecord(data)
@@ -1278,7 +1269,7 @@ export const persistBlogs = async list => {
 
 export const removeBlog = async id => {
   const backendId = blogIds.get(id)
-  if (!backendId) throw new Error('Could not delete this post — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this post: it wasn\'t found.')
   await apiRequest(ApiEndpoints.blogs.adminById(backendId), { method: 'DELETE' })
   blogIds.delete(id)
   blogSaved.delete(id)
@@ -1325,7 +1316,7 @@ export const persistBlogCategories = async list => {
 
 export const removeBlogCategory = async id => {
   const backendId = blogCategoryIds.get(id)
-  if (!backendId) throw new Error('Could not delete this topic — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this topic: it wasn\'t found.')
   await apiRequest(ApiEndpoints.blogCategories.adminById(backendId), { method: 'DELETE' })
   blogCategoryIds.delete(id)
   blogCategorySaved.delete(id)
@@ -1516,7 +1507,7 @@ export async function exportCustomersCsv(filters) {
     credentials: 'include',
     headers: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {},
   })
-  if (!response.ok) throw new Error('Could not export customers — please try again.')
+  if (!response.ok) throw new Error('Could not export customers. Please try again.')
   return response.text()
 }
 
@@ -1551,6 +1542,7 @@ function reviewToRecord(t) {
     nameAr: ar?.clientAlias || '',
     locationAr: ar?.address || '',
     quoteAr: ar?.quote || '',
+    isPublished: t.isPublished !== false,
   }
 }
 
@@ -1580,7 +1572,7 @@ export const persistReviews = async list => {
       beforeImgUrl: beforeImgUrl || undefined,
       afterImgUrl: afterImgUrl || undefined,
       consentGiven: !!r.consentGiven,
-      isPublished: true,
+      isPublished: r.isPublished !== false,
       // null clears it on update; a code not (yet) known is left unchanged.
       countryId: r.country ? countryIds.get(String(r.country).toUpperCase()) : null,
       translations,
@@ -1595,7 +1587,7 @@ export const persistReviews = async list => {
 
 export const removeReview = async id => {
   const backendId = reviewIds.get(id)
-  if (!backendId) throw new Error('Could not delete this review — it wasn\'t found.')
+  if (!backendId) throw new Error('Could not delete this review: it wasn\'t found.')
   await apiRequest(ApiEndpoints.testimonials.adminById(backendId), { method: 'DELETE' })
   reviewIds.delete(id)
 }
@@ -2074,6 +2066,7 @@ function leadToRequest(lead) {
     city: lead.city?.name || '',
     treatment: lead.treatment?.title || '',
     doctor: lead.doctor?.name || '',
+    doctorId: lead.doctor?.id || lead.doctorId || '',
     message: lead.message || '',
     createdAt: lead.submittedAt,
     gender: REQUEST_GENDER_FROM_BACKEND[lead.gender] || '',
@@ -2085,13 +2078,14 @@ function leadToRequest(lead) {
   }
 }
 
-function requestQueryParams({ search, source, status, country, city, from, to, page, pageSize } = {}) {
+function requestQueryParams({ search, source, status, country, city, doctor, from, to, page, pageSize } = {}) {
   const params = new URLSearchParams()
   if (search) params.set('search', search)
   if (source) params.set('type', REQUEST_SOURCE_TO_BACKEND[source] || source)
   if (status) params.set('status', REQUEST_STATUS_TO_BACKEND[status] || status)
   if (country) params.set('country', country)
   if (city) params.set('city', city)
+  if (doctor) params.set('doctor', doctor)
   if (from) params.set('from', from)
   if (to) params.set('to', to)
   if (page) params.set('page', String(page))
@@ -2174,7 +2168,7 @@ export async function exportRequestsCsv(filters) {
     credentials: 'include',
     headers: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {},
   })
-  if (!response.ok) throw new Error('Could not export enquiries — please try again.')
+  if (!response.ok) throw new Error('Could not export enquiries. Please try again.')
   return response.text()
 }
 
@@ -2251,7 +2245,7 @@ async function countryIdsFor(codes = []) {
   const ids = await ensureCountryIds(codes)
   return codes.map(code => {
     const id = ids.get(String(code).toUpperCase())
-    if (!id) throw new Error(`Country "${code}" wasn't found — refresh and try again.`)
+    if (!id) throw new Error(`Country "${code}" wasn't found. Refresh and try again.`)
     return id
   })
 }

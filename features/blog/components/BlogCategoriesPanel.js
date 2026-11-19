@@ -4,6 +4,8 @@ import { useAdmin } from '@/shared/context/AdminContext'
 import ConfirmDialog from '@/shared/components/ConfirmDialog'
 import ReorderCell from '@/shared/components/ReorderCell'
 import SlugField from '@/shared/components/SlugField'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 import { emptyBlogCategory } from '@/shared/lib/seed'
 import { resolveSlug } from '@/shared/lib/slug'
 
@@ -48,12 +50,12 @@ export default function BlogCategoriesPanel() {
       <div className="ad-grid2">
         <label className="ad-field">
           <span className="ad-field-label">Name *</span>
-          <input className="ad-input" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
+          <LimitedInput max={LIMITS.blogCategory.name} value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
             placeholder="e.g. Skin" autoFocus />
         </label>
         <label className="ad-field">
           <span className="ad-field-label">الاسم (Arabic name)</span>
-          <input className="ad-input" dir="rtl" value={draft.nameAr}
+          <LimitedInput max={LIMITS.blogCategory.name} dir="rtl" value={draft.nameAr}
             onChange={e => setDraft(d => ({ ...d, nameAr: e.target.value }))} />
         </label>
         <SlugField value={draft.slug} source={draft.name} onChange={v => setDraft(d => ({ ...d, slug: v }))} />
@@ -88,7 +90,7 @@ export default function BlogCategoriesPanel() {
                     <span className="ad-cell-name">{c.name}</span>
                     <span className="ad-cell-slug">?category={c.slug}</span>
                   </td>
-                  <td dir="rtl">{c.nameAr || <span className="ad-muted">—</span>}</td>
+                  <td dir="rtl">{c.nameAr || <span className="ad-muted">-</span>}</td>
                   <td>{postCount(c.id)}</td>
                   {canManage && (
                     <td>
@@ -118,7 +120,7 @@ export default function BlogCategoriesPanel() {
             + New topic
           </button>
         )
-        : <p className="ad-field-hint">Topics are shared by every country — ask an admin to add or change one.</p>}
+        : <p className="ad-field-hint">Topics are shared by every country. Ask an admin to add or change one.</p>}
 
       {confirm && (
         <ConfirmDialog

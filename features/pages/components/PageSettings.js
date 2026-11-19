@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAdmin } from '@/shared/context/AdminContext'
 import LocaleToggle from '@/shared/components/LocaleToggle'
+import LimitedInput from '@/shared/components/LimitedInput'
+import { LIMITS } from '@/shared/lib/limits'
 import PageStatusControl from '@/features/pages/components/PageStatus'
 import { HEADER_POSITIONS, FOOTER_COLUMNS } from '@/features/pages/lib/page-builder'
 
@@ -38,7 +40,7 @@ export function PageSettingsFields({ value, onChange, locale, disabled, withTitl
           {withTitle && titleSlot}
           <label className="ad-field ad-w-lg">
             <span className="ad-field-label">{ar ? 'Menu label (Arabic)' : 'Menu label'}</span>
-            <input {...text('navLabel', { placeholder: value.title || 'e.g. Summer offers' })} />
+            <LimitedInput max={LIMITS.pageSettings.navLabel} {...text('navLabel', { placeholder: value.title || 'e.g. Summer offers' })} />
             <span className="ad-field-hint">The link text in the website menu. Empty = the page title.{ar ? ' Empty Arabic shows the English label.' : ''}</span>
           </label>
         </fieldset>
@@ -63,38 +65,40 @@ export function PageSettingsFields({ value, onChange, locale, disabled, withTitl
         </fieldset>
       </div>
 
-      <fieldset className="ad-fieldset">
-        <legend>Countries</legend>
-        <label className="ad-check">
-          <input type="checkbox" checked={value.allCountries !== false} disabled={disabled}
-            onChange={e => onChange({ allCountries: e.target.checked })} />
-          <span><strong>Offered in every country</strong></span>
-        </label>
-        {value.allCountries === false && (
-          <div className="ad-pg-countries">
-            {accessibleCountries.map(c => (
-              <label key={c.code} className={`ad-check${countries.includes(c.code) ? ' active' : ''}`}>
-                <input type="checkbox" checked={countries.includes(c.code)} disabled={disabled} onChange={() => toggleCountry(c.code)} />
-                <span>{c.name}</span>
-              </label>
-            ))}
-            <span className="ad-field-hint">Visitors in other countries are sent to the homepage, and the page’s menu links are hidden for them.</span>
-          </div>
-        )}
-      </fieldset>
+      <div className="ad-pair">
+        <fieldset className="ad-fieldset">
+          <legend>Countries</legend>
+          <label className="ad-check">
+            <input type="checkbox" checked={value.allCountries !== false} disabled={disabled}
+              onChange={e => onChange({ allCountries: e.target.checked })} />
+            <span><strong>Offered in every country</strong></span>
+          </label>
+          {value.allCountries === false && (
+            <div className="ad-pg-countries">
+              {accessibleCountries.map(c => (
+                <label key={c.code} className={`ad-check${countries.includes(c.code) ? ' active' : ''}`}>
+                  <input type="checkbox" checked={countries.includes(c.code)} disabled={disabled} onChange={() => toggleCountry(c.code)} />
+                  <span>{c.name}</span>
+                </label>
+              ))}
+              <span className="ad-field-hint">Visitors in other countries are sent to the homepage, and the page’s menu links are hidden for them.</span>
+            </div>
+          )}
+        </fieldset>
 
-      <fieldset className="ad-fieldset">
-        <legend>Search engines</legend>
-        <label className="ad-field ad-w-xl">
-          <span className="ad-field-label">{ar ? 'SEO title (Arabic)' : 'SEO title'}</span>
-          <input {...text('seoTitle', { placeholder: value.title ? `${value.title} | Kaya` : 'Empty = the site’s default title' })} />
-        </label>
-        <label className="ad-field ad-w-xl">
-          <span className="ad-field-label">{ar ? 'Description (Arabic)' : 'Description'}</span>
-          <textarea rows={3} {...text('seoDescription')} className="ad-input ad-textarea" />
-          <span className="ad-field-hint">{(value[field('seoDescription')] || '').length} / 160 characters recommended</span>
-        </label>
-      </fieldset>
+        <fieldset className="ad-fieldset">
+          <legend>Search engines</legend>
+          <label className="ad-field ad-w-xl">
+            <span className="ad-field-label">{ar ? 'SEO title (Arabic)' : 'SEO title'}</span>
+            <LimitedInput max={LIMITS.pageSettings.seoTitle} {...text('seoTitle', { placeholder: value.title ? `${value.title} | Kaya` : 'Empty = the site’s default title' })} />
+          </label>
+          <label className="ad-field ad-w-xl">
+            <span className="ad-field-label">{ar ? 'Description (Arabic)' : 'Description'}</span>
+            <LimitedInput multiline max={LIMITS.pageSettings.seoDescription} rows={3} {...text('seoDescription')} className="ad-input ad-textarea" />
+            <span className="ad-field-hint">{(value[field('seoDescription')] || '').length} / 160 characters recommended</span>
+          </label>
+        </fieldset>
+      </div>
     </>
   )
 }
@@ -123,7 +127,7 @@ export default function SystemPageSettings({ page, record, backHref }) {
       <div className="ad-editor-head">
         <Link className="ad-back" href={backHref}>← {page.label}</Link>
         <div className="ad-editor-titles">
-          <h1 className="ad-view-title">{page.label} — settings</h1>
+          <h1 className="ad-view-title">{page.label}: settings</h1>
           <div className="ad-view-sub ad-pg-sub">{record.path} · <PageStatusControl page={record} canEdit={canEdit} blockedReason={dirty ? 'Save your changes first.' : ''} /></div>
         </div>
         <div className="ad-editor-actions">
