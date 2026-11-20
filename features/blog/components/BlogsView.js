@@ -136,7 +136,7 @@ export default function BlogsView() {
                                 {b.title}
                                 {b.featured && <span className="ad-badge ad-blog-featured">Featured</span>}
                               </span>
-                              <span className="ad-cell-slug">/blogs/{b.slug}</span>
+                              <span className="ad-cell-slug">/know-skin-hair/{b.slug}</span>
                             </span>
                           </div>
                         </td>

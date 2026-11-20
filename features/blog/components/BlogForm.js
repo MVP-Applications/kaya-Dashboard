@@ -117,7 +117,7 @@ export default function BlogForm({ initial, isNew, onClose }) {
         <button type="button" className="ad-back" onClick={onClose}>← Back</button>
         <div className="ad-editor-titles">
           <h1 className="ad-view-title">{isNew ? 'New post' : 'Edit post'}</h1>
-          <p className="ad-view-sub">{isNew ? 'Write an article for the website’s blog.' : `/blogs/${form.slug}`}</p>
+          <p className="ad-view-sub">{isNew ? 'Write an article for the website’s blog.' : `/know-skin-hair/${form.slug}`}</p>
         </div>
         <div className="ad-editor-actions">
           <button type="button" className="ad-btn ad-btn--ghost" onClick={onClose}>Cancel</button>
@@ -289,7 +289,7 @@ export default function BlogForm({ initial, isNew, onClose }) {
           <label className="ad-field ad-w-xl">
             <span className="ad-field-label">Canonical URL</span>
             <LimitedInput max={LIMITS.blog.canonicalUrl} value={form.canonicalUrl} onChange={e => set('canonicalUrl', e.target.value)}
-              placeholder={`/blogs/${form.slug || '…'}/`} />
+              placeholder={`/know-skin-hair/${form.slug || '…'}`} />
             <span className="ad-field-hint">Only if this article first appeared elsewhere.</span>
           </label>
           <label className={`ad-check${form.noIndex ? ' active' : ''}`}>
