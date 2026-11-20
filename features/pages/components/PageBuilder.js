@@ -13,7 +13,7 @@ import { HEADER_POSITION_LABELS, FOOTER_COLUMN_LABELS, newId, slugify } from '@/
 import {
   designOf, designsThatFit, newSection, publishProblems, sectionSummary, sectionTypeOf, validateCustomPage,
 } from '@/features/pages/lib/schema'
-import { siteUrl } from '@/shared/lib/site'
+import { SITE_PREFIX, sitePath, siteUrl } from '@/shared/lib/site'
 import { slugInput } from '@/shared/lib/slug'
 import { useQuery } from '@/shared/hooks/useUrlState'
 
@@ -319,14 +319,14 @@ export default function PageBuilder({ initial, isNew, onClose, onSaved }) {
                   {page.fixedAddress ? (
                     <div className="ad-field ad-w-lg">
                       <span className="ad-field-label">Address</span>
-                      <span className="ad-pb-slug"><span>kaya.ae{page.path}</span></span>
+                      <span className="ad-pb-slug"><span>kaya.ae{sitePath(page.path)}</span></span>
                       <span className="ad-field-hint">One of the website’s own pages: it keeps this address.</span>
                     </div>
                   ) : (
                     <label className="ad-field ad-w-lg">
                       <span className="ad-field-label">Address *</span>
                       <span className="ad-pb-slug">
-                        <span>kaya.ae/</span>
+                        <span>kaya.ae{SITE_PREFIX}/</span>
                         <input className="ad-input" value={page.slug}
                           onChange={e => { setSlugTouched(true); set({ slug: slugInput(e.target.value) }) }}
                           onBlur={e => set({ slug: slugify(e.target.value) })} placeholder="ramadan-offers" />

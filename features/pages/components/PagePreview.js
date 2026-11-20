@@ -1,6 +1,7 @@
 'use client'
 import { sectionTypeOf, shownContent } from '@/features/pages/lib/schema'
 import { richTextToPlain } from '@/shared/lib/rich-text'
+import { sitePath } from '@/shared/lib/site'
 
 /**
  * A close-enough rendering of a custom page in the site's style, so the
@@ -223,7 +224,7 @@ export default function PagePreview({ schema, page, locale, device, selectedId, 
     <div className={`ad-pp-frame ad-pp-frame--${device}`}>
       <div className="ad-pp-chrome" aria-hidden="true">
         <span /><span /><span />
-        <span className="ad-pp-url">kaya.ae{page.fixedAddress ? page.path : `/${page.slug || 'your-page'}`}</span>
+        <span className="ad-pp-url">kaya.ae{sitePath(page.fixedAddress ? page.path : `/${page.slug || 'your-page'}`)}</span>
       </div>
       <div className={`ad-pp ad-pp--${device}`} dir={locale === 'AR' ? 'rtl' : 'ltr'}>
         {page.blocks.length === 0 && (

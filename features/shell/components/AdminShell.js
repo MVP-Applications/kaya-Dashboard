@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useAdmin } from '@/shared/context/AdminContext'
 import { ROLE_LABELS } from '@/shared/lib/auth'
 import CountrySwitcher from '@/features/shell/components/CountrySwitcher'
-import { SITE_URL } from '@/shared/lib/site'
+import { siteUrl } from '@/shared/lib/site'
 import { viewFromPath, viewHref } from '@/shared/lib/routes'
 
 // Nav is grouped so the catalogue (records) and the website (page copy) read as
@@ -129,7 +129,7 @@ export default function AdminShell({ children }) {
           {saving && <span className="ad-saving">Saving…</span>}
           <div className="ad-topbar-right">
             <CountrySwitcher />
-            <a href={SITE_URL} className="ad-btn ad-btn--ghost" target="_blank" rel="noreferrer">
+            <a href={siteUrl('/')} className="ad-btn ad-btn--ghost" target="_blank" rel="noreferrer">
               View site ↗
             </a>
             <div className="ad-user">
